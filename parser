@@ -6,15 +6,15 @@ from joblib import Parallel, delayed
 import awpy  # CS2 demo parser
 import psycopg2
 
-# PostgreSQL Connection Config  #````````````````````````````````````````````````````````````````````update this information
-DB_NAME = "cs2_data"
-DB_USER = "cs2_admin"
-DB_PASS = "securepassword"
+# PostgreSQL Connection Config
+DB_NAME = "cs2_db"
+DB_USER = "postgres"
+DB_PASS = "gE=XG'99"
 DB_HOST = "localhost"
-DB_PORT = "5432"
+DB_PORT = "5433"
 
 # Temporary Directory (RAM Disk)
-TEMP_DIR = "/mnt/ramdisk/cs2_demos" #````````````````````````````````````````````````````Need to make R://path for this.
+TEMP_DIR = "/mnt/ramdisk/cs2_demos" #````````````````````````````````````````````````````Need to make R://path for this. This won't work in windows
 
 # Ensure RAM disk directory exists
 os.makedirs(TEMP_DIR, exist_ok=True)
