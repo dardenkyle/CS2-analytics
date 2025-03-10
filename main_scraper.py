@@ -4,16 +4,19 @@ import player_scraper
 import demo_scraper
 import data_storage
 import datetime as dt
+from logger_config import setup_logger
 
-HLTV_URL = "https://www.hltv.org/results"
-target_date = dt.date(2025,3,6)                                         # Start of season 2 is 2025,1,29.  Controls the date of the matches we scrape.
+# Constants for configuration
+HLTV_URL: str = "https://www.hltv.org/results"
+target_date: dt.date = dt.date(2025,3,6)                                         # Start of season 2 is 2025,1,29.  Controls the date of the matches we scrape.
+logger = setup_logger(__name__)
 
-def main():
-    print("Starting script at:", dt.datetime.now())
-    print("🚀 Ensuring database is ready...")
+def main() -> None:
+    logger.info("Starting script at: %s", dt.datetime.now())
+    logger.info("🚀 Ensuring database is ready...")
     db_connection.ensure_tables()  # ✅ This runs before scraping
 
-    print("🚀 Starting HLTV Scraper...")
+    logger.info("🚀 Starting HLTV Scraper...")
     
     # # ✅ Iterate Through Pagination Until We Reach Older Dates
     # match_data = []
@@ -21,7 +24,7 @@ def main():
 
     # while True:
     #     page_url = f"{HLTV_URL}?offset={offset}"
-    #     print(f"🔄 Checking page: {page_url}", end='\r')
+    #     logger.info("🔄 Checking page: %s", page_url)
 
     #     extracted_matches, stop_scraping = match_scraper.extract_matches_from_page(page_url)
     #     match_data.extend(extracted_matches)
@@ -31,18 +34,15 @@ def main():
 
     #     offset += 100  # Move to the next page
 
-    # print(f"✅ Found {len(match_data)} matches from {target_date}, including {target_date}.")
-
-
-
-    MAX_MATCHES = 1  # ✅ Set a limit for debugging
-
+    # logger.info("✅ Found %s matches from %s, including %s.", len(match_data), target_date, target_date)
+ 
     match_data = []
     offset = 0
+    MAX_MATCHES: int = 1  # ✅ Set a limit for debugging
 
     while len(match_data) < MAX_MATCHES:  # ✅ Stop scraping once we reach the limit
         page_url = f"{HLTV_URL}?offset={offset}"
-        print(f"🔄 Checking page: {page_url}", end='\r')
+        logger.info("🔄 Checking page: %s", page_url)
 
         extracted_matches, stop_scraping = match_scraper.extract_matches_from_page(page_url)
         
@@ -56,7 +56,7 @@ def main():
 
         offset += 100  # Move to the next page
 
-    print(f"✅ Found {len(match_data)} matches for debugging.")
+    logger.info("✅ Found %s matches from %s, including %s.", len(match_data), target_date, target_date)
 
     # Store match data in a list before inserting
     match_list = []
@@ -91,7 +91,7 @@ def main():
     # Insert player stats in **one query**
     data_storage.batch_insert_player_stats(player_stats_list)
 
-    print("✅ Scraping completed!")
+    logger.info("✅ Scraping completed!")
 
 if __name__ == "__main__":
     main()

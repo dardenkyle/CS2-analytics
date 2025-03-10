@@ -1,11 +1,14 @@
 import psycopg2
 from psycopg2.extras import execute_values
 from db_connection import connect_db
+from logger_config import setup_logger
 
-def batch_insert_matches(match_list):
+logger = setup_logger(__name__)
+
+def batch_insert_matches(match_list: list) -> None:
     """Inserts multiple match records into the database in a single batch operation."""
     if not match_list:
-        print("⚠️ No matches to insert.")
+        logger.warning("⚠️ No matches to insert.")
         return
 
     try:
@@ -22,15 +25,15 @@ def batch_insert_matches(match_list):
         conn.commit()
         cur.close()
         conn.close()
-        print(f"✅ Successfully inserted {len(match_list)} matches.")
+        logger.info(f"✅ Successfully inserted {len(match_list)} matches.")
 
     except Exception as e:
-        print(f"❌ Error inserting matches: {e}")
+        logger.error(f"❌ Error inserting matches: {e}")
 
-def batch_insert_player_stats(player_stats_list):
+def batch_insert_player_stats(player_stats_list: list) -> None:
     """Inserts multiple player stats records in a single batch operation."""
     if not player_stats_list:
-        print("⚠️ No player stats to insert.")
+        logger.warning("⚠️ No player stats to insert.")
         return
 
     try:
@@ -46,7 +49,7 @@ def batch_insert_player_stats(player_stats_list):
         conn.commit()
         cur.close()
         conn.close()
-        print(f"✅ Successfully inserted {len(player_stats_list)} player stats.")
+        logger.info(f"✅ Successfully inserted {len(player_stats_list)} player stats.")
 
     except Exception as e:
-        print(f"❌ Error inserting player stats: {e}")
+        logger.error(f"❌ Error inserting player stats: {e}")

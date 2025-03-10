@@ -6,6 +6,9 @@ from seleniumbase import Driver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from logger_config import setup_logger
+
+logger = setup_logger(__name__)
 
 target_date = dt.date(2025,3,4)  # Adjust start date is 2025,1,29
 
@@ -13,7 +16,7 @@ target_date = dt.date(2025,3,4)  # Adjust start date is 2025,1,29
 driver = Driver(uc=True, headless=False)                                                        # Headless = False for debugging.
 
 # ✅ Function to Extract Match Data from a Page
-def extract_matches_from_page(url):
+def extract_matches_from_page(url) -> list:
     driver.get(url)
     time.sleep(random.uniform(3, 5))  # Dynamic wait time
     soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -38,7 +41,7 @@ def extract_matches_from_page(url):
             try:
                 match_date_obj = dt.datetime.strptime(raw_date_text, "%B %d %Y").date()
             except ValueError:
-                print(f"❌ Could not parse date: {raw_date_text}")
+                logger.error(f"❌ Could not parse date: {raw_date_text}")
                 continue  # Skip invalid dates
 
             if match_date_obj >= target_date:
@@ -70,6 +73,6 @@ def extract_matches_from_page(url):
                         }
                     )
             elif  match_date_obj < target_date:
-                    print(f"⏩ Date {match_date_obj} is too old, stopping pagination.")
+                    logger.info(f"⏩ Date {match_date_obj} is too old, stopping pagination.")
                     return matches, True  # ✅ Stop only if we found target date
     return matches, stop_scraping

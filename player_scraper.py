@@ -3,10 +3,13 @@ import random
 import time
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
+from logger_config import setup_logger
+
+logger = setup_logger(__name__)
 
 driver = Driver(uc=True, headless=True)                                                     # Headless = False for debugging
 
-def extract_match_details(match_url):
+def extract_match_details(match_url) -> dict:
     """Extracts detailed player stats from the match page."""
     driver.get(match_url)
     time.sleep(random.uniform(3, 5))
@@ -15,20 +18,21 @@ def extract_match_details(match_url):
     # ✅ Find the Map Stats page
     map_stats_link = soup.find_all("a", class_="results-stats")
     if not map_stats_link:
-        print(f"⚠️ No map stats link found for {match_url}")
+        logger.warning(f"⚠️ No map stats link found for {match_url}")
         return {}                                                               # ❌ This is why you're getting "No player stats found"
 
     player_stats = {}
 
     # for link in map_stats_link:  # ✅ Iterate through all map stats links
     #     map_url = f"https://www.hltv.org{link['href']}"                                   #Testing lower code
-    #     print(f"✅ Found map stats link: {map_url}")  # ✅ Debugging output
+    #     logging.info(f"✅ Found map stats link: {map_url}")  # ✅ Debugging output
 
     total_links = len(map_stats_link)  # Get total number of map stats links
 
     for index, link in enumerate(map_stats_link, start=1):  # ✅ Iterate with index
         map_url = f"https://www.hltv.org{link['href']}"
-        print(f"✅ Found map stats link {index}/{total_links}")  # ✅ Debugging output
+        logger.info(f"✅ Found map stats link {index}/{total_links}")  # ✅ Debugging output
+        
 
     # map_url = f"https://www.hltv.org{map_stats_link['href']}"
     driver.get(map_url)
@@ -39,10 +43,10 @@ def extract_match_details(match_url):
     player_stats = {}
     stat_table = soup.find("table", class_="stats-table")
     if not stat_table:
-        print(f"⚠️ No stats table found on {map_url}")
+        logger.warning("⚠️ No stats table found on %s", map_url)
         return {}
 
-    def extract_kills_and_headshots(text):
+    def extract_kills_and_headshots(text) -> tuple[int, int]:
         """Extracts kills and headshots from a text like '18 (9)'"""
         match = re.match(r"(\d+)\s*\((\d+)\)", text)  # Regex to match "18 (9)"
         if match:
@@ -53,7 +57,7 @@ def extract_match_details(match_url):
             headshots = 0  # Default to 0 if no headshots recorded
         return kills, headshots
 
-    def extract_assists_and_flash_assists(text):
+    def extract_assists_and_flash_assists(text) -> tuple[int, int]:
         """Extracts kills and headshots from a text like '18 (9)'"""
         match = re.match(r"(\d+)\s*\((\d+)\)", text)  # Regex to match "18 (9)"
         if match:
@@ -64,12 +68,12 @@ def extract_match_details(match_url):
             flash_assists = 0  # Default to 0 if no headshots recorded
         return assists, flash_assists
 
-    def clean_percentage(value):
+    def clean_percentage(value) -> float:
         """Removes '%' and converts to float."""
         return float(value.replace("%", "")) if "%" in value else float(value)
 
     for row in stat_table.find_all("tr")[1:]:  # Skip headers
-        cols = row.find_all("td")
+        cols = row.find_all("td")                                                           # Something is making it only take the first teams stats
         if len(cols) < 8:
             continue
 
@@ -91,6 +95,6 @@ def extract_match_details(match_url):
         }
 
     if not player_stats:
-        print(f"⚠️ Scraped player stats but found none on {map_url}")
+        logger.warning(f"⚠️ Scraped player stats but found none on {map_url}")
 
     return player_stats
