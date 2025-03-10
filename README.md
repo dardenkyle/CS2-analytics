@@ -1,4 +1,4 @@
-# **Counter-Strike 2 Pro Match Analytics Scraper**
+# **Counter-Strike 2 Pro Match Analytics Tool**
 
 ## **📌 Project Overview**
 
