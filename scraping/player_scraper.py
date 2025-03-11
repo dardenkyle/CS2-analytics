@@ -3,7 +3,7 @@ import random
 import time
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
-from logger_config import setup_logger
+from logging import setup_logger
 
 logger = setup_logger(__name__)
 

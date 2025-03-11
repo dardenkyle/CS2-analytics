@@ -1,0 +1,32 @@
+# requirements.txt - Dependencies for CS2 Analytics Pipeline
+
+# Core Python Libraries
+numpy
+pandas
+
+# Web Scraping
+selenium
+beautifulsoup4
+requests
+seleniumbase
+
+# Database
+psycopg2-binary  # PostgreSQL driver for Python
+sqlalchemy  # ORM (optional, for advanced DB operations)
+
+# Logging & Error Handling
+loguru  # Better logging than built-in logging module
+
+# Environment Variables
+python-dotenv  # Load environment variables from .env file
+
+# Testing
+pytest  # Unit testing framework
+unittest  # Python's built-in testing module (optional)
+
+# Scheduling (if running scraper periodically)
+schedule  # Lightweight job scheduler for Python
+
+# Data Visualization (optional, if analytics will be displayed)
+matplotlib
+seaborn

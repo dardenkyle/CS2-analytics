@@ -1,5 +1,5 @@
 import psycopg2
-from logger_config import setup_logger
+from logging import setup_logger
 
 logger = setup_logger(__name__)
 
