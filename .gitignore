@@ -7,3 +7,4 @@ __pycache__/logger_config.cpython-313.pyc
 __pycache__/match_scraper.cpython-313.pyc
 __pycache__/player_scraper.cpython-313.pyc
 app.log
+.env
