@@ -16,7 +16,6 @@ class CS2AnalyticsPipeline:
         """
         self.logger = setup_logger(self.__class__.__name__)
         self.match_scraper = MatchScraper(MAX_MATCHES)
-        self.logger.info(f"🔧 Initializing MatchScraper with MAX_MATCHES: {MAX_MATCHES}")
         self.demo_parser = DemoParser()
         self.data_manager = DataManager()
 
@@ -105,9 +104,8 @@ class CS2AnalyticsPipeline:
 
     def run(self, retry_attempts=3, retry_delay=5):
         """Executes the full pipeline with retry logic."""
-        self.logger.info(f"🚀 Starting CS2 Analytics Pipeline at {dt.datetime.now()}")
         
-        self.logger.info("Ensuring tables are correctly created...")
+        self.logger.info("✅ Ensuring tables are correctly created...")
         initialize_database()
 
         for attempt in range(retry_attempts):

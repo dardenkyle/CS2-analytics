@@ -50,7 +50,7 @@ logging.basicConfig(level=LOG_LEVEL)
 BATCH_SIZE = 1000
 
 # ✅ Print Configuration on Startup (For Debugging)
-logging.info(f"""
+logging.debug(f"""
 🔧 CONFIGURATION LOADED:
 -------------------------
 🌍 ENVIRONMENT: {ENVIRONMENT}

@@ -36,9 +36,6 @@ class DataManager:
 
             cur = conn.cursor()
 
-            # Debug log to verify the structure of match_list
-            logger.debug(f"Match_list type: {type(match_list)}, length: {len(match_list)}")
-
             # ✅ Correct usage of execute_values() for batch insert
             psycopg2.extras.execute_values(cur, query, match_list)
 
@@ -85,7 +82,7 @@ class DataManager:
         try:
             for i in range(0, len(data_list), BATCH_SIZE):
                 batch = data_list[i:i + BATCH_SIZE]
-                psycopg2.extras.execute_values(self.cur, query, batch)       # Issue with batch_insert
+                psycopg2.extras.execute_values(self.cur, query, batch)       # Issue with batch_insert ?? maybe
                 self.conn.commit()
                 logger.info(f"✅ Inserted {len(batch)} rows.")
         except Exception as e:

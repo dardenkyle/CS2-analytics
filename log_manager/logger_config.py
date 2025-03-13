@@ -32,9 +32,4 @@ def setup_logger(name: str) -> logging.Logger:
     file_handler.setFormatter(log_format)
     logger.addHandler(file_handler)
 
-    # ✅ Console handler (prints logs to terminal)
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_format)
-    logger.addHandler(console_handler)
-
     return logger

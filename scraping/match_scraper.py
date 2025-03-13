@@ -18,7 +18,7 @@ class MatchScraper:
 
     def __init__(self, max_matches=MAX_MATCHES):
         self.max_matches = max_matches
-        logger.info(f"🔧 MatchScraper initialized with max_matches: {self.max_matches}")
+        logger.debug(f"🔧 MatchScraper initialized with max_matches: {self.max_matches}")
         self.driver = Driver(uc=True, headless=True)  # ✅ Use Undetected Chrome Driver
         self.match_data = []
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
@@ -49,7 +49,7 @@ class MatchScraper:
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
         matches: list[dict] = []
-        stop_scraping = False
+        stop_scraping: bool = False
 
         # ✅ Find all match date sections
         results_sublist = soup.find_all("div", class_="results-sublist")
@@ -105,6 +105,13 @@ class MatchScraper:
                     forfeit = match_type == "DEF"
 
                     map_stats_links = self.fetch_map_stats_links(match_url)
+
+                    # while forfeit == False:
+                    #     if (score1 + score2) < 3:
+                    #         data_complete = False                                             # Code to get data_complete. Need to fix the logic in the if statement
+                    #     else:                                                                 # Can find games needed from match type. i.e bo3 = 3 games            
+                    #         data_complete = True
+                    #     break
 
                     matches.append({
                         "match_id": match_id,
@@ -197,7 +204,7 @@ class MatchScraper:
                     stats_count = len(stats)
 
                     if stats_count < 9:  # Ensure there are enough columns
-                        logger.warning(f"⚠️ Skipping {player_name}: Expected 9 stats, found {stats_count}.")
+                        logger.warning(f"⚠️ Skipping {player_name}: Expected 16 stats, found {stats_count}.")
                         continue  # Skip if incomplete data
 
                     # ✅ Extract values with error handling
@@ -235,7 +242,7 @@ class MatchScraper:
                                     break
 
                         # Output the extracted map name
-                        print("Extracted Map Name:", extracted_map_name)
+                        logger.debug(f"Extracted Map Name: {extracted_map_name}")
 
                         player_stats[player_name] = {
                             "game_id": game_id,
@@ -249,14 +256,14 @@ class MatchScraper:
                             "assists": assists,
                             "flash_assists": flash_assists,
                             "deaths": int(stats[3].text.strip()),
-                            "kast": float(stats[4].text.strip('%')) / 100 if "%" in stats[4].text else 0.0,
+                            "kast": round(float(stats[4].text.strip('%')) / 100 if "%" in stats[4].text else 0.0, 3),
                             "kd_diff": int(stats[5].text.strip().replace("+", "").replace("−", "-")),  # Normalize signs
                             "adr": float(stats[6].text.strip()),
                             "fk_diff": int(stats[7].text.strip().replace("+", "").replace("−", "-")),
                             "rating": float(stats[8].text.strip()),
                             "data_complete": True
                         }
-                        logger.info(f"✅ Extracted stats for {player_name}: {player_stats[player_name]}")
+                        logger.debug(f"✅ Extracted stats for {player_name}")
 
                     except Exception as e:
                         logger.error(f"❌ Error processing stats for {player_name}: {e}")
@@ -267,7 +274,7 @@ class MatchScraper:
         return player_stats
         
 
-    def fetch_map_stats(self, match_url):
+    def fetch_map_stats(self, match_url):                                             # currently not used?
         """Scrapes map data from a given match page."""
         logger.info(f"🔄 Fetching map stats: {match_url}")
         self.driver.get(match_url)
