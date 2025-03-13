@@ -3,9 +3,9 @@ import datetime as dt
 from database.initialize_db import initialize_database
 from scraping.match_scraper import MatchScraper
 from parsing import DemoParser, player_analytics
-from storage.data_storage import DataManager
+from storage.database import Database
 from config.config import HLTV_URL, MAX_MATCHES, ENABLE_DEMO_DOWNLOADS, ENABLE_DATA_STORAGE
-from log_manager.logger_config import setup_logger
+from utils.log_manager import get_logger
 
 class CS2AnalyticsPipeline:
     """Main pipeline to run CS2 analytics scraper."""
@@ -14,10 +14,10 @@ class CS2AnalyticsPipeline:
         """
         Initializes the pipeline components.
         """
-        self.logger = setup_logger(self.__class__.__name__)
+        self.logger = get_logger(self.__class__.__name__)
         self.match_scraper = MatchScraper(MAX_MATCHES)
         self.demo_parser = DemoParser()
-        self.data_manager = DataManager()
+        self.database = Database()
 
     def fetch_match_data(self) -> list:
         """Scrapes match data from HLTV.
@@ -77,18 +77,12 @@ class CS2AnalyticsPipeline:
             self.logger.error(f"❌ Error processing match data: {e}")
             return [], []
 
-    def store_data(self, match_list: list, player_stats_list: list):
-        """Stores match and player statistics in the database."""
-        if ENABLE_DATA_STORAGE:
-            try:
-                self.logger.info("💾 Storing match and player data...")
-                if match_list:
-                    self.data_manager.store_match_data(match_list)
-                if player_stats_list:
-                    self.data_manager.store_player_data(player_stats_list)
-                self.logger.info("✅ Data storage completed successfully.")
-            except Exception as e:
-                self.logger.error(f"❌ Error storing data: {e}")
+    def store_data(self, matches, player_stats):
+        """Stores match and player data in the database."""
+        self.logger.info("💾 Storing match and player data...")
+        self.database.store_matches(matches)
+        self.database.store_players(player_stats)
+        self.logger.info("✅ Data storage complete.")
 
     def download_and_parse_demos(self, match_list: list):
         """Downloads and parses demos if enabled."""
