@@ -1,8 +1,8 @@
 import os
 import json
-from log_manager.logger_config import setup_logger
+from utils.log_manager import get_logger
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
 
 class PlayerAnalytics:
     """Analyzes player performance based on parsed demo data."""

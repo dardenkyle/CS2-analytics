@@ -29,9 +29,4 @@ def get_logger(name):
     file_handler.setFormatter(log_format)
     logger.addHandler(file_handler)
 
-    # ✅ Console handler (show logs in terminal)
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_format)
-    logger.addHandler(console_handler)
-
     return logger
