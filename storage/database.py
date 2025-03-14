@@ -1,9 +1,9 @@
 import psycopg2
 import psycopg2.pool
 from config.config import DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT
-from log_manager.logger_config import setup_logger
+from utils.log_manager import get_logger
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
 
 # ✅ Initialize connection pool
 try:

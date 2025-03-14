@@ -1,8 +1,8 @@
-from pipeline.cs2_pipeline import CS2AnalyticsPipeline  # Import the pipeline class
+from pipeline.cs2_pipeline import CS2AnalyticsPipeline
 import datetime as dt
-from log_manager import setup_logger
+from utils.log_manager import get_logger
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
 
 def main() -> None:
     """Runs the full CS2 analytics pipeline."""

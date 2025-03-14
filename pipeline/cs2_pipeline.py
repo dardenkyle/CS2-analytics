@@ -1,8 +1,8 @@
 import time
 import datetime as dt
 from database.initialize_db import initialize_database
-from scraping.match_scraper import MatchScraper
-from parsing import DemoParser, player_analytics
+from scrapers.match_scraper import MatchScraper
+from parsers import DemoParser, player_analytics
 from storage.database import Database
 from config.config import HLTV_URL, MAX_MATCHES, ENABLE_DEMO_DOWNLOADS, ENABLE_DATA_STORAGE
 from utils.log_manager import get_logger

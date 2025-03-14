@@ -1,5 +1,5 @@
 import unittest
-from scraping.results_scraper import ResultsScraper
+from scrapers.results_scraper import ResultsScraper
 
 class TestResultsScraper(unittest.TestCase):
     """Unit tests for verifying the ResultsScraper functionality."""

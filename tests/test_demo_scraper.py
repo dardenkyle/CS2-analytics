@@ -1,12 +1,17 @@
-from scraping.demo_scraper import DemoScraper
+from scrapers.demo_scraper import DemoScraper
 
-# ✅ Example match demo URL (Replace with real HLTV link)
-test_demo_url = "https://www.hltv.org/download/demo/95240"
-test_match_id = 95240
+# ✅ Replace this with a real HLTV demo link
+demo_url = "https://www.hltv.org/download/demo/95241"
 
 scraper = DemoScraper()
-archive_path = scraper.download_demo(test_demo_url, test_match_id)
 
-if archive_path:
-    extracted_path = scraper.extract_demo(archive_path)
-    print(f"\n🔍 Extracted Demo Files Path: {extracted_path}")
+# ✅ Step 1: Download demo into RAM
+archive_buffer = scraper.download_demo_in_memory(demo_url)
+
+if archive_buffer:
+    # ✅ Step 2: Extract demo in memory
+    extracted_data = scraper.extract_demo_in_memory(archive_buffer)
+
+    if extracted_data:
+        # ✅ Step 3: Parse demo data
+        scraper.process_demo(extracted_data)

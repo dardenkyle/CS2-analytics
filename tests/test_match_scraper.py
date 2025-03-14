@@ -1,7 +1,7 @@
-from scraping.match_scraper import MatchScraper
+from scrapers.match_scraper import MatchScraper
 
 # ✅ Example match URL (replace with real match from HLTV)
-test_match_url = "https://www.hltv.org/matches/2379988/legacy-vs-9z-pgl-bucharest-2025-south-america-closed-qualifier"
+test_match_url = "https://www.hltv.org/matches/2380400/just-swing-vs-gods-reign-esl-challenger-league-season-49-asia-pacific"
 
 # Forfeit map URL = https://www.hltv.org/matches/2380592/passion-ua-vs-sashi-yalla-compass-winter-2025
 # Bo3 Map URL =  https://www.hltv.org/matches/2380579/wildlotus-vs-9ine-galaxy-battle-2025-starter

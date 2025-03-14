@@ -4,9 +4,9 @@ import random
 import datetime as dt
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
-from log_manager.logger_config import setup_logger
+from utils.log_manager import get_logger
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
 
 class MatchScraper:
     """Scrapes match details, demo links, and map stats links from HLTV match pages."""

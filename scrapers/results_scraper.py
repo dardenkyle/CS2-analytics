@@ -4,9 +4,9 @@ import datetime as dt
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
 from config.config import HLTV_URL, START_DATE, END_DATE
-from log_manager.logger_config import setup_logger
+from utils.log_manager import get_logger
 
-logger = setup_logger(__name__)
+logger = get_logger(__name__)
 
 class ResultsScraper:
     """Scrapes HLTV results page to extract match links."""
