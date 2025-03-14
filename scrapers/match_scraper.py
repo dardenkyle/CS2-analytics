@@ -59,7 +59,7 @@ class MatchScraper:
             match_type = match_type_tag.text.strip().upper() if match_type_tag else "UNKNOWN"
             best_of_temp = re.search(r"^(.*?)(?=\n|$)", match_type)
             best_type = best_of_temp.group(1).strip() if best_of_temp else "Unknown"
-            print(best_type)
+            # print(best_type)
                                                                                                             # Refactor this code
             def determine_match_type(text: str) -> str:
                 """Determines match type based on presence of '3' or '5' in the text."""
@@ -91,6 +91,7 @@ class MatchScraper:
                 "match_type": best_ty,
                 "forfeit": forfeit,
                 "date": match_date,
+                "data_complete": True
             }
         except Exception as e:
             logger.error(f"❌ Error extracting match info: {e}")
