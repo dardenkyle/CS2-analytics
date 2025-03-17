@@ -44,7 +44,7 @@ class TestDatabase(unittest.TestCase):
 
         print("🟡 Inserting test match into database...")
         sys.stdout.flush()
-        self.db.store_matches([test_match])
+        self.db.store_matches([test_match.to_dict()])
 
         print("🔍 Fetching match from database...")
         sys.stdout.flush()

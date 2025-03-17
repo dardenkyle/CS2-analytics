@@ -44,9 +44,13 @@ HLTV_URL = "https://www.hltv.org/results" # HLTV Results URL
 MAX_MATCHES = int(os.getenv("MAX_MATCHES", default=1))  # Maximum number of matches to scrape
 logging.info(f"🔧 MAX_MATCHES set to: {MAX_MATCHES}")
 DEBUG_MODE = os.getenv("DEBUG_MODE", default="False")  # Enable debug mode
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
+LOG_LEVEL = getattr(logging, LOG_LEVEL, logging.DEBUG)  # Convert to actual log level
+logging.basicConfig(level=LOG_LEVEL)  # ✅ Apply correct log level
+print(f"🔍 [DEBUG] LOG_LEVEL from config: {LOG_LEVEL} (should be an integer, like 10 for DEBUG)")
 LOG_FILE = os.path.join(os.getcwd(), "logs", "app.log")  # Log file path
-logging.basicConfig(level=LOG_LEVEL)
+logging.basicConfig(level=logging.DEBUG)
+print(f"🔍 [DEBUG] LOG_LEVEL from config: {LOG_LEVEL}")
 BATCH_SIZE = 1000
 
 # ✅ Print Configuration on Startup (For Debugging)

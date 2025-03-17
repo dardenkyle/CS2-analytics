@@ -3,7 +3,7 @@ import random
 import datetime as dt
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
-from config.config import HLTV_URL, START_DATE, END_DATE
+from config.config import HLTV_URL, START_DATE, END_DATE, MAX_MATCHES
 from utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -19,7 +19,7 @@ class ResultsScraper:
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
 
-    def fetch_results(self, max_matches=50):
+    def fetch_results(self, max_matches=MAX_MATCHES):
         """Scrapes match links from the results page."""
         offset = 0
 

@@ -19,19 +19,23 @@ class MatchScraper:
         """Extracts match details, demo links, and map stats links from a single match page."""
         logger.info(f"🔄 Fetching match data from: {match_url}")
 
+        print(f"Fetching page: {match_url}")
         self.driver.get(match_url)
+        print("Page loaded successfully!")
         time.sleep(random.uniform(3, 5))  # ✅ Allow time for page load
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
 
         # ✅ Extract match details
+        print("Extracting match info...")
         match_data = self._extract_match_info(soup, match_url)
-        
+        print(f"Extracted match info: {match_data}")
+
         # ✅ Extract demo links
         match_data["demo_links"] = self._extract_demo_links(soup)                                           # Where demo links are appended to the match_data dict
 
         # ✅ Extract map stats links (for player stats)
-        match_data["map_stats_links"] = self._extract_map_stats_links(soup)
+        match_data["map_stats_links"] = self._extract_map_stats_links(soup)                                 # Where match links are appended to the match_data dict
 
         logger.info(f"✅ Extracted match data: {match_data['team1']} vs {match_data['team2']}")
         return match_data
