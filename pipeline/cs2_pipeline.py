@@ -1,18 +1,23 @@
-from scrapers.results_scraper import ResultsScraper
-from scrapers.match_scraper import MatchScraper
-from storage.database import Database
-from utils.log_manager import get_logger
-from utils.initialize_db import initialize_database
+"""Controls the flow of the CS2 Analytics Pipeline."""
+
+import logging
+
+from bs4 import BeautifulSoup
+from config.config import DEBUG_MODE
 from models.match import Match
 from models.player import Player
-from parsers.match_parser import MatchParser
 from parsers.map_parser import MapParser
-from config.config import DEBUG_MODE
-from bs4 import BeautifulSoup
-import logging
+from parsers.match_parser import MatchParser
+from scrapers.match_scraper import MatchScraper
+from scrapers.results_scraper import ResultsScraper
+from storage.database import Database
+from utils.initialize_db import initialize_database
+from utils.log_manager import get_logger
 
 
 class CS2AnalyticsPipeline:
+    """Controls the flow of the CS2 Analytics Pipeline."""
+
     def __init__(self) -> None:
         """Initialize pipeline components."""
         print("🚀 CS2AnalyticsPipeline Initialized!")  # ✅ Debug print

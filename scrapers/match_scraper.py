@@ -1,7 +1,8 @@
-import re
+"""This module scrapes match details, demo links, and map stats links from HLTV match pages."""
+
 import time
 import random
-import datetime as dt
+
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
 from utils.log_manager import get_logger
@@ -18,7 +19,7 @@ class MatchScraper:
 
     def fetch_match(self, match_url) -> BeautifulSoup:
         """Extracts match details, demo links, and map stats links from a single match page."""
-        logger.info(f"🔄 Fetching match data from: {match_url}")
+        logger.info("🔄 Fetching match data from: %s", match_url)
 
         print(f"Fetching page: {match_url}")
         self.driver.get(match_url)

@@ -1,5 +1,7 @@
-from pipeline.cs2_pipeline import CS2AnalyticsPipeline
+"""Main entry point for the CS2 Analytics pipeline."""
+
 import datetime as dt
+from pipeline.cs2_pipeline import CS2AnalyticsPipeline
 from utils.log_manager import get_logger
 from config.config import LOG_LEVEL
 

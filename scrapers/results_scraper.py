@@ -1,3 +1,5 @@
+"""Scrapes HLTV results page to extract match links."""
+
 import time
 import random
 import datetime as dt
@@ -26,18 +28,23 @@ class ResultsScraper:
 
         while len(self.match_links) < max_matches:
             page_url = f"{self.base_url}?offset={offset}"
-            logger.info(f"🔄 Scraping: {page_url}")
+            logger.info("🔄 Scraping: %s", page_url)
 
             new_matches, stop_scraping = self._extract_matches_from_page(page_url)
             self.match_links.extend(new_matches)
 
-            if stop_scraping or len(new_matches) < 0:
-                break  # ✅ Stop if no more matches or reached date limit       #### Issue with this causing fetch_results to return empty list with len(new_matches) == 0
+            if (
+                stop_scraping or len(new_matches) < 0
+            ):  # Issue with this causing fetch_results to return empty list with len(new_matches) == 0
+                break  # ✅ Stop if no more matches or reached date limit
 
             offset += 100  # ✅ Move to next results page
 
         logger.info(
-            f"✅ Found {len(self.match_links)} matches from {self.start_date} to {self.end_date}."
+            "✅ Found %s matches from %s to %s.",
+            len(self.match_links),
+            self.start_date,
+            self.end_date,
         )
         return self.match_links
 
@@ -67,7 +74,7 @@ class ResultsScraper:
                 try:
                     match_date = dt.datetime.strptime(raw_date_text, "%B %d %Y").date()
                 except ValueError:
-                    logger.warning(f"❌ Could not parse date: {raw_date_text}")
+                    logger.warning("❌ Could not parse date: %s", raw_date_text)
                     continue
 
                 if match_date > self.end_date:
@@ -75,7 +82,7 @@ class ResultsScraper:
 
                 if match_date < self.start_date:
                     logger.info(
-                        f"⏩ Match date {match_date} is too old, stopping scraping."
+                        "⏩ Match date %s is too old, stopping scraping.", match_date
                     )
                     return matches, True  # ✅ Stop if we reached old dates
 
@@ -84,7 +91,7 @@ class ResultsScraper:
 
                 for match in match_containers:
                     if len(matches) >= 50:  # ✅ Stop when reaching max_matches
-                        logger.info(f"✅ Reached max matches. Stopping scraping.")
+                        logger.info("Reached max matches. Stopping scraping.")
                         return matches, True
 
                     match_link_tag = match.find("a", href=True)

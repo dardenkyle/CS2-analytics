@@ -1,3 +1,5 @@
+"""Handles all database interactions, including connection management and data storage."""
+
 import psycopg2
 import psycopg2.pool
 from config.config import DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT
@@ -7,50 +9,51 @@ logger = get_logger(__name__)
 
 # ✅ Initialize connection pool
 try:
-    db_pool = psycopg2.pool.SimpleConnectionPool(
+    DB_POOL = psycopg2.pool.SimpleConnectionPool(
         minconn=1,
         maxconn=10,  # ✅ Adjust based on expected load
         dbname=DB_NAME,
         user=DB_USER,
         password=DB_PASS,
         host=DB_HOST,
-        port=DB_PORT
+        port=DB_PORT,
     )
     logger.info("✅ PostgreSQL connection pool initialized successfully.")
 except Exception as e:
-    logger.error(f"❌ Failed to initialize database connection pool: {e}")
-    db_pool = None
+    logger.error("❌ Failed to initialize database connection pool: %s", e)
+    DB_POOL = None
+
 
 class Database:
     """Handles all database interactions, including connection management and data storage."""
 
     def __init__(self):
         """Initialize database connection."""
-        if db_pool is None:
-            raise Exception("❌ Database connection pool is not available.")
+        if DB_POOL is None:
+            raise Exception("Database connection pool is not available.")
 
-        self.create_indexes() # Automatically ensure indexes exist
+        self.create_indexes()  # Automatically ensure indexes exist
 
     def get_connection(self):
         """Retrieves a database connection from the pool."""
         try:
-            conn = db_pool.getconn()
+            conn = DB_POOL.getconn()
             logger.debug("✅ Retrieved database connection from pool.")
             return conn
         except Exception as e:
-            logger.error(f"❌ Database connection error: {e}")
+            logger.error("Database connection error: %s", e)
             return None
 
     def release_connection(self, conn):
         """Releases a database connection back to the pool."""
-        if db_pool and conn:
-            db_pool.putconn(conn)
+        if DB_POOL and conn:
+            DB_POOL.putconn(conn)
             logger.debug("🔄 Database connection released back to the pool.")
 
     def close_db_pool(self):
         """Closes all connections in the database pool."""
-        if db_pool:
-            db_pool.closeall()
+        if DB_POOL:
+            DB_POOL.closeall()
             logger.info("❌ Database connection pool closed.")
 
     def store_matches(self, match_data):
@@ -74,10 +77,10 @@ class Database:
 
             cur.executemany(query, match_data)
             conn.commit()
-            logger.info(f"✅ Stored {len(match_data)} matches successfully.")
+            logger.info("Stored %s matches successfully.", len(match_data))
 
         except Exception as e:
-            logger.error(f"❌ Error storing match data: {e}")
+            logger.error("Error storing match data: %s", e)
         finally:
             self.release_connection(conn)
 
@@ -89,7 +92,9 @@ class Database:
 
         try:
             # ✅ Ensure player_stats are dictionaries before inserting
-            formatted_data = [p.to_dict() if hasattr(p, 'to_dict') else p for p in player_stats]
+            formatted_data = [
+                p.to_dict() if hasattr(p, "to_dict") else p for p in player_stats
+            ]
 
             cur = conn.cursor()
             query = """
@@ -108,10 +113,10 @@ class Database:
 
             cur.executemany(query, formatted_data)
             conn.commit()
-            logger.info(f"✅ Stored {len(player_stats)} players successfully.")
+            logger.info("Stored %s players successfully.", len(player_stats))
 
         except Exception as e:
-            logger.error(f"❌ Error storing player stats: {e}")
+            logger.error("Error storing player stats: %s", e)
         finally:
             self.release_connection(conn)
 
@@ -123,16 +128,18 @@ class Database:
 
         try:
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_matches_date ON matches (date);
                 CREATE INDEX IF NOT EXISTS idx_players_game_id ON players (game_id);
                 CREATE INDEX IF NOT EXISTS idx_players_team_name ON players (team_name);
                 CREATE INDEX IF NOT EXISTS idx_player_stats ON players (player_id, game_id);
-            """)
+            """
+            )
             conn.commit()
             logger.info("✅ Database indexes ensured.")
 
         except Exception as e:
-            logger.error(f"❌ Error creating indexes: {e}")
+            logger.error("Error creating indexes: %s", e)
         finally:
             self.release_connection(conn)
