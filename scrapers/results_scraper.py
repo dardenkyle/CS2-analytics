@@ -8,6 +8,7 @@ from utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
+
 class ResultsScraper:
     """Scrapes HLTV results page to extract match links."""
 
@@ -19,7 +20,7 @@ class ResultsScraper:
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
 
-    def fetch_results(self, max_matches=MAX_MATCHES):
+    def fetch_results(self, max_matches=MAX_MATCHES) -> list[str]:
         """Scrapes match links from the results page."""
         offset = 0
 
@@ -30,12 +31,14 @@ class ResultsScraper:
             new_matches, stop_scraping = self._extract_matches_from_page(page_url)
             self.match_links.extend(new_matches)
 
-            if stop_scraping or len(new_matches) == 0:
-                break  # ✅ Stop if no more matches or reached date limit
+            if stop_scraping or len(new_matches) < 0:
+                break  # ✅ Stop if no more matches or reached date limit       #### Issue with this causing fetch_results to return empty list with len(new_matches) == 0
 
             offset += 100  # ✅ Move to next results page
 
-        logger.info(f"✅ Found {len(self.match_links)} matches from {self.start_date} to {self.end_date}.")
+        logger.info(
+            f"✅ Found {len(self.match_links)} matches from {self.start_date} to {self.end_date}."
+        )
         return self.match_links
 
     def _extract_matches_from_page(self, url):
@@ -55,7 +58,10 @@ class ResultsScraper:
             if date_header:
                 raw_date_text = (
                     date_header.text.replace("Results for ", "")
-                    .replace("st", "").replace("nd", "").replace("rd", "").replace("th", "")
+                    .replace("st", "")
+                    .replace("nd", "")
+                    .replace("rd", "")
+                    .replace("th", "")
                 )
 
                 try:
@@ -68,7 +74,9 @@ class ResultsScraper:
                     continue  # ✅ Skip future matches
 
                 if match_date < self.start_date:
-                    logger.info(f"⏩ Match date {match_date} is too old, stopping scraping.")
+                    logger.info(
+                        f"⏩ Match date {match_date} is too old, stopping scraping."
+                    )
                     return matches, True  # ✅ Stop if we reached old dates
 
                 # ✅ Extract match links

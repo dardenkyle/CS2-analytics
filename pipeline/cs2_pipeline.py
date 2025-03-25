@@ -3,8 +3,14 @@ from scrapers.match_scraper import MatchScraper
 from storage.database import Database
 from utils.log_manager import get_logger
 from utils.initialize_db import initialize_database
-import logging
+from models.match import Match
+from models.player import Player
+from parsers.match_parser import MatchParser
+from parsers.map_parser import MapParser
 from config.config import DEBUG_MODE
+from bs4 import BeautifulSoup
+import logging
+
 
 class CS2AnalyticsPipeline:
     def __init__(self) -> None:
@@ -12,12 +18,14 @@ class CS2AnalyticsPipeline:
         print("🚀 CS2AnalyticsPipeline Initialized!")  # ✅ Debug print
         self.logger = get_logger(self.__class__.__name__)
         print("✅ Logger initialized correctly!")
-        
+
         # ✅ Explicitly set logging level
         self.logger.setLevel(logging.DEBUG)
 
         # ✅ Print the actual logger level
-        print(f"🔍 Logger Level: {self.logger.level}")  # Should be 10 (DEBUG), 20 (INFO), etc.
+        print(
+            f"🔍 Logger Level: {self.logger.level}"
+        )  # Should be 10 (DEBUG), 20 (INFO), etc.
 
         if not self.logger.hasHandlers():
             print("⚠️ No handlers found! Logs won't appear properly.")
@@ -33,11 +41,9 @@ class CS2AnalyticsPipeline:
         self.logger.error("🔴 This is an ERROR log (should appear).")
         self.logger.info("✅ This is a DEBUG log from CS2AnalyticsPipeline.")
         print("🟢 This print statement should appear AFTER logging attempt.")
-        
-        
-        
+
         self.results_scraper = ResultsScraper()
-        self.match_scraper  = MatchScraper()
+        self.match_scraper = MatchScraper()
         self.db = Database()
 
     def run(self) -> None:
@@ -48,36 +54,72 @@ class CS2AnalyticsPipeline:
         #     print("Initializing database for testing...")
         #     initialize_database()
 
-        # ✅ Step 1: Scrape Match Results
-        self.logger.info("🔄 Scraping match results...")
-        results = self.results_scraper.fetch_results()
-        print(results[0])
-        print(len(results))
-        if not results:
-            print("no results found.. issue with fetch_results maybe...")
-            self.logger.warning("⚠️ No new matches found.")
+        # Step 1: Scrape Results for match links
+        self.logger.info("Scraping results page...")
+        match_links = self.results_scraper.fetch_results()
+        if not match_links:
+            self.logger.warning("Match scraping failed.")
             return
+        else:
+            self.logger.info("Successfully scraped results page.")
 
-        # ✅ Step 2: Scrape Match Details (Includes Demo Links)
-        self.logger.info("🔄 Scraping match details & demo links...")
-        print(len(results))
-        print("Processing match URL")
-        match_details = [self.match_scraper.fetch_match_data(url) for url in results]
+        # Step 2 : Scrape each match page for raw match meta data
+        self.logger.info("Parsing match details")
+        match_meta_data: list[BeautifulSoup] = [
+            self.match_scraper.fetch_match(match_link) for match_link in match_links[:1]
+        ]
+        if not match_meta_data:
+            self.logger.warning("⚠️ No match meta data scraped.")
+            return
+        else:
+            self.logger.info("Successfully scraped match meta data.")
+
+        # Step 3 : Parse Match Meta Data
+        self.logger.info("Parsing match meta data")
+        match_details: list[Match] = [
+            MatchParser.parse_match(match) for match in match_meta_data
+        ]
         if not match_details:
-            self.logger.warning("⚠️ No match details scraped.")
+            self.logger.warning("Error parsing match meta data.")
             return
+        else:
+            self.logger.info("Successfully parsed match meta data.")
+        print(match_details)
+        print(type(match_details))
 
-        # ✅ Step 3: Store Data in the Database
-        self.logger.info("💾 Storing match data in the database...")
-        # ✅ Step 3: Store Data in the Database
-        self.logger.info("💾 Storing match data in the database...")
-        print("💾 Storing match data in the database...")
-        print(f"📊 Match Data:\n{match_details}")  # Print before inserting
-        self.db.store_matches(match_details)
+        # Step 4 : Scrape Map Details from Match.map_links
+        self.logger.info("Scraping map details")
+        map_meta_data: list[BeautifulSoup] = [
+            self.map_scraper.fetch_map(Match.match_links)
+            for Match.match_links in match_links
+        ]
 
-        self.logger.info("✅ Match data successfully stored.")
-        print("✅ Match data successfully stored.")  # Confirm if this prints
+        # Step 5 : Parse map meta data for player_stats as Player Objects
+        self.logger.info("Parsing map meta data")
+        player_stats: list[Player] = [MapParser.parse_map(map) for map in map_meta_data]
 
-        self.logger.info("✅ Match data successfully stored.")
+        # # Step 4 : Scrape Map Details from Match.map_links
+        # self.logger.info("Scraping map details")
+        # for map_link in Match.map_links:
+        #     self.map_scaper.(map_link)
+        # match_details = [
+        #     self.match_scraper.fetch_match_data(url) for url in results[:1]
+        # ]
+        # if not match_details:
+        #     self.logger.warning("⚠️ No match details scraped.")
+        #     return
 
-        self.logger.info("🚀 CS2 pipeline completed.")
+        # # ✅ Step 3: Store Data in the Database
+        # self.logger.info("💾 Storing match data in the database...")
+        # # ✅ Step 3: Store Data in the Database
+        # self.logger.info("💾 Storing match data in the database...")
+        # print("💾 Storing match data in the database...")
+        # print(f"📊 Match Data:\n{match_details}")  # Print before inserting
+        # self.db.store_matches(match_details)
+
+        # self.logger.info("✅ Match data successfully stored.")
+        # print("✅ Match data successfully stored.")  # Confirm if this prints
+
+        # self.logger.info("✅ Match data successfully stored.")
+
+        # self.logger.info("🚀 CS2 pipeline completed.")

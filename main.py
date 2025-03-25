@@ -22,6 +22,8 @@ logger.warning("🟡 Warning log from Main.")
 logger.error("🔴 Error log from Main.")
 
 print("🟢 Finished logging.")
+
+
 def main() -> None:
     """Runs the full CS2 analytics pipeline."""
     logger.info("🚀 Starting CS2 Analytics Pipeline at %s", dt.datetime.now())
@@ -29,6 +31,7 @@ def main() -> None:
     pipeline = CS2AnalyticsPipeline()
     pipeline.run()
     logger.info("✅ CS2 Analytics Pipeline completed.")
+
 
 if __name__ == "__main__":
     main()

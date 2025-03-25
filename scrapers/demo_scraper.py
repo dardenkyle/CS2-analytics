@@ -1,9 +1,9 @@
-'''
+"""
 This is currently not working. Gets stuck on downloading step...
-'''
 
+GOAL: Download and parse demo in ram for analysis and ML
 
-
+"""
 
 import io
 import os
@@ -17,6 +17,7 @@ from parsers.demo_parser import DemoParser
 
 logger = get_logger(__name__)
 
+
 class DemoScraper:
     """Handles downloading and extracting HLTV match demos using SeleniumBase."""
 
@@ -28,16 +29,21 @@ class DemoScraper:
             download_dir (str): Path to store temporary downloaded files.
         """
         self.download_dir = os.path.abspath(download_dir)
-        os.makedirs(self.download_dir, exist_ok=True)  # ✅ Ensure download folder exists
+        os.makedirs(
+            self.download_dir, exist_ok=True
+        )  # ✅ Ensure download folder exists
 
         # ✅ Set Chrome download preferences
         chrome_options = Options()
-        chrome_options.add_experimental_option("prefs", {
-            "download.default_directory": self.download_dir,  # ✅ Auto-download to this folder
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-            "safebrowsing.enabled": True
-        })
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "download.default_directory": self.download_dir,  # ✅ Auto-download to this folder
+                "download.prompt_for_download": False,
+                "download.directory_upgrade": True,
+                "safebrowsing.enabled": True,
+            },
+        )
 
         # ✅ Use `Driver()` correctly (DO NOT use `options=chrome_options`)
         self.driver = Driver(uc=True, headless=True)  # ✅ No options argument
@@ -81,7 +87,10 @@ class DemoScraper:
     def _get_latest_downloaded_file(self):
         """Returns the most recently downloaded file in the configured directory."""
         try:
-            files = [os.path.join(self.download_dir, f) for f in os.listdir(self.download_dir)]
+            files = [
+                os.path.join(self.download_dir, f)
+                for f in os.listdir(self.download_dir)
+            ]
             if not files:
                 return None
             return max(files, key=os.path.getctime)  # ✅ Get most recent file
@@ -106,13 +115,17 @@ class DemoScraper:
                 with zipfile.ZipFile(archive_buffer) as archive:
                     for file_name in archive.namelist():
                         with archive.open(file_name) as file:
-                            extracted_files[file_name] = file.read()  # ✅ Store in memory
+                            extracted_files[file_name] = (
+                                file.read()
+                            )  # ✅ Store in memory
 
             elif rarfile.is_rarfile(archive_buffer):
                 with rarfile.RarFile(archive_buffer) as archive:
                     for file_name in archive.namelist():
                         with archive.open(file_name) as file:
-                            extracted_files[file_name] = file.read()  # ✅ Store in memory
+                            extracted_files[file_name] = (
+                                file.read()
+                            )  # ✅ Store in memory
             else:
                 logger.warning("⚠️ Unsupported file format.")
                 return None
