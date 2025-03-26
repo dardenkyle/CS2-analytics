@@ -1,7 +1,8 @@
 import unittest
 import sys
 from storage.database import Database
-from storage.models import Match, Player
+from storage.storage_models import Match, Player
+
 
 class TestDatabase(unittest.TestCase):
     """Unit tests for verifying database operations with rollback."""
@@ -39,7 +40,7 @@ class TestDatabase(unittest.TestCase):
             match_type="BO1",
             forfeit=False,
             date="2025-03-15",
-            data_complete=True
+            data_complete=True,
         )
 
         print("🟡 Inserting test match into database...")
@@ -48,7 +49,9 @@ class TestDatabase(unittest.TestCase):
 
         print("🔍 Fetching match from database...")
         sys.stdout.flush()
-        self.cur.execute("SELECT match_id, team1, team2, score1, score2 FROM matches WHERE match_id = 999999;")
+        self.cur.execute(
+            "SELECT match_id, team1, team2, score1, score2 FROM matches WHERE match_id = 999999;"
+        )
         result = self.cur.fetchone()
 
         print(f"✅ Retrieved match: {result}")
@@ -83,7 +86,7 @@ class TestDatabase(unittest.TestCase):
             adr=85.0,
             fk_diff=2,
             rating=1.32,
-            data_complete=True
+            data_complete=True,
         )
 
         print(f"🔄 Created Player object: {test_player}")
@@ -97,7 +100,9 @@ class TestDatabase(unittest.TestCase):
 
         print("🔍 Fetching player from database...")
         sys.stdout.flush()
-        self.cur.execute("SELECT player_id, player_name, team_name, kills, deaths FROM players WHERE player_id = 888888;")
+        self.cur.execute(
+            "SELECT player_id, player_name, team_name, kills, deaths FROM players WHERE player_id = 888888;"
+        )
         result = self.cur.fetchone()
 
         print(f"✅ Retrieved player: {result}")
@@ -123,6 +128,7 @@ class TestDatabase(unittest.TestCase):
         sys.stdout.flush()
         cls.cur.close()
         cls.db.release_connection(cls.conn)
+
 
 if __name__ == "__main__":
     print("\n🔵 Running database tests...\n")

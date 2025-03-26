@@ -1,19 +1,18 @@
-import psycopg2
+"""This script initializes the database schema by executing the schema.sql file."""
+
 import os
+import psycopg2
 from config.config import DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT
 from utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
+
 def initialize_database():
     """Executes the schema.sql file to create/update the database schema."""
     try:
         conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS,
-            host=DB_HOST,
-            port=DB_PORT
+            dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT
         )
         cur = conn.cursor()
 
@@ -29,7 +28,8 @@ def initialize_database():
         logger.info("✅ Database initialized successfully.")
 
     except Exception as e:
-        logger.error(f"❌ Error initializing database: {e}")
+        logger.error("Error initializing database: %s", e)
+
 
 if __name__ == "__main__":
     initialize_database()

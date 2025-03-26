@@ -1,9 +1,14 @@
+""" "Module to represent a player in a match."""
+
 from dataclasses import dataclass
 
 
 @dataclass
 class Player:
-    game_id: int
+    """ "Class to represent a player in a match."""
+
+    match_id: int
+    map_id: int
     player_id: int
     player_name: str
     player_url: str
@@ -22,17 +27,24 @@ class Player:
     data_complete: bool
 
     def to_dict(self):
+        """Converts the Player object to a dictionary."""
         return {
             "match_id": self.match_id,
-            "match_url": self.match_url,
-            "map_stats_links": self.map_stats_links,
-            "team1": self.team1,
-            "team2": self.team2,
-            "score1": self.score1,
-            "score2": self.score2,
-            "event": self.event,
-            "match_type": self.match_type,
-            "forfeit": self.forfeit,
-            "date": self.date,
+            "map_id": self.map_id,
+            "player_id": self.player_id,
+            "player_name": self.player_name,
+            "player_url": self.player_url,
+            "map_name": self.map_name,
+            "team_name": self.team_name,
+            "kills": self.kills,
+            "headshots": self.headshots,
+            "assists": self.assists,
+            "flash_assists": self.flash_assists,
+            "deaths": self.deaths,
+            "kast": self.kast,
+            "kd_diff": self.kd_diff,
+            "adr": self.adr,
+            "fk_diff": self.fk_diff,
+            "rating": self.rating,
             "data_complete": self.data_complete,
         }

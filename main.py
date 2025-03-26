@@ -32,7 +32,6 @@ def main() -> None:
     print("testing this print in main.....")
     pipeline = CS2AnalyticsPipeline()
     pipeline.run()
-    logger.info("✅ CS2 Analytics Pipeline completed.")
 
 
 if __name__ == "__main__":

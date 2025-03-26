@@ -1,8 +1,12 @@
+"""This module contains the Map class, which is used to represent a single map in a match."""
+
 from dataclasses import dataclass
 
 
 @dataclass
 class Map:
+    """A class used to represent a single map in a match."""
+
     game_id: int
     match_id: int
     map_name: str
@@ -14,6 +18,7 @@ class Map:
     data_complete: bool
 
     def to_dict(self):
+        """ "Converts the object to a dictionary for database insertion."""
         return {
             "game_id": self.game_id,
             "match_id": self.match_id,

@@ -1,3 +1,5 @@
+"""Parses match metadata from HLTV match pages."""
+
 import re
 import datetime as dt
 from utils.log_manager import get_logger
@@ -8,12 +10,12 @@ logger = get_logger(__name__)
 
 
 class MatchParser:
+    """Parses match metadata from HLTV match pages."""
 
     def __init__(self):
         """Initializes the parser."""
-        pass
 
-    def parse_match(self, soup, match_url):
+    def parse_match(self, soup, match_url: str) -> Match:
         """Parses match metadata and returns a Match object."""
         try:
             match_id = match_url.split("/")[-2]
@@ -33,7 +35,7 @@ class MatchParser:
             event_tag = soup.find("div", class_="event text-ellipsis")
             event = event_tag.text.strip() if event_tag else "Unknown Event"
 
-            # Extract match type (BO1, BO3, etc.)
+            # Extract match type (BO1, BO3, etc.)                   # Refactor start
             match_type_tag = soup.find("div", class_="padding preformatted-text")
             match_type = (
                 match_type_tag.text.strip().upper() if match_type_tag else "UNKNOWN"
@@ -53,6 +55,7 @@ class MatchParser:
                     return "bo1"
 
             best_ty: str = determine_match_type(best_type)  # Refactor end
+            print(best_ty)
 
             # Check if match was forfeited
             map_name_check = soup.find("div", class_="mapname").text.lower()
@@ -69,25 +72,26 @@ class MatchParser:
             )
 
             demo_links = self._extract_demo_links(soup)
-            map_stats_links = self._extract_map_stats_links(soup)
+            map_links = self._extract_map_stats_links(soup)
 
             return Match(
                 match_id=match_id,
                 match_url=match_url,
-                map_stats_links=[],  # parsed separately
+                map_links=map_links,
+                demo_links=demo_links,
                 team1=team1,
                 team2=team2,
                 score1=score1,
                 score2=score2,
                 event=event,
-                match_type=match_type,
+                match_type=best_ty,
                 forfeit=forfeit,
                 date=match_date,
                 data_complete=True,
             )
 
         except Exception as e:
-            logger.error(f"❌ Error extracting match info: {e}")
+            logger.error("Error extracting match info: %s", e)
             return {}
 
     def _extract_demo_links(self, soup) -> list:
@@ -99,9 +103,9 @@ class MatchParser:
             demo_var = demo_link_tag["data-demo-link"] if demo_link_tag else None
             demo_link = f"https://www.hltv.org{demo_var}"  # refactor this code -- it works for now
 
-            logger.info(f"📥 Successfully found demo link.")
+            logger.info("Successfully found demo link.")
         except Exception as e:
-            logger.error(f"❌ Error extracting demo link: {e}")
+            logger.error("Error extracting demo link: %s", e)
 
         return demo_link
 
@@ -113,8 +117,8 @@ class MatchParser:
             for btn in stats_buttons:
                 map_stats_links.append(f"https://www.hltv.org{btn['href']}")
 
-            logger.info(f"📊 Found {len(map_stats_links)} map stats links.")
+            logger.info("Found %s map stats links.", len(map_stats_links))
         except Exception as e:
-            logger.error(f"❌ Error extracting map stats links: {e}")
+            logger.error("Error extracting map stats links: %s", e)
 
         return map_stats_links

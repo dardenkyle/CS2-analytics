@@ -8,8 +8,8 @@ GOAL: Download and parse demo in ram for analysis and ML
 import io
 import os
 import time
-import rarfile
 import zipfile
+import rarfile
 from seleniumbase import Driver
 from selenium.webdriver.chrome.options import Options
 from utils.log_manager import get_logger
@@ -60,7 +60,7 @@ class DemoScraper:
             io.BytesIO | None: Memory buffer containing the downloaded archive.
         """
         try:
-            logger.info(f"🌐 Navigating to demo URL: {demo_url}")
+            logger.info("Navigating to demo URL: %s", demo_url)
             self.driver.get(demo_url)
             time.sleep(5)  # ✅ Allow time for download
 
@@ -74,14 +74,14 @@ class DemoScraper:
             with open(demo_file, "rb") as f:
                 archive_buffer = io.BytesIO(f.read())
 
-            logger.info(f"✅ Demo archive loaded into memory: {demo_file}")
+            logger.info("Demo archive loaded into memory: %s", demo_file)
 
             # ✅ Delete the file after reading to prevent disk clutter
             os.remove(demo_file)
             return archive_buffer
 
         except Exception as e:
-            logger.error(f"❌ Failed to download demo: {e}")
+            logger.error("Failed to download demo: %s", e)
             return None
 
     def _get_latest_downloaded_file(self):
@@ -95,7 +95,7 @@ class DemoScraper:
                 return None
             return max(files, key=os.path.getctime)  # ✅ Get most recent file
         except Exception as e:
-            logger.error(f"❌ Error retrieving downloaded file: {e}")
+            logger.error("Error retrieving downloaded file: %s", e)
             return None
 
     def extract_demo_in_memory(self, archive_buffer):

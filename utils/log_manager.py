@@ -1,3 +1,5 @@
+"""This module sets up logger that writes logs to logs/app.log and displays them in the console."""
+
 import logging
 import os
 
@@ -7,6 +9,7 @@ LOG_FILE = os.path.join(LOG_DIR, "app.log")
 
 # ✅ Ensure the logs directory exists
 os.makedirs(LOG_DIR, exist_ok=True)
+
 
 def get_logger(name):
     """
@@ -24,7 +27,9 @@ def get_logger(name):
     logger.setLevel(log_level)
 
     # ✅ Format logs
-    log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+    log_format = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+    )
 
     # ✅ File handler (write logs to file)
     file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")

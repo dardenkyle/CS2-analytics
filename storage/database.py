@@ -19,7 +19,7 @@ try:
         port=DB_PORT,
     )
     logger.info("✅ PostgreSQL connection pool initialized successfully.")
-except Exception as e:
+except ConnectionError as e:
     logger.error("❌ Failed to initialize database connection pool: %s", e)
     DB_POOL = None
 
@@ -30,7 +30,7 @@ class Database:
     def __init__(self):
         """Initialize database connection."""
         if DB_POOL is None:
-            raise Exception("Database connection pool is not available.")
+            raise ConnectionError("Database connection pool is not available.")
 
         self.create_indexes()  # Automatically ensure indexes exist
 
@@ -40,7 +40,7 @@ class Database:
             conn = DB_POOL.getconn()
             logger.debug("✅ Retrieved database connection from pool.")
             return conn
-        except Exception as e:
+        except ConnectionError as e:
             logger.error("Database connection error: %s", e)
             return None
 
@@ -65,8 +65,8 @@ class Database:
         try:
             cur = conn.cursor()
             query = """
-                INSERT INTO matches (match_id, match_url, map_stats_links, team1, team2, score1, score2, event, match_type, forfeit, date, data_complete)
-                VALUES (%(match_id)s, %(match_url)s, %(map_stats_links)s, %(team1)s, %(team2)s, %(score1)s, %(score2)s, %(event)s, %(match_type)s, %(forfeit)s, %(date)s, %(data_complete)s)
+                INSERT INTO matches (match_id, match_url, map_links, demo_links, team1, team2, score1, score2, event, match_type, forfeit, date, data_complete)
+                VALUES (%(match_id)s, %(match_url)s, %(map_links)s, %(demo_links)s, %(team1)s, %(team2)s, %(score1)s, %(score2)s, %(event)s, %(match_type)s, %(forfeit)s, %(date)s, %(data_complete)s)
                 ON CONFLICT (match_id) DO UPDATE 
                 SET 
                     score1 = EXCLUDED.score1,
@@ -98,9 +98,9 @@ class Database:
 
             cur = conn.cursor()
             query = """
-                INSERT INTO players (game_id, player_id, player_name, player_url, map_name, team_name, kills, headshots, assists, flash_assists, deaths, kast, kd_diff, adr, fk_diff, rating, data_complete)
-                VALUES (%(game_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s, %(team_name)s, %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s, %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(rating)s, %(data_complete)s)
-                ON CONFLICT (game_id, player_id) DO UPDATE 
+                INSERT INTO players (match_id, map_id, player_id, player_name, player_url, map_name, team_name, kills, headshots, assists, flash_assists, deaths, kast, kd_diff, adr, fk_diff, rating, data_complete)
+                VALUES (%(match_id)s, %(map_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s, %(team_name)s, %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s, %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(rating)s, %(data_complete)s)
+                ON CONFLICT (map_id, player_id) DO UPDATE 
                 SET 
                     kills = EXCLUDED.kills,
                     headshots = EXCLUDED.headshots,
@@ -131,9 +131,9 @@ class Database:
             cur.execute(
                 """
                 CREATE INDEX IF NOT EXISTS idx_matches_date ON matches (date);
-                CREATE INDEX IF NOT EXISTS idx_players_game_id ON players (game_id);
+                CREATE INDEX IF NOT EXISTS idx_players_map_id ON players (map_id);
                 CREATE INDEX IF NOT EXISTS idx_players_team_name ON players (team_name);
-                CREATE INDEX IF NOT EXISTS idx_player_stats ON players (player_id, game_id);
+                CREATE INDEX IF NOT EXISTS idx_player_stats ON players (player_id, map_id);
             """
             )
             conn.commit()
