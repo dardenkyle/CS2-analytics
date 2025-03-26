@@ -2,7 +2,6 @@
 
 import time
 import random
-
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
 from utils.log_manager import get_logger
@@ -21,9 +20,8 @@ class MatchScraper:
         """Extracts match details, demo links, and map stats links from a single match page."""
         logger.info("🔄 Fetching match data from: %s", match_url)
 
-        print(f"Fetching page: {match_url}")
         self.driver.get(match_url)
-        print("Page loaded successfully!")
+        logger.info("Page loaded successfully!")
         time.sleep(random.uniform(3, 5))  # ✅ Allow time for page load
 
         return BeautifulSoup(self.driver.page_source, "html.parser")

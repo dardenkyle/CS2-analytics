@@ -79,8 +79,6 @@ class CS2AnalyticsPipeline:
             self.match_scraper.fetch_match(match_link)
             for match_link in match_links[0:2]
         ]
-        print((type(match_meta_data)))
-        print((type(match_meta_data[0])))
 
         if not match_meta_data:
             self.logger.warning("No match meta data scraped.")
@@ -99,40 +97,31 @@ class CS2AnalyticsPipeline:
             self.logger.warning("Error parsing match meta data.")
             return
         self.logger.info("Successfully parsed match meta data.")
-        print(match_details)
-        print(type(match_details))
+
         for match in match_details:
             print("Match links: %s", match.map_links)
 
         # Step 4 : Scrape Map Details from Match.map_links
         self.logger.info("Scraping map details")
         for match in match_details:
-            print(match.map_links)
-            print(len(match.map_links))
             map_meta_data: list[BeautifulSoup] = [
                 self.map_scraper.fetch_map(url=link) for link in match.map_links
             ]
-        print(type(map_meta_data))
-        print(type(map_meta_data[0]))
 
         map_urls_with_ids: list[tuple[str, int]] = [
             (map_url, match.match_id)
             for match in match_details
             for map_url in match.map_links
         ]
-        print(type(map_urls_with_ids))
-        print(map_urls_with_ids[0])  # printed tuple (url, matchid), working as intended
 
         # Step 5 : Parse map meta data for player_stats as Player Objects
         self.logger.info("Parsing map meta data")
         players_details: list[list[Player]] = []
         for soup, (map_url, match_id) in zip(map_meta_data, map_urls_with_ids):
-            print("✅ 'stats-table' in HTML:", "stats-table" in soup.prettify())
             player_details: list[Player] = self.map_parser.parse_map(
                 soup=soup, map_url=map_url, match_id=match_id
             )
             players_details.extend(player_details)
-        print(players_details)  # printing empty list
 
         # Convert to dictionaries
         match_details_dict: list[dict] = [match.to_dict() for match in match_details]
