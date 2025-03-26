@@ -76,7 +76,8 @@ class CS2AnalyticsPipeline:
         # Step 2 : Scrape each match page for raw match meta data
         self.logger.info("Parsing match details")
         match_meta_data: list[BeautifulSoup] = [
-            self.match_scraper.fetch_match(match_link) for match_link in match_links[:1]
+            self.match_scraper.fetch_match(match_link)
+            for match_link in match_links[0:2]
         ]
         print((type(match_meta_data)))
         print((type(match_meta_data[0])))
@@ -106,8 +107,10 @@ class CS2AnalyticsPipeline:
         # Step 4 : Scrape Map Details from Match.map_links
         self.logger.info("Scraping map details")
         for match in match_details:
+            print(match.map_links)
+            print(len(match.map_links))
             map_meta_data: list[BeautifulSoup] = [
-                self.map_scraper.fetch_map(url=link) for link in match.map_links[0:2]
+                self.map_scraper.fetch_map(url=link) for link in match.map_links
             ]
         print(type(map_meta_data))
         print(type(map_meta_data[0]))

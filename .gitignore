@@ -10,3 +10,5 @@ app.log
 *.env
 downloaded_files\*.rar
 *.pyc
+.pyc
+__pycache__/
