@@ -30,7 +30,7 @@ This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape *
 ## **🛠️ Tech Stack**
 
 - **Python 3.13.1**
-- **Selenium & BeautifulSoup** (for web scraping)
+- **Seleniumbase & BeautifulSoup** (for web scraping)
 - **PostgreSQL** (for structured data storage)
 - **Pandas & NumPy** (for analytics and data processing)
 - **SeleniumBase** (for automated demo downloads)
@@ -42,19 +42,48 @@ This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape *
 
 ```
 CS2-Analytics/
-│── config.py              # Configuration settings (URLs, DB credentials, etc.)
-│── main_scraper.py        # Main entry point for scraping match, game, and player data
-│── demo_scraper.py        # Downloads and manages demo files
-│── demo_parser.py         # Parses demo files for gameplay analytics
-│── player_analytics.py    # Processes parsed data for advanced insights
-│── db_connection.py       # Handles PostgreSQL database operations
-│── data_storage.py        # Inserts and retrieves data efficiently
-│── logger_config.py       # Configures logging for debugging & monitoring
-│── requirements.txt       # Required dependencies for the project
-│── README.md              # Project documentation (this file)
-│── __pycache__/           # Auto-generated Python cache (ignored in Git)
-│── logs/                  # Log files for debugging (ignored in Git)
-└── __pycache__/           # Python bytecode cache
+├── main.py
+├── readme.MD
+├── requirements.txt
+├── config/
+|   ├── __init__.py
+|   └── config.py          # Configuration settings (URLs, DB credentials, etc.)
+├── logs/
+|   └── log.app
+├── models/
+|   ├── __init__.py
+|   ├── map.py
+|   ├── match.py
+|   └── player.py
+├── parsers/
+|   ├── __init__.py
+|   ├── demo_parser.py
+|   ├── map_parser.py
+|   └── match_parser.py
+├── pipeline/
+|   ├── __init__.py
+|   └── cs2_pipeline.py
+├── scrapers/
+|   ├── __init__.py
+|   ├── demo_scraper.py
+|   ├── map_scraper.py
+|   ├── match_scraper.py
+|   └── results_scraper.py
+├── storage/
+|   ├── __init__.py
+|   ├── database.py
+|   └── storage_models.py
+├── tests/
+|   ├── __init__.py
+|   ├── test_database.py
+|   ├── test_demo_scraper.py
+|   ├── test_match_scraper.py
+|   └── test_results_scraper.py
+└── utils/
+    ├── __init__.py
+    ├── initialize_db.py
+    ├── log_manager.py
+    └── schema.sql
 ```
 
 ---
@@ -165,7 +194,6 @@ This project is licensed under the **MIT License** – feel free to contribute a
 Have questions or want to contribute? Reach out!
 
 - GitHub Issues: [Your Repository Issues Page](https://github.com/yourusername/CS2-Analytics/issues)
-- Email: [your.email@example.com](mailto\:your.email@example.com)
+- Email: [your.email@example.com](mailto:your.email@example.com)
 
 🚀 **Happy Analyzing!** 🎯
-
