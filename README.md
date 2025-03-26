@@ -1,8 +1,8 @@
 # **Counter-Strike 2 Pro Match Analytics Tool**
 
-## **📌 Project Overview**
+## **Project Overview**
 
-This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape **match, game, and player data** from HLTV and other sources, download demos, parse demo files, and analyze player performance. The goal is to help players **gain insights into maps, matchups, and player statistics** using real professional match data.
+This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape professional **match, game, and player data** from HLTV, download demos, parse demo files, and analyze player performance. The goal is to help players **gain insights into maps, matchups, and player statistics** based off of the analysis of real professional match data.
 
 ---
 
@@ -14,16 +14,16 @@ This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape *
 - **Game Data:** Extracts detailed round-by-round statistics.
 - **Player Stats:** Collects individual player performance metrics (kills, deaths, assists, ADR, etc.).
 
-### **2️⃣ Demo File Download & Parsing**
+### **2️⃣ Demo File Download & Parsing - under development**
 
 - Automatically **downloads demos** of matches for deeper analysis.
 - Parses **demo files** to extract movement, grenade usage, and combat engagements.
 
-### **3️⃣ Player Analytics & Insights**
+### **3️⃣ Player Analytics & Insights - not yet added**
 
-- **Combines scraped match/player stats with parsed demo data** for in-depth analysis.
+- **Combines scraped match/map/player stats with parsed demo data** for in-depth analysis.
 - Helps players understand **map control, team strategies, and player efficiency.**
-- Generates **matchup insights** to improve player knowledge of specific pro team playstyles.
+- Generates **matchup insights** to improve player knowledge of competitve playstyles.
 
 ---
 
@@ -33,7 +33,6 @@ This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape *
 - **Seleniumbase & BeautifulSoup** (for web scraping)
 - **PostgreSQL** (for structured data storage)
 - **Pandas & NumPy** (for analytics and data processing)
-- **SeleniumBase** (for automated demo downloads)
 - **HLTV API & Demo Parsing Tools**
 
 ---
@@ -43,7 +42,7 @@ This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape *
 ```
 CS2-Analytics/
 ├── main.py
-├── readme.MD
+├── README.md
 ├── requirements.txt
 ├── config/
 |   ├── __init__.py
@@ -125,23 +124,17 @@ DB_PORT = "5432"
 Run:
 
 ```sh
-python db_connection.py  # Ensures tables are created
+# Run this once to set up your database schema
+python -m utils.initialize_db
 ```
 
 ### **🔹 5. Run the Scraper**
 
 ```sh
-python main_scraper.py
+python main.py
 ```
 
-### **🔹 6. Run Demo Download & Parsing**
-
-```sh
-python demo_scraper.py
-python demo_parser.py
-```
-
-### **🔹 7. Generate Player Analytics**
+### **🔹 6. Generate Player Analytics**
 
 ```sh
 python player_analytics.py
