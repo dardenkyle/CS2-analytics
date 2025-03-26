@@ -13,69 +13,70 @@ import datetime as dt
 import logging
 from dotenv import load_dotenv
 
+logger = logging.getLogger(__name__)
 
 # ✅ Load environment variables from `.env` file
 load_dotenv()
 
 # ✅ Database Configuration
-DB_NAME = os.getenv("DB_NAME", default="default_db")
-DB_USER = os.getenv("DB_USER", default="default_user")
-DB_PASS = os.getenv("DB_PASS", default="default_pass")
+DB_NAME = os.getenv("DB_NAME", default="cs2_db")
+DB_USER = os.getenv("DB_USER", default="postgres")
+DB_PASS = os.getenv("DB_PASS", default="password")
 DB_HOST = os.getenv("DB_HOST", default="localhost")
 DB_PORT = os.getenv("DB_PORT", default="5432")
-
-# Match Scraping Configuration
-START_DATE = os.getenv(
-    "START_DATE", default="2025-01-29"
-)  # Default: Season 2 start date
-END_DATE = os.getenv(
-    "END_DATE", default=dt.datetime.now().strftime("%Y-%m-%d")
-)  # Set in .env file, or defaults to today
+BATCH_SIZE = 1000  # Number of rows to insert in a single batch
 
 
-# ✅ Feature Toggles (Convert to Boolean)
-def str_to_bool(value: str) -> bool:
-    """Converts environment string values to boolean."""
-    return value.lower() in ("true", "1", "yes", "on")
+# Feature Toggles
+ENABLE_DATA_STORAGE = True
+ENABLE_DEMO_DOWNLOADS = False
+ENABLE_ANALYTICS = False
 
+# Scraping Config
+HLTV_URL = "https://www.hltv.org/results"  # HLTV Results URL
+START_DATE = "2025-03-12"
+END_DATE = "2025-03-12"
+MAX_MATCHES = 1
 
-ENABLE_DEMO_DOWNLOADS = str_to_bool(os.getenv("ENABLE_DEMO_DOWNLOADS", default="False"))
-ENABLE_DATA_STORAGE = str_to_bool(os.getenv("ENABLE_DATA_STORAGE", default="False"))
-ENABLE_ANALYTICS = str_to_bool(os.getenv("ENABLE_ANALYTICS", default="False"))
+# Debugging Mode
+DEBUG_MODE = True
+
+# Logging Config
+LOG_LEVEL = logging.INFO
+if DEBUG_MODE:
+    LOG_LEVEL = logging.DEBUG
+LOG_FILE = os.path.join(os.getcwd(), "logs", "app.log")
+
 
 # ✅ Environment Type (dev, staging, production)
 ENVIRONMENT = os.getenv("ENVIRONMENT", default="development").lower()
+print(ENVIRONMENT)
 
-# ✅ Logging Configuration
-HLTV_URL = "https://www.hltv.org/results"  # HLTV Results URL
-MAX_MATCHES = int(
-    os.getenv("MAX_MATCHES", default=1)
-)  # Maximum number of matches to scrape
-logging.info("MAX_MATCHES set to: %s", MAX_MATCHES)
-DEBUG_MODE = os.getenv("DEBUG_MODE", default="False")  # Enable debug mode
-LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
-LOG_LEVEL = getattr(logging, LOG_LEVEL, logging.DEBUG)  # Convert to actual log level
-logging.basicConfig(level=LOG_LEVEL)  # ✅ Apply correct log level
-print(
-    f"🔍 [DEBUG] LOG_LEVEL from config: {LOG_LEVEL} (should be an integer, like 10 for DEBUG)"
-)
-LOG_FILE = os.path.join(os.getcwd(), "logs", "app.log")  # Log file path
+# Log file path
 logging.basicConfig(level=logging.DEBUG)
 print(f"🔍 [DEBUG] LOG_LEVEL from config: {LOG_LEVEL}")
-BATCH_SIZE = 1000
+
 
 # ✅ Print Configuration on Startup (For Debugging)
 logging.debug(
-    f"""
+    """
 🔧 CONFIGURATION LOADED:
 -------------------------
-🌍 ENVIRONMENT: {ENVIRONMENT}
-📦 DATABASE: {DB_NAME} (Host: {DB_HOST}, Port: {DB_PORT})
+🌍 ENVIRONMENT: %s
+📦 DATABASE: %s (Host: %s, Port: %s)
 ⚙️ FEATURES:
-   - Demo Downloads: {ENABLE_DEMO_DOWNLOADS}
-   - Data Storage: {ENABLE_DATA_STORAGE}
-   - Analytics: {ENABLE_ANALYTICS}
-🛠️ LOG LEVEL: {LOG_LEVEL}
+   - Demo Downloads: %s
+   - Data Storage: %s
+   - Analytics: %s
+🛠️ LOG LEVEL: %s
 -------------------------
-"""
+""",
+    ENVIRONMENT,
+    DB_NAME,
+    DB_HOST,
+    DB_PORT,
+    ENABLE_DEMO_DOWNLOADS,
+    ENABLE_DATA_STORAGE,
+    ENABLE_ANALYTICS,
+    LOG_LEVEL,
 )

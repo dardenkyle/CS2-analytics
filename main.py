@@ -3,27 +3,29 @@
 import datetime as dt
 from pipeline.cs2_pipeline import CS2AnalyticsPipeline
 from utils.log_manager import get_logger
-from config.config import LOG_LEVEL
 
 logger = get_logger(__name__)
-logger.setLevel(LOG_LEVEL)  # ✅ Explicitly override any previous incorrect level
+logger.info("🚀 Starting CS2 Analytics Pipeline at %s", dt.datetime.now())
 
-print(f"🔍 [DEBUG] Logger Level in Main: {logger.level}")  # Should be 10 (DEBUG)
+# logger = get_logger(__name__)
+# logger.setLevel(LOG_LEVEL)  # ✅ Explicitly override any previous incorrect level
 
-if not logger.hasHandlers():
-    print("⚠️ No handlers found in Main!")
-else:
-    for handler in logger.handlers:
-        print(f"🛠️ Handler: {handler}, Level: {handler.level}")
+# print(f"🔍 [DEBUG] Logger Level in Main: {logger.level}")  # Should be 10 (DEBUG)
 
-print("🟡 Attempting to log messages...")
+# if not logger.hasHandlers():
+#     print("⚠️ No handlers found in Main!")
+# else:
+#     for handler in logger.handlers:
+#         print(f"🛠️ Handler: {handler}, Level: {handler.level}")
 
-logger.debug("🔵 Debug log from Main.")
-logger.info("🟢 Info log from Main.")
-logger.warning("🟡 Warning log from Main.")
-logger.error("🔴 Error log from Main.")
+# print("🟡 Attempting to log messages...")
 
-print("🟢 Finished logging.")
+# logger.debug("🔵 Debug log from Main.")
+# logger.info("🟢 Info log from Main.")
+# logger.warning("🟡 Warning log from Main.")
+# logger.error("🔴 Error log from Main.")
+
+# print("🟢 Finished logging.")
 
 
 def main() -> None:

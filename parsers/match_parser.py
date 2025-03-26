@@ -35,7 +35,10 @@ class MatchParser:
             event_tag = soup.find("div", class_="event text-ellipsis")
             event = event_tag.text.strip() if event_tag else "Unknown Event"
 
-            # Extract match type (BO1, BO3, etc.)                   # Refactor start
+            #
+            # Refactor start
+            #
+            # Extract match type (BO1, BO3, etc.)
             match_type_tag = soup.find("div", class_="padding preformatted-text")
             match_type = (
                 match_type_tag.text.strip().upper() if match_type_tag else "UNKNOWN"
@@ -43,7 +46,6 @@ class MatchParser:
             best_of_temp = re.search(r"^(.*?)(?=\n|$)", match_type)
             best_type = best_of_temp.group(1).strip() if best_of_temp else "Unknown"
 
-            # print(best_type)
             # Refactor this code
             def determine_match_type(text: str) -> str:
                 """Determines match type based on presence of '3' or '5' in the text."""
@@ -54,8 +56,11 @@ class MatchParser:
                 else:
                     return "bo1"
 
-            best_ty: str = determine_match_type(best_type)  # Refactor end
-            print(best_ty)
+            best_ty: str = determine_match_type(best_type)
+            #
+            #
+            # Refactor end
+            #
 
             # Check if match was forfeited
             map_name_check = soup.find("div", class_="mapname").text.lower()
