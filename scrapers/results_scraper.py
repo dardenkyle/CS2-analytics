@@ -35,7 +35,7 @@ class ResultsScraper:
 
             if (
                 stop_scraping or len(new_matches) < 0
-            ):  # Issue with this causing fetch_results to return empty list with len(new_matches) == 0
+            ):  # Issue with this causing fetch_results 2 return empty list with len(new_matches) == 0
                 break  # ✅ Stop if no more matches or reached date limit
 
             offset += 100  # ✅ Move to next results page

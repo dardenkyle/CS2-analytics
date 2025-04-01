@@ -60,13 +60,19 @@ class MapParser:
 
                     match = re.match(r"(\d+)\s+\((\d+)\)", cols[1].text.strip())
                     if match:
-                        kills = int(match.group(1))  # 26
-                        headshots = int(match.group(2))  # 14
+                        kills = int(match.group(1))
+                        headshots = int(match.group(2))
+                    else:
+                        kills = "Error"
+                        headshots = "Error"
 
                     match = re.match(r"(\d+)\s+\((\d+)\)", cols[2].text.strip())
                     if match:
                         assists = int(match.group(1))  # 26
                         flash_assists = int(match.group(2))  # 14
+                    else:
+                        assists = "Error"
+                        flash_assists = "Error"
 
                     player = Player(
                         match_id=match_id,
@@ -92,7 +98,7 @@ class MapParser:
                         rating=float(cols[8].text.strip()),
                         data_complete=True,
                     )
-                    logger.debug("Extracted stats for player: %s", player)
+                    logger.debug("Extracted stats for player: %s", player.player_name)
                     players.append(player)
 
         except Exception as e:

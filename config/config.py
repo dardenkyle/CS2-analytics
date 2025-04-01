@@ -12,6 +12,7 @@ import os
 import datetime as dt
 import logging
 from dotenv import load_dotenv
+from utils.log_manager import get_logger
 
 logger = logging.getLogger(__name__)
 

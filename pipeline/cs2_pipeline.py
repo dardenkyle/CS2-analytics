@@ -22,31 +22,8 @@ class CS2AnalyticsPipeline:
     def __init__(self) -> None:
         """Initialize pipeline components."""
         print("🚀 CS2AnalyticsPipeline Initialized!")  # ✅ Debug print
-        self.logger = get_logger(self.__class__.__name__)
-        print("✅ Logger initialized correctly!")
-
-        # ✅ Explicitly set logging level
-        self.logger.setLevel(logging.DEBUG)
-
-        # ✅ Print the actual logger level
-        print(
-            f"🔍 Logger Level: {self.logger.level}"
-        )  # Should be 10 (DEBUG), 20 (INFO), etc.
-
-        if not self.logger.hasHandlers():
-            print("⚠️ No handlers found! Logs won't appear properly.")
-        else:
-            for handler in self.logger.handlers:
-                print(f"🛠️ Handler: {handler}, Level: {handler.level}")
-
-        print("🟡 Attempting to log a debug message now...")
-
-        self.logger.debug("🔵 This is a DEBUG log (should appear).")
-        self.logger.info("🟢 This is an INFO log (should appear).")
-        self.logger.warning("🟡 This is a WARNING log (should appear).")
-        self.logger.error("🔴 This is an ERROR log (should appear).")
-        self.logger.info("✅ This is a DEBUG log from CS2AnalyticsPipeline.")
-        print("🟢 This print statement should appear AFTER logging attempt.")
+        self.logger = get_logger(__name__)
+        self.logger.debug("CS2AnalyticsPipeline initialized.")
 
         self.results_scraper = ResultsScraper()
         self.match_scraper = MatchScraper()
