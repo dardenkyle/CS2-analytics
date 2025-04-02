@@ -17,9 +17,8 @@ class MatchParser:
         try:
             match_id = match_url.split("/")[-2]
 
-            team_names = soup.find_all("div", class_="teamName")
-            team1 = team_names[0].text.strip() if len(team_names) >= 2 else "Unknown"
-            team2 = team_names[1].text.strip() if len(team_names) >= 2 else "Unknown"
+            team1, team2 = self._extract_teams(soup)
+            logger.debug(team1, team2)
 
             # Extract scores
             team1_gradient = soup.find("div", class_="team1-gradient")
@@ -103,6 +102,11 @@ class MatchParser:
         except Exception as e:
             logger.error("Error extracting match info: %s", e)
             return {}
+
+    def _extract_teams(self, soup):
+        team_names = soup.find_all("div", class_="teamName")
+        team1, team2 = team_names[0].text.strip(), team_names[1].text.strip()
+        return team1, team2
 
     def _extract_demo_links(self, soup) -> list:
         """Extracts demo download links from the match page."""

@@ -1,12 +1,29 @@
--- Drop existing tables if they exist (for debugging purposes)
-DROP TABLE IF EXISTS player_transfers,
-player_aliases,
-player_team_history,
-players,
-maps,
-matches,
-teams,
-player_info;
+-- Drop existing tables in correct dependency order
+DROP TABLE IF EXISTS demo_files CASCADE;
+
+DROP TABLE IF EXISTS map_scrape_queue CASCADE;
+
+DROP TABLE IF EXISTS match_scrape_queue CASCADE;
+
+DROP TABLE IF EXISTS player_metrics CASCADE;
+
+DROP TABLE IF EXISTS player_transfers CASCADE;
+
+DROP TABLE IF EXISTS player_aliases CASCADE;
+
+DROP TABLE IF EXISTS player_team_history CASCADE;
+
+DROP TABLE IF EXISTS players CASCADE;
+
+DROP TABLE IF EXISTS maps CASCADE;
+
+DROP TABLE IF EXISTS matches CASCADE;
+
+DROP TABLE IF EXISTS teams CASCADE;
+
+DROP TABLE IF EXISTS player_info CASCADE;
+
+DROP TABLE IF EXISTS scrape_runs CASCADE;
 
 -- ✅ Teams Table
 CREATE TABLE teams (
@@ -15,8 +32,8 @@ CREATE TABLE teams (
     team_url TEXT NOT NULL,
     region TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_scraped_at TIMESTAMP,
-    last_updated_at TIMESTAMP,
+    last_scraped TIMESTAMP,
+    last_updated TIMESTAMP,
     data_complete BOOLEAN
 );
 
@@ -30,8 +47,8 @@ CREATE TABLE player_info (
         NULL,
         active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_scraped_at TIMESTAMP,
-        last_updated_at TIMESTAMP,
+        last_scraped TIMESTAMP,
+        last_updated TIMESTAMP,
         data_complete BOOLEAN
 );
 
@@ -51,8 +68,8 @@ CREATE TABLE matches (
     forfeit BOOLEAN DEFAULT FALSE,
     date TIMESTAMP NOT NULL,
     inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_scraped_at TIMESTAMP,
-    last_updated_at TIMESTAMP,
+    last_scraped TIMESTAMP,
+    last_updated TIMESTAMP,
     data_complete BOOLEAN
 );
 

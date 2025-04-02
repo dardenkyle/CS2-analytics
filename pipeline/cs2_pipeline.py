@@ -51,7 +51,7 @@ class CS2AnalyticsPipeline:
         self.logger.info("Parsing match details")
         match_meta_data: list[BeautifulSoup] = [
             self.match_scraper.fetch_match(match_link)
-            for match_link in match_links[0:2]
+            for match_link in match_links[0:1]
         ]
 
         if not match_meta_data:
