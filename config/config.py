@@ -9,10 +9,8 @@ This file centralizes all configurable settings, including:
 """
 
 import os
-import datetime as dt
 import logging
 from dotenv import load_dotenv
-from utils.log_manager import get_logger
 
 logger = logging.getLogger(__name__)
 

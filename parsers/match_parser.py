@@ -12,9 +12,6 @@ logger = get_logger(__name__)
 class MatchParser:
     """Parses match metadata from HLTV match pages."""
 
-    def __init__(self):
-        """Initializes the parser."""
-
     def parse_match(self, soup, match_url: str) -> Match:
         """Parses match metadata and returns a Match object."""
         try:
@@ -30,6 +27,10 @@ class MatchParser:
 
             team2_gradient = soup.find("div", class_="team2-gradient")
             score2 = int(team2_gradient.a.find_next_sibling("div").text.strip())
+
+            winner = team2
+            if score1 > score2:
+                winner = team1
 
             # Extract event name
             event_tag = soup.find("div", class_="event text-ellipsis")
@@ -88,10 +89,14 @@ class MatchParser:
                 team2=team2,
                 score1=score1,
                 score2=score2,
+                winner=winner,
                 event=event,
                 match_type=best_ty,
                 forfeit=forfeit,
                 date=match_date,
+                inserted_at=dt.datetime.now(),
+                last_scraped=dt.datetime.now(),
+                last_updated=dt.datetime.now(),  # need to fix
                 data_complete=True,
             )
 

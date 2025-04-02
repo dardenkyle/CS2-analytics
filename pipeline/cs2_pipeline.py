@@ -1,9 +1,6 @@
 """Controls the flow of the CS2 Analytics Pipeline."""
 
-import logging
-
 from bs4 import BeautifulSoup
-from config.config import DEBUG_MODE
 from models.match import Match
 from models.player import Player
 from parsers.map_parser import MapParser
@@ -14,6 +11,7 @@ from scrapers.map_scraper import MapScraper
 from storage.database import Database
 from utils.initialize_db import initialize_database
 from utils.log_manager import get_logger
+from config.config import DEBUG_MODE
 
 
 class CS2AnalyticsPipeline:
@@ -21,7 +19,6 @@ class CS2AnalyticsPipeline:
 
     def __init__(self) -> None:
         """Initialize pipeline components."""
-        print("🚀 CS2AnalyticsPipeline Initialized!")  # ✅ Debug print
         self.logger = get_logger(__name__)
         self.logger.debug("CS2AnalyticsPipeline initialized.")
 
@@ -36,9 +33,9 @@ class CS2AnalyticsPipeline:
         """Execute the full CS2 analytics pipeline."""
         self.logger.info("✅ Starting full CS2 pipeline.")
 
-        # if DEBUG_MODE:
-        print("Initializing database for testing...")
-        initialize_database()
+        if DEBUG_MODE:
+            self.logger.debug("Initializing database for testing...")
+            initialize_database()
 
         # Step 1: Scrape Results for match links
         self.logger.info("Scraping results page...")
@@ -74,9 +71,6 @@ class CS2AnalyticsPipeline:
             self.logger.warning("Error parsing match meta data.")
             return
         self.logger.info("Successfully parsed match meta data.")
-
-        for match in match_details:
-            print("Match links: %s", match.map_links)
 
         # Step 4 : Scrape Map Details from Match.map_links
         self.logger.info("Scraping map details")

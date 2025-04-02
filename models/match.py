@@ -1,10 +1,14 @@
-from dataclasses import dataclass, field
-from typing import List, Optional
-from models.player import Player
+"""This module defines the Match class, which represents a match in the system."""
+
+from datetime import datetime
+from dataclasses import dataclass
+from typing import List
 
 
 @dataclass
 class Match:
+    """Represents a match in the system."""
+
     match_id: int
     match_url: str
     map_links: List[str]
@@ -13,10 +17,14 @@ class Match:
     team2: str
     score1: int
     score2: int
+    winner: str
     event: str
     match_type: str
     forfeit: bool
     date: str
+    inserted_at: datetime
+    last_scraped: datetime
+    last_updated: datetime
     data_complete: bool
 
     def to_dict(self):
@@ -30,9 +38,13 @@ class Match:
             "team2": self.team2,
             "score1": self.score1,
             "score2": self.score2,
+            "winner": self.winner,
             "event": self.event,
             "match_type": self.match_type,
             "forfeit": self.forfeit,
             "date": self.date,
+            "inserted_at": self.inserted_at,
+            "last_scraped": self.last_scraped,
+            "last_updated": self.last_updated,
             "data_complete": self.data_complete,
         }
