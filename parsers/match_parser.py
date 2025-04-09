@@ -18,7 +18,7 @@ class MatchParser:
             match_id = match_url.split("/")[-2]
 
             team1, team2 = self._extract_teams(soup)
-            logger.debug(team1, team2)
+            logger.debug("Team1: %s Team2: %s", team1, team2)
 
             # Extract scores
             team1_gradient = soup.find("div", class_="team1-gradient")
@@ -27,9 +27,8 @@ class MatchParser:
             team2_gradient = soup.find("div", class_="team2-gradient")
             score2 = int(team2_gradient.a.find_next_sibling("div").text.strip())
 
-            winner = team2
-            if score1 > score2:
-                winner = team1
+            winner = team1 if score1 > score2 else team2
+            logger.debug("Winner: %s", winner)
 
             # Extract event name
             event_tag = soup.find("div", class_="event text-ellipsis")
@@ -104,13 +103,17 @@ class MatchParser:
             return {}
 
     def _extract_teams(self, soup):
+        """Extracts team names from the match page."""
         team_names = soup.find_all("div", class_="teamName")
-        team1, team2 = team_names[0].text.strip(), team_names[1].text.strip()
+        try:
+            team1, team2 = [t.text.strip() for t in team_names[0:2]]
+        except ValueError as e:
+            logger.error("Error extracting team names: %s", e)
+            return None, None
         return team1, team2
 
     def _extract_demo_links(self, soup) -> list:
         """Extracts demo download links from the match page."""
-
         try:
             demo_link_tag = soup.find("a", class_="stream-box")
             # ✅ Extract the "data-demo-link" attribute

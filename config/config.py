@@ -10,6 +10,7 @@ This file centralizes all configurable settings, including:
 
 import os
 import logging
+import datetime as dt
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -33,8 +34,8 @@ ENABLE_ANALYTICS = False
 
 # Scraping Config
 HLTV_URL = "https://www.hltv.org/results"  # HLTV Results URL
-START_DATE = "2025-03-12"
-END_DATE = "2025-03-12"
+START_DATE = str(dt.datetime.today().date())
+END_DATE = str(dt.datetime.today().date())
 MAX_MATCHES = 1
 
 # Debugging Mode

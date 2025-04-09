@@ -65,8 +65,8 @@ class Database:
         try:
             cur = conn.cursor()
             query = """
-                INSERT INTO matches (match_id, match_url, map_links, demo_links, team1, team2, score1, score2, event, match_type, forfeit, date, inserted_at, last_scraped, last_updated, data_complete)
-                VALUES (%(match_id)s, %(match_url)s, %(map_links)s, %(demo_links)s, %(team1)s, %(team2)s, %(score1)s, %(score2)s, %(event)s, %(match_type)s, %(forfeit)s, %(date)s, %(inserted_at)s, %(last_scraped)s, %(last_updated)s, %(data_complete)s)
+                INSERT INTO matches (match_id, match_url, map_links, demo_links, team1, team2, score1, score2, winner, event, match_type, forfeit, date, inserted_at, last_scraped, last_updated, data_complete)
+                VALUES (%(match_id)s, %(match_url)s, %(map_links)s, %(demo_links)s, %(team1)s, %(team2)s, %(score1)s, %(score2)s, %(winner)s, %(event)s, %(match_type)s, %(forfeit)s, %(date)s, %(inserted_at)s, %(last_scraped)s, %(last_updated)s, %(data_complete)s)
                 ON CONFLICT (match_id) DO UPDATE 
                 SET 
                     score1 = EXCLUDED.score1,

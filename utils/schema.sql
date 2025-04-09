@@ -62,7 +62,10 @@ CREATE TABLE matches (
     team2 TEXT NOT NULL,
     score1 INT CHECK (score1 >= 0),
     score2 INT CHECK (score2 >= 0),
-    winner TEXT NOT NULL CHECK (winner IN ('team1', 'team2')),
+    winner TEXT NOT NULL CHECK (
+        winner = team1
+        OR winner = team2
+    ),
     event TEXT,
     match_type TEXT,
     forfeit BOOLEAN DEFAULT FALSE,
