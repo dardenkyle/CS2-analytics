@@ -1,109 +1,122 @@
-"""Scrapes HLTV results page to extract match links."""
+"""Scrapes HLTV results page to extract match links and queues them."""
 
 import time
 import random
 import datetime as dt
+import re
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
 from config.config import HLTV_URL, START_DATE, END_DATE, MAX_MATCHES
 from utils.log_manager import get_logger
+from storage import match_queue
 
 logger = get_logger(__name__)
 
 
 class ResultsScraper:
-    """Scrapes HLTV results page to extract match links."""
+    """Scrapes HLTV results and queues match links into match_scrape_queue."""
 
     def __init__(self):
-        """Initializes the scraper with a SeleniumBase driver."""
-        self.driver = Driver(uc=True, headless=True)  # ✅ Uses Undetected Chrome Driver
+        """Initializes the scraper with a SeleniumBase driver and config params."""
+        self.driver = Driver(uc=True, headless=True)
         self.base_url = HLTV_URL
-        self.match_links = []
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
 
-    def fetch_results(self, max_matches=MAX_MATCHES) -> list[str]:
-        """Scrapes match links from the results page."""
+    def run(self, max_matches: int = MAX_MATCHES) -> None:
+        """
+        Scrapes HLTV results and queues match links.
+
+        Args:
+            max_matches (int): Maximum number of matches to queue.
+        """
         offset = 0
+        total_queued = 0
 
-        while len(self.match_links) < max_matches:
+        while total_queued < max_matches:
             page_url = f"{self.base_url}?offset={offset}"
-            logger.info("🔄 Scraping: %s", page_url)
+            logger.info("🔄 Scraping page: %s", page_url)
 
-            new_matches, stop_scraping = self._extract_matches_from_page(page_url)
-            self.match_links.extend(new_matches)
+            match_urls, stop = self._extract_matches_from_page(page_url)
+            for url in match_urls:
+                match_id = self._extract_match_id(url)
+                if not match_id:
+                    continue
 
-            if (
-                stop_scraping or len(new_matches) < 0
-            ):  # Issue with this causing fetch_results 2 return empty list with len(new_matches) == 0
-                break  # ✅ Stop if no more matches or reached date limit
+                match_queue.queue(match_id, url, source="results_scraper")
+                total_queued += 1
 
-            offset += 100  # ✅ Move to next results page
+                if total_queued >= max_matches:
+                    break
 
-        logger.info(
-            "✅ Found %s matches from %s to %s.",
-            len(self.match_links),
-            self.start_date,
-            self.end_date,
-        )
-        return self.match_links
+            if stop or len(match_urls) == 0:
+                break
 
-    def _extract_matches_from_page(self, url):
-        """Extracts match data from a given HLTV results page."""
+            offset += 100
+            time.sleep(random.uniform(1.0, 2.0))  # ✅ Polite crawl delay
+
+        logger.info("✅ Queued %s matches total.", total_queued)
+
+    def _extract_matches_from_page(self, url: str) -> tuple[list[str], bool]:
+        """
+        Extracts match links from a results page.
+
+        Args:
+            url (str): Page URL to scrape.
+
+        Returns:
+            Tuple of (list of match URLs, whether to stop scraping)
+        """
         self.driver.get(url)
-        time.sleep(random.uniform(3, 5))  # ✅ Allow page to load
+        time.sleep(random.uniform(3, 5))
 
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
         matches = []
         stop_scraping = False
 
-        results_sublist = soup.find_all("div", class_="results-sublist")
-
-        for section in results_sublist:
+        for section in soup.find_all("div", class_="results-sublist"):
             date_header = section.find("div", class_="standard-headline")
+            if not date_header:
+                continue
 
-            if date_header:
-                raw_date_text = (
-                    date_header.text.replace("Results for ", "")
-                    .replace("st", "")
-                    .replace("nd", "")
-                    .replace("rd", "")
-                    .replace("th", "")
-                )
+            raw_date = re.sub(
+                r"(st|nd|rd|th)", "", date_header.text.replace("Results for ", "")
+            )
+            try:
+                match_date = dt.datetime.strptime(raw_date.strip(), "%B %d %Y").date()
+            except ValueError:
+                logger.warning("❌ Could not parse date: %s", raw_date)
+                continue
 
-                try:
-                    match_date = dt.datetime.strptime(raw_date_text, "%B %d %Y").date()
-                except ValueError:
-                    logger.warning("❌ Could not parse date: %s", raw_date_text)
+            if match_date > self.end_date:
+                continue
+            if match_date < self.start_date:
+                logger.info("⏹️ Stopping at match date %s — out of range.", match_date)
+                return matches, True
+
+            for match in section.find_all("div", class_="result-con"):
+                a_tag = match.find("a", href=True)
+                if not a_tag:
                     continue
-
-                if match_date > self.end_date:
-                    continue  # ✅ Skip future matches
-
-                if match_date < self.start_date:
-                    logger.info(
-                        "⏩ Match date %s is too old, stopping scraping.", match_date
-                    )
-                    return matches, True  # ✅ Stop if we reached old dates
-
-                # ✅ Extract match links
-                match_containers = section.find_all("div", class_="result-con")
-
-                for match in match_containers:
-                    if len(matches) >= 50:  # ✅ Stop when reaching max_matches
-                        logger.info("Reached max matches. Stopping scraping.")
-                        return matches, True
-
-                    match_link_tag = match.find("a", href=True)
-                    if not match_link_tag:
-                        continue
-
-                    match_url = f"https://www.hltv.org{match_link_tag['href']}"
-                    matches.append(match_url)
+                full_url = f"https://www.hltv.org{a_tag['href']}"
+                matches.append(full_url)
 
         return matches, stop_scraping
 
+    def _extract_match_id(self, url: str) -> str:
+        """
+        Extracts numeric match ID from the match URL.
+
+        Args:
+            url (str): HLTV match URL.
+
+        Returns:
+            str: Match ID or "" if not found.
+        """
+        match = re.search(r"/matches/(\d+)", url)
+        return match.group(1) if match else ""
+
     def close(self):
-        """Closes the Selenium driver."""
+        """Closes the SeleniumBase driver."""
         self.driver.quit()
         logger.info("🚪 Selenium driver closed.")

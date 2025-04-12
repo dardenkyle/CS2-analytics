@@ -5,10 +5,9 @@ from storage.base_scrape_queue import BaseScrapeQueue
 
 class MapScrapeQueue(BaseScrapeQueue):
     """
-    Queue manager for per-map statistics and metadata scraping tasks.
+    Queue manager for map metadata and statistics scraping tasks.
 
-    Table: map_scrape_queue
-    ID field: map_id
+    Targets the 'map_scrape_queue' table with 'map_id' as the primary key.
     """
 
     def __init__(self) -> None:

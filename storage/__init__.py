@@ -8,11 +8,14 @@ interactions including:
 """
 
 from storage.base_scrape_queue import BaseScrapeQueue
-from storage.database import Database, get_connection
+from storage.database import Database
 from storage.demo_scrape_queue import DemoScrapeQueue
 from storage.map_scrape_queue import MapScrapeQueue
 from storage.match_scrape_queue import MatchScrapeQueue
 from storage.storage_models import Match, Player
+
+# Instantiate global database connection pool
+db: Database = Database()
 
 # Instantiate queue managers for convenience
 try:
@@ -22,10 +25,8 @@ try:
 except Exception as e:
     raise RuntimeError(f"Failed to initialize queue managers: {e}")
 
-# Optionally instantiate a global Database interface (if you use one)
-# db: Database = Database()
-
 __all__ = [
+    "db",
     "demo_queue",
     "match_queue",
     "map_queue",
@@ -34,7 +35,6 @@ __all__ = [
     "MapScrapeQueue",
     "BaseScrapeQueue",
     "Database",
-    "get_connection",
     "Match",
     "Player",
 ]

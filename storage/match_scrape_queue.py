@@ -7,8 +7,8 @@ class MatchScrapeQueue(BaseScrapeQueue):
     """
     Queue manager for match result discovery and scraping tasks.
 
-    Table: match_scrape_queue
-    ID field: match_id
+    Handles operations for inserting, fetching, and updating scrape status
+    in the 'match_scrape_queue' table.
     """
 
     def __init__(self) -> None:

@@ -1,4 +1,4 @@
-"""Manages queue operations for demo file scraping."""
+"""Manages queue operations for demo file scraping and processing."""
 
 from storage.base_scrape_queue import BaseScrapeQueue
 
@@ -7,8 +7,7 @@ class DemoScrapeQueue(BaseScrapeQueue):
     """
     Queue manager for .dem file downloads and parsing tasks.
 
-    Table: demo_scrape_queue
-    ID field: demo_id
+    Interacts with the 'demo_scrape_queue' table using 'demo_id' as the key.
     """
 
     def __init__(self) -> None:
