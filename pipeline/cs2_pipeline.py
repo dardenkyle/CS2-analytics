@@ -9,7 +9,7 @@ from scrapers.match_scraper import MatchScraper
 from scrapers.results_scraper import ResultsScraper
 from scrapers.map_scraper import MapScraper
 from storage.database import Database
-from utils.initialize_db import initialize_database
+from storage.initialize_db import initialize_database
 from utils.log_manager import get_logger
 from config.config import DEBUG_MODE
 

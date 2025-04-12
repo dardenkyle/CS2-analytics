@@ -158,31 +158,43 @@ CREATE TABLE player_transfers (
 -- This table is used to track the scraping status of matches.
 CREATE TABLE match_scrape_queue (
     match_id INT PRIMARY KEY,
-    -- Same as match_id from HLTV
-    match_url TEXT UNIQUE NOT NULL,
-    STATUS TEXT NOT NULL DEFAULT 'pending',
-    -- pending, success, failed, skipped
-    retries INT DEFAULT 0,
-    error TEXT,
-    -- Optional: last error message or traceback
-    last_attempt TIMESTAMP,
-    next_attempt TIMESTAMP,
-    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    match_url TEXT NOT NULL,
+    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
+    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    retry_count INT NOT NULL DEFAULT 0,
+    last_error TEXT,
+    priority INT DEFAULT 0,
+    source TEXT
 );
 
 -- ✅ Map Scrape Queue Table
 -- This table is used to track the scraping status of maps.
 CREATE TABLE map_scrape_queue (
-    map_id INT PRIMARY KEY,
+    map_id TEXT PRIMARY KEY,
     map_url TEXT NOT NULL,
-    STATUS TEXT DEFAULT 'pending',
-    -- pending, success, failed
-    retries INT DEFAULT 0,
-    last_attempt TIMESTAMP,
-    error TEXT
+    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
+    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    retry_count INT NOT NULL DEFAULT 0,
+    last_error TEXT,
+    priority INT DEFAULT 0,
+    source TEXT
 );
 
--- ✅ Demo Files Table
+-- ✅ Demo Scrape Queue Table
+CREATE TABLE IF NOT EXISTS demo_scrape_queue (
+    demo_id TEXT PRIMARY KEY,
+    demo_url TEXT NOT NULL,
+    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
+    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    retry_count INT NOT NULL DEFAULT 0,
+    last_error TEXT,
+    priority INT DEFAULT 0,
+    source TEXT
+);
+
 -- This table is used to track the status of demo files.
 CREATE TABLE demo_files (
     map_id INT PRIMARY KEY REFERENCES maps(map_id) ON DELETE CASCADE,
