@@ -8,14 +8,11 @@ interactions including:
 """
 
 from storage.base_scrape_queue import BaseScrapeQueue
-from storage.database import Database
 from storage.demo_scrape_queue import DemoScrapeQueue
 from storage.map_scrape_queue import MapScrapeQueue
 from storage.match_scrape_queue import MatchScrapeQueue
 from storage.storage_models import Match, Player
-
-# Instantiate global database connection pool
-db: Database = Database()
+from storage.db_instance import db
 
 # Instantiate queue managers for convenience
 try:

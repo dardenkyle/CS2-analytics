@@ -4,24 +4,40 @@ import time
 import random
 import datetime as dt
 import re
+from typing import List, Tuple
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
 from config.config import HLTV_URL, START_DATE, END_DATE, MAX_MATCHES
 from utils.log_manager import get_logger
+from utils.queue_helpers import chunk_and_queue
 from storage import match_queue
 
 logger = get_logger(__name__)
 
 
 class ResultsScraper:
-    """Scrapes HLTV results and queues match links into match_scrape_queue."""
+    """
+    Scrapes HLTV results and queues match links into match_scrape_queue.
 
-    def __init__(self):
+    Designed to be used as a context manager to ensure the browser is closed.
+    """
+
+    def __init__(self) -> None:
         """Initializes the scraper with a SeleniumBase driver and config params."""
         self.driver = Driver(uc=True, headless=True)
         self.base_url = HLTV_URL
+        self.queue = match_queue
+        self.source: str = "results_scraper"
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
+
+    def __enter__(self) -> "ResultsScraper":
+        """Enables use as a context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Ensures the Selenium driver is closed on exit."""
+        self.close()
 
     def run(self, max_matches: int = MAX_MATCHES) -> None:
         """
@@ -34,30 +50,34 @@ class ResultsScraper:
         total_queued = 0
 
         while total_queued < max_matches:
-            page_url = f"{self.base_url}?offset={offset}"
+            page_url = f"{self.base_url}?offset={offset}&gameType=CS2"
             logger.info("🔄 Scraping page: %s", page_url)
 
             match_urls, stop = self._extract_matches_from_page(page_url)
+            batch = []
             for url in match_urls:
                 match_id = self._extract_match_id(url)
-                if not match_id:
-                    continue
+                if match_id:
+                    full_url = f"{self.base_url}{url}"
+                    batch.append((match_id, full_url))
+                    total_queued += 1
 
-                match_queue.queue(match_id, url, source="results_scraper")
-                total_queued += 1
+            chunk_and_queue(
+                items=batch,
+                queue_obj=self.queue,
+                chunk_size=1000,
+                source=self.source,
+            )
 
-                if total_queued >= max_matches:
-                    break
-
-            if stop or len(match_urls) == 0:
+            if stop or not match_urls:
                 break
 
             offset += 100
-            time.sleep(random.uniform(1.0, 2.0))  # ✅ Polite crawl delay
+            time.sleep(random.uniform(1.0, 2.0))  # Polite crawl delay
 
         logger.info("✅ Queued %s matches total.", total_queued)
 
-    def _extract_matches_from_page(self, url: str) -> tuple[list[str], bool]:
+    def _extract_matches_from_page(self, url: str) -> Tuple[List[str], bool]:
         """
         Extracts match links from a results page.
 
@@ -116,7 +136,12 @@ class ResultsScraper:
         match = re.search(r"/matches/(\d+)", url)
         return match.group(1) if match else ""
 
-    def close(self):
+    def close(self) -> None:
         """Closes the SeleniumBase driver."""
         self.driver.quit()
         logger.info("🚪 Selenium driver closed.")
+
+
+if __name__ == "__main__":
+    with ResultsScraper() as scraper:
+        scraper.run(max_matches=50)
