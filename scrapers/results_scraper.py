@@ -55,10 +55,9 @@ class ResultsScraper:
 
             match_urls, stop = self._extract_matches_from_page(page_url)
             batch = []
-            for url in match_urls:
-                match_id = self._extract_match_id(url)
+            for full_url in match_urls:  # already starts with https://www.hltv.org
+                match_id = self._extract_match_id(full_url)
                 if match_id:
-                    full_url = f"{self.base_url}{url}"
                     batch.append((match_id, full_url))
                     total_queued += 1
 
