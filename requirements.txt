@@ -30,3 +30,10 @@ schedule  # Lightweight job scheduler for Python
 # Data Visualization (optional, if analytics will be displayed)
 matplotlib
 seaborn
+
+# Front end components
+fastapi
+uvicorn
+streamlit
+requests
+

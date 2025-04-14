@@ -2,15 +2,77 @@
 
 import re
 import datetime as dt
+from utils.queue_helpers import chunk_and_queue
 from utils.log_manager import get_logger
 from models.match import Match
-from storage import map_queue, demo_queue
+from storage import map_queue, demo_queue, match_queue, db
+from scrapers.match_scraper import MatchScraper
+
 
 logger = get_logger(__name__)
 
 
 class MatchParser:
     """Parses match metadata from HLTV match pages."""
+
+    def run(self, batch_size: int = 10) -> None:
+        """
+        Fetches queued match URLs, scrapes and parses metadata,
+        stores match records, and queues related demo/map links in chunks.
+        """
+
+        logger.info("🚀 Starting MatchParser for batch size: %d", batch_size)
+        queued_matches = match_queue.get_queued(batch_size)
+
+        if not queued_matches:
+            logger.warning("⚠️ No matches in queue to parse.")
+            return
+
+        scraper = MatchScraper()
+        match_soups = []
+
+        for match in queued_matches:
+            match_id = match["match_id"]
+            match_url = match["match_url"]
+            try:
+                soup = scraper.fetch_match_html(match_url)
+                match_soups.append((soup, match_id, match_url))
+            except Exception as e:
+                match_queue.mark_failed(match_id, str(e))
+                logger.error("❌ Failed to fetch HTML for match %s: %s", match_id, e)
+
+        parsed_matches: list[Match] = []
+        all_demo_links: list[tuple[str, str]] = []
+        all_map_links: list[tuple[str, str]] = []
+
+        for soup, match_id, match_url in match_soups:
+            try:
+                match = self.parse_match(soup, match_url)
+                if match:
+                    parsed_matches.append(match)
+                    all_demo_links.extend(match.demo_links)
+                    all_map_links.extend(match.map_links)
+                    db.store_matches([match])
+                    match_queue.mark_parsed(match_id)
+                    logger.info("✅ Parsed and stored match %s", match_id)
+                else:
+                    match_queue.mark_failed(match_id, "Parser returned None")
+                    logger.warning("❌ Failed to parse match %s", match_id)
+            except Exception as e:
+                match_queue.mark_failed(match_id, str(e))
+                logger.exception("❌ Error while parsing match %s: %s", match_id, e)
+
+        if all_demo_links:
+            chunk_and_queue(all_demo_links, demo_queue, source="match_parser")
+
+        if all_map_links:
+            chunk_and_queue(all_map_links, map_queue, source="match_parser")
+
+        logger.info(
+            "🏁 MatchParser completed. Parsed %d/%d matches.",
+            len(parsed_matches),
+            len(match_soups),
+        )
 
     def parse_match(self, soup, match_url: str) -> Match:
         """Parses match metadata and returns a Match object. Queues map and demo links."""

@@ -3,12 +3,38 @@
 import re
 from utils.log_manager import get_logger
 from models.player import Player
+from storage import map_queue, db
 
 logger = get_logger(__name__)
 
 
 class MapParser:
     """Extracts player stats from a map stats page."""
+
+    def run(self, map_soups: list[tuple]) -> list[Player]:
+        """
+        Runs parsing logic for a list of soup objects and stores players.
+
+        Args:
+            map_soups (list): List of tuples (soup, map_id, map_url)
+
+        Returns:
+            List[Player]: All parsed player objects
+        """
+        all_players = []
+
+        for soup, map_id, map_url in map_soups:
+            try:
+                players = self.parse_map(soup, map_url, match_id=None)
+                db.store_players(players)
+                map_queue.mark_parsed(map_id)
+                logger.info("✅ Stored %s players for map %s", len(players), map_id)
+                all_players.extend(players)
+            except Exception as e:
+                map_queue.mark_failed(map_id, str(e)[:500])
+                logger.error("❌ Failed to parse map %s: %s", map_id, e)
+
+        return all_players
 
     def __init__(self):
         """Initializes the parser."""

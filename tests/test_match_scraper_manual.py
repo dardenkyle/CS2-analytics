@@ -8,6 +8,7 @@ from storage import db, match_queue
 
 
 def main():
+    """Main test for MatchScraper + MatchParser integration."""
     print("🚀 Testing MatchScraper + MatchParser integration...")
 
     with MatchScraper() as scraper:
