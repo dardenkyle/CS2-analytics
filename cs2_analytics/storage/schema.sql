@@ -1,6 +1,8 @@
 -- Drop existing tables in correct dependency order
 DROP TABLE IF EXISTS demo_files CASCADE;
 
+DROP TABLE IF EXISTS demo_scrape_queue CASCADE;
+
 DROP TABLE IF EXISTS map_scrape_queue CASCADE;
 
 DROP TABLE IF EXISTS match_scrape_queue CASCADE;
@@ -32,8 +34,8 @@ CREATE TABLE teams (
     team_url TEXT NOT NULL,
     region TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_scraped TIMESTAMP,
-    last_updated TIMESTAMP,
+    last_scraped_at TIMESTAMP,
+    last_updated_at TIMESTAMP,
     data_complete BOOLEAN
 );
 
@@ -47,8 +49,8 @@ CREATE TABLE player_info (
         NULL,
         active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_scraped TIMESTAMP,
-        last_updated TIMESTAMP,
+        last_scraped_at TIMESTAMP,
+        last_updated_at TIMESTAMP,
         data_complete BOOLEAN
 );
 
@@ -70,9 +72,9 @@ CREATE TABLE matches (
     match_type TEXT,
     forfeit BOOLEAN DEFAULT FALSE,
     date TIMESTAMP NOT NULL,
-    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_scraped TIMESTAMP,
-    last_updated TIMESTAMP,
+    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_scraped_at TIMESTAMP,
+    last_updated_at TIMESTAMP,
     data_complete BOOLEAN
 );
 
@@ -126,7 +128,7 @@ CREATE TABLE player_team_history (
         team_name TEXT NOT NULL,
         start_date DATE NOT NULL,
         end_date DATE,
-        inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(player_id, team_id, start_date)
 );
 
@@ -160,7 +162,7 @@ CREATE TABLE match_scrape_queue (
     match_id INT PRIMARY KEY,
     match_url TEXT NOT NULL,
     STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     retry_count INT NOT NULL DEFAULT 0,
     last_error TEXT,
@@ -174,7 +176,7 @@ CREATE TABLE map_scrape_queue (
     map_id TEXT PRIMARY KEY,
     map_url TEXT NOT NULL,
     STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     retry_count INT NOT NULL DEFAULT 0,
     last_error TEXT,
@@ -183,11 +185,11 @@ CREATE TABLE map_scrape_queue (
 );
 
 -- ✅ Demo Scrape Queue Table
-CREATE TABLE IF NOT EXISTS demo_scrape_queue (
+CREATE TABLE demo_scrape_queue (
     demo_id TEXT PRIMARY KEY,
     demo_url TEXT NOT NULL,
     STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     retry_count INT NOT NULL DEFAULT 0,
     last_error TEXT,
@@ -203,7 +205,7 @@ CREATE TABLE demo_files (
     parsed BOOLEAN DEFAULT FALSE,
     heatmap_done BOOLEAN DEFAULT FALSE,
     grenade_analysis_done BOOLEAN DEFAULT FALSE,
-    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_processed_at TIMESTAMP
 );
 
@@ -228,7 +230,7 @@ CREATE TABLE player_metrics (
     entry_rating FLOAT,
     clutch_success_rate FLOAT,
     matches_played INT,
-    last_updated TIMESTAMP,
+    last_updated_at TIMESTAMP,
     PRIMARY KEY (player_id, map_name)
 );
 

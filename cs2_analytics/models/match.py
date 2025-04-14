@@ -22,9 +22,9 @@ class Match:
     match_type: str
     forfeit: bool
     date: str
-    inserted_at: datetime
-    last_scraped: datetime
-    last_updated: datetime
+    last_inserted_at: datetime
+    last_scraped_at: datetime
+    last_updated_at: datetime
     data_complete: bool
 
     def to_dict(self):
@@ -43,8 +43,8 @@ class Match:
             "match_type": self.match_type,
             "forfeit": self.forfeit,
             "date": self.date,
-            "inserted_at": self.inserted_at,
-            "last_scraped": self.last_scraped,
-            "last_updated": self.last_updated,
+            "last_inserted_at": self.last_inserted_at,
+            "last_scraped_at": self.last_scraped_at,
+            "last_updated_at": self.last_updated_at,
             "data_complete": self.data_complete,
         }

@@ -1,6 +1,6 @@
 """Manages queue operations for match result scraping."""
 
-from storage.base_scrape_queue import BaseScrapeQueue
+from cs2_analytics.queues.base_scrape_queue import BaseScrapeQueue
 
 
 class MatchScrapeQueue(BaseScrapeQueue):
@@ -12,4 +12,4 @@ class MatchScrapeQueue(BaseScrapeQueue):
     """
 
     def __init__(self) -> None:
-        super().__init__(table_name="match_scrape_queue", id_field="match_id")
+        super().__init__(table_name="match_scrape_queue", id_field="match_id", url_field="match_url")

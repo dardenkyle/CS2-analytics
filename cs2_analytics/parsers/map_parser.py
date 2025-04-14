@@ -1,9 +1,10 @@
 """Extracts player stats from a map stats page."""
 
 import re
-from utils.log_manager import get_logger
-from models.player import Player
-from storage import map_queue, db
+from cs2_analytics.utils.log_manager import get_logger
+from cs2_analytics.models.player import Player
+from cs2_analytics.queues import map_queue
+from cs2_analytics.storage.db_instance import db
 
 logger = get_logger(__name__)
 

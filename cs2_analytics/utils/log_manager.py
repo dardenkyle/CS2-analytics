@@ -2,7 +2,7 @@
 
 import logging
 import os
-from config.config import LOG_LEVEL
+from cs2_analytics.config.config import LOG_LEVEL
 
 # Ensure the "logs" directory exists
 LOG_DIR = "./logs"

@@ -2,8 +2,9 @@
 
 import psycopg2
 import psycopg2.pool
-from config.config import DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT
-from utils.log_manager import get_logger
+from contextlib import contextmanager
+from cs2_analytics.config.config import DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT
+from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
@@ -56,6 +57,22 @@ class Database:
             DB_POOL.closeall()
             logger.info("❌ Database connection pool closed.")
 
+    @contextmanager
+    def get_cursor(self):
+        """Yields a DB cursor and handles commit/rollback and connection release."""
+        conn = self.get_connection()
+        try:
+            cur = conn.cursor()
+            yield cur
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.error("❌ Error during DB operation: %s", e)
+            raise
+        finally:
+            self.release_connection(conn)
+
+
     def store_matches(self, match_data):
         """Stores match data with upsert logic."""
         conn = self.get_connection()
@@ -65,8 +82,8 @@ class Database:
         try:
             cur = conn.cursor()
             query = """
-                INSERT INTO matches (match_id, match_url, map_links, demo_links, team1, team2, score1, score2, winner, event, match_type, forfeit, date, inserted_at, last_scraped, last_updated, data_complete)
-                VALUES (%(match_id)s, %(match_url)s, %(map_links)s, %(demo_links)s, %(team1)s, %(team2)s, %(score1)s, %(score2)s, %(winner)s, %(event)s, %(match_type)s, %(forfeit)s, %(date)s, %(inserted_at)s, %(last_scraped)s, %(last_updated)s, %(data_complete)s)
+                INSERT INTO matches (match_id, match_url, map_links, demo_links, team1, team2, score1, score2, winner, event, match_type, forfeit, date, last_inserted_at, last_scraped_at, last_updated_at, data_complete)
+                VALUES (%(match_id)s, %(match_url)s, %(map_links)s, %(demo_links)s, %(team1)s, %(team2)s, %(score1)s, %(score2)s, %(winner)s, %(event)s, %(match_type)s, %(forfeit)s, %(date)s, %(last_inserted_at)s, %(last_scraped_at)s, %(last_updated_at)s, %(data_complete)s)
                 ON CONFLICT (match_id) DO UPDATE 
                 SET 
                     score1 = EXCLUDED.score1,

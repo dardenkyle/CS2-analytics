@@ -1,12 +1,17 @@
-"""
-Scrapes match pages from queued URLs and returns raw soup data.
+"""Fetches and returns raw match HTML for queued match URLs.
+
+Args:
+    limit (int): Number of matches to fetch.
+
+Returns:
+    List of (soup, match_id, match_url) for downstream parsing.
 """
 
 import time
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
-from storage import match_queue
-from utils.log_manager import get_logger
+from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
+from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 

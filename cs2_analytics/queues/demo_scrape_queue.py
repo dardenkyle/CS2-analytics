@@ -1,6 +1,6 @@
 """Manages queue operations for demo file scraping and processing."""
 
-from storage.base_scrape_queue import BaseScrapeQueue
+from cs2_analytics.queues.base_scrape_queue import BaseScrapeQueue
 
 
 class DemoScrapeQueue(BaseScrapeQueue):
@@ -11,4 +11,4 @@ class DemoScrapeQueue(BaseScrapeQueue):
     """
 
     def __init__(self) -> None:
-        super().__init__(table_name="demo_scrape_queue", id_field="demo_id")
+        super().__init__(table_name="demo_scrape_queue", id_field="demo_id", url_field="demo_url")

@@ -2,8 +2,8 @@
 
 import os
 import psycopg2
-from config.config import DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT
-from utils.log_manager import get_logger
+from cs2_analytics.config.config import DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT
+from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 

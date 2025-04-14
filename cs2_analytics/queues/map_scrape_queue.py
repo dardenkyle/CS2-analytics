@@ -1,6 +1,6 @@
 """Manages queue operations for map-level data scraping."""
 
-from storage.base_scrape_queue import BaseScrapeQueue
+from cs2_analytics.queues.base_scrape_queue import BaseScrapeQueue
 
 
 class MapScrapeQueue(BaseScrapeQueue):
@@ -11,4 +11,4 @@ class MapScrapeQueue(BaseScrapeQueue):
     """
 
     def __init__(self) -> None:
-        super().__init__(table_name="map_scrape_queue", id_field="map_id")
+        super().__init__(table_name="map_scrape_queue", id_field="map_id", url_field="map_url")

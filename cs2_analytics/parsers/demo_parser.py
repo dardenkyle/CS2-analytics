@@ -1,6 +1,6 @@
 import os
 import json
-from utils.log_manager import get_logger
+from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 

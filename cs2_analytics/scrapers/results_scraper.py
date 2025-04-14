@@ -7,10 +7,10 @@ import re
 from typing import List, Tuple
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
-from config.config import HLTV_URL, START_DATE, END_DATE, MAX_MATCHES
-from utils.log_manager import get_logger
-from utils.queue_helpers import chunk_and_queue
-from storage import match_queue
+from cs2_analytics.config.config import HLTV_URL, START_DATE, END_DATE, MAX_MATCHES
+from cs2_analytics.utils.log_manager import get_logger
+from cs2_analytics.utils.queue_helpers import chunk_and_queue
+from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,7 @@ class ResultsScraper:
         """Initializes the scraper with a SeleniumBase driver and config params."""
         self.driver = Driver(uc=True, headless=True)
         self.base_url = HLTV_URL
-        self.queue = match_queue
+        self.queue = MatchScrapeQueue()
         self.source: str = "results_scraper"
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()

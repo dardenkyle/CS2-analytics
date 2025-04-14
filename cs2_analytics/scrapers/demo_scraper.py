@@ -12,8 +12,8 @@ import zipfile
 import rarfile
 from seleniumbase import Driver
 from selenium.webdriver.chrome.options import Options
-from utils.log_manager import get_logger
-from parsers.demo_parser import DemoParser
+from cs2_analytics.utils.log_manager import get_logger
+
 
 logger = get_logger(__name__)
 
@@ -47,7 +47,7 @@ class DemoScraper:
 
         # ✅ Use `Driver()` correctly (DO NOT use `options=chrome_options`)
         self.driver = Driver(uc=True, headless=True)  # ✅ No options argument
-        self.demo_parser = DemoParser()
+
 
     def download_demo_in_memory(self, demo_url):
         """
