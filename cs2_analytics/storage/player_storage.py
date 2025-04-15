@@ -11,13 +11,13 @@ def store_players(players: list[Player]) -> None:
 
     insert_query = """
     INSERT INTO players (
-        player_id, player_name, match_id, map_id,
+        map_id, player_id, player_name, player_url, map_name,
         team_name, kills, headshots, assists, flash_assists, deaths,
         kast, kd_diff, adr, fk_diff, rating,
         last_inserted_at, last_scraped_at, last_updated_at, data_complete
     )
     VALUES (
-        %(player_id)s, %(player_name)s, %(match_id)s, %(map_id)s,
+        %(map_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s,
         %(team_name)s, %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s,
         %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(rating)s,
         %(last_inserted_at)s, %(last_scraped_at)s, %(last_updated_at)s, %(data_complete)s
@@ -29,10 +29,11 @@ def store_players(players: list[Player]) -> None:
     with db.get_cursor() as cur:
         for p in players:
             cur.execute(insert_query, {
+                "map_id": p.map_id,
                 "player_id": p.player_id,
                 "player_name": p.player_name,
-                "match_id": p.match_id,
-                "map_id": p.map_id,
+                "player_url": p.player_url,
+                "map_name": p.map_name,
                 "team_name": p.team_name,
                 "kills": p.kills,
                 "headshots": p.headshots,
@@ -49,5 +50,4 @@ def store_players(players: list[Player]) -> None:
                 "last_updated_at": p.last_updated_at,
                 "data_complete": p.data_complete,
             })
-        db.commit()
         logger.info("📥 Stored %d player stat records.", len(players))

@@ -2,12 +2,9 @@
 
 import re
 import datetime as dt
-from cs2_analytics.utils.queue_helpers import chunk_and_queue
 from cs2_analytics.utils.log_manager import get_logger
 from cs2_analytics.models.match import Match
 from cs2_analytics.queues import map_queue, demo_queue, match_queue
-from cs2_analytics.storage.db_instance import db
-from cs2_analytics.scrapers.match_scraper import MatchScraper
 
 
 logger = get_logger(__name__)
@@ -16,7 +13,7 @@ logger = get_logger(__name__)
 class MatchParser:
     """Parses match metadata from HLTV match pages."""
 
-    def parse_match(self, soup, match_url: str) -> Match:
+    def parse_match(self, soup, match_url: str) -> tuple[Match, list[tuple[str, str]], list[tuple[str, str]]]:
         """Parses match metadata and returns a Match object. Queues map and demo links."""
         try:
             match_id = match_url.split("/")[-2]
@@ -103,7 +100,7 @@ class MatchParser:
 
         except (AttributeError, ValueError, TypeError, KeyError) as e:
             logger.error("Error extracting match info: %s", e)
-            return None
+            return None, [], []
 
     def _extract_teams(self, soup) -> tuple[str, str]:
         """Extracts team names from the match page."""

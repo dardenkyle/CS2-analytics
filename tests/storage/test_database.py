@@ -70,7 +70,7 @@ class TestDatabase(unittest.TestCase):
         sys.stdout.flush()
 
         test_player = Player(
-            game_id=999999,
+            map_id=999999,
             player_id=888888,
             player_name="Test Player",
             player_url="https://www.hltv.org/player/888888/test-player",

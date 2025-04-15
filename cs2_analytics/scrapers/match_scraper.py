@@ -14,7 +14,7 @@ from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
-
+match_queue = MatchScrapeQueue()
 
 class MatchScraper:
     """

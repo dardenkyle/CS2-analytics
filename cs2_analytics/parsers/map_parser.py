@@ -1,6 +1,7 @@
 """Extracts player stats from a map stats page."""
 
 import re
+import datetime as dt
 from cs2_analytics.utils.log_manager import get_logger
 from cs2_analytics.models.player import Player
 from cs2_analytics.queues import map_queue
@@ -26,7 +27,7 @@ class MapParser:
 
         for soup, map_id, map_url in map_soups:
             try:
-                players = self.parse_map(soup, map_url, match_id=None)
+                players = self.parse_map(soup, map_url)
                 db.store_players(players)
                 map_queue.mark_parsed(map_id)
                 logger.info("✅ Stored %s players for map %s", len(players), map_id)
@@ -40,7 +41,7 @@ class MapParser:
     def __init__(self):
         """Initializes the parser."""
 
-    def parse_map(self, soup, map_url: str, match_id: int) -> list[Player]:
+    def parse_map(self, soup, map_url: str, map_id: int) -> list[Player]:
         """Extracts player object from a map stats page."""
         logger.info("Parsing %s for player stats", map_url)
         players = []
@@ -102,7 +103,6 @@ class MapParser:
                         flash_assists = "Error"
 
                     player = Player(
-                        match_id=match_id,
                         map_id=map_id,
                         player_id=player_id,
                         player_name=player_name,
@@ -123,6 +123,9 @@ class MapParser:
                         adr=float(cols[6].text.strip()),
                         fk_diff=int(cols[7].text.strip()),
                         rating=float(cols[8].text.strip()),
+                        last_inserted_at=dt.datetime.now(),
+                        last_scraped_at=dt.datetime.now(),
+                        last_updated_at=dt.datetime.now(),
                         data_complete=True,
                     )
                     logger.debug("Extracted stats for player: %s", player.player_name)

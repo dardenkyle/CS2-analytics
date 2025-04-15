@@ -43,12 +43,12 @@ class MatchController:
                     logger.exception("❌ Error processing match %s: %s", match_id, e)
 
         logger.info("🏁 MatchController complete.")
-    
+
     def _queue_followups(
         self,
         map_links: list[tuple[str, str]],
         demo_links: list[tuple[str, str]],
-        ) -> None:
+    ) -> None:
         """Queues map and demo links returned by the parser."""
         for map_id, map_url in map_links:
             self.map_queue.queue(map_id, map_url, source="match_parser")

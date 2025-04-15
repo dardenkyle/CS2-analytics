@@ -1,13 +1,13 @@
 """ "Module to represent a player in a match."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass
 class Player:
     """ "Class to represent a player in a match."""
 
-    match_id: int
     map_id: int
     player_id: int
     player_name: str
@@ -24,12 +24,14 @@ class Player:
     adr: float
     fk_diff: int
     rating: float
+    last_inserted_at: datetime
+    last_scraped_at: datetime
+    last_updated_at: datetime
     data_complete: bool
 
     def to_dict(self):
         """Converts the Player object to a dictionary."""
         return {
-            "match_id": self.match_id,
             "map_id": self.map_id,
             "player_id": self.player_id,
             "player_name": self.player_name,
@@ -46,5 +48,8 @@ class Player:
             "adr": self.adr,
             "fk_diff": self.fk_diff,
             "rating": self.rating,
+            "last_inserted_at": self.last_inserted_at,
+            "last_scraped_at": self.last_scraped_at,
+            "last_updated_at": self.last_updated_at,
             "data_complete": self.data_complete,
         }

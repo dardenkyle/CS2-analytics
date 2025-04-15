@@ -115,8 +115,8 @@ class Database:
 
             cur = conn.cursor()
             query = """
-                INSERT INTO players (match_id, map_id, player_id, player_name, player_url, map_name, team_name, kills, headshots, assists, flash_assists, deaths, kast, kd_diff, adr, fk_diff, rating, data_complete)
-                VALUES (%(match_id)s, %(map_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s, %(team_name)s, %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s, %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(rating)s, %(data_complete)s)
+                INSERT INTO players (map_id, player_id, player_name, player_url, map_name, team_name, kills, headshots, assists, flash_assists, deaths, kast, kd_diff, adr, fk_diff, rating, data_complete)
+                VALUES (%(map_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s, %(team_name)s, %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s, %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(rating)s, %(data_complete)s)
                 ON CONFLICT (map_id, player_id) DO UPDATE 
                 SET 
                     kills = EXCLUDED.kills,

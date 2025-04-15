@@ -1,7 +1,7 @@
 from cs2_analytics.scrapers.map_scraper import MapScraper
 from cs2_analytics.parsers.map_parser import MapParser
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
-from cs2_analytics.storage.map_storage import store_maps
+from cs2_analytics.storage.player_storage import store_players
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger("map_controller")
@@ -23,10 +23,10 @@ class MapController:
             for map_id, map_url in queued:
                 try:
                     soup = scraper._fetch_soup(map_url)
-                    map_obj = self.parser.parse_map(soup, map_url)
+                    player_obj = self.parser.parse_map(soup, map_url, map_id)
 
-                    if map_obj:
-                        store_maps([map_obj])
+                    if player_obj:
+                        store_players(player_obj)
                         self.queue.mark_as_parsed(map_id)
                         logger.info("✅ Stored map: %s", map_id)
                     else:

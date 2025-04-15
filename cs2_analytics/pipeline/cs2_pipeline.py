@@ -25,11 +25,11 @@ class CS2AnalyticsPipeline:
 
         # Step 2: Process matches from match_scrape_queue
         self.logger.info("🎯 Processing matches...")
-        self.match_controller.run(batch_size=10)
+        self.match_controller.run(batch_size=1)
 
         # Step 3: Process maps from map_scrape_queue
         self.logger.info("🗺️ Processing maps...")
-        self.map_controller.run(batch_size=10)
+        self.map_controller.run(batch_size=1)
 
         # # Step 4: Process demos from demo_scrape_queue
         # self.logger.info("📦 Processing demos...")

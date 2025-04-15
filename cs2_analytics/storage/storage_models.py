@@ -36,8 +36,8 @@ class Match:
 class Player:
     """Represents an individual player's statistics."""
     
-    def __init__(self, game_id, player_id, player_name, player_url, map_name, team_name, kills, headshots, assists, flash_assists, deaths, kast, kd_diff, adr, fk_diff, rating, data_complete):
-        self.game_id = game_id
+    def __init__(self, map_id, player_id, player_name, player_url, map_name, team_name, kills, headshots, assists, flash_assists, deaths, kast, kd_diff, adr, fk_diff, rating, data_complete):
+        self.map_id = map_id
         self.player_id = player_id
         self.player_name = player_name
         self.player_url = player_url
@@ -58,7 +58,7 @@ class Player:
     def to_dict(self):
         """Converts the object to a dictionary for database insertion."""
         return {
-            "game_id": self.game_id,
+            "map_id": self.map_id,
             "player_id": self.player_id,
             "player_name": self.player_name,
             "player_url": self.player_url,

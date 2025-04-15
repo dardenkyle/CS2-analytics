@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class Map:
     """A class used to represent a single map in a match."""
 
-    game_id: int
+    map_id: int
     match_id: int
     map_name: str
     map_order: int
@@ -20,7 +20,7 @@ class Map:
     def to_dict(self):
         """ "Converts the object to a dictionary for database insertion."""
         return {
-            "game_id": self.game_id,
+            "map_id": self.map_id,
             "match_id": self.match_id,
             "map_name": self.map_name,
             "map_order": self.map_order,

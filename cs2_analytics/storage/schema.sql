@@ -94,9 +94,8 @@ CREATE TABLE maps (
     data_complete BOOLEAN DEFAULT TRUE
 );
 
--- ✅ Players Table (Previously `players_stats`)  #################### Update this
+-- ✅ Players Table (Previously `players_stats`)
 CREATE TABLE players (
-    match_id INT,
     map_id INT,
     player_id INT,
     player_name TEXT NOT NULL,
@@ -113,6 +112,9 @@ CREATE TABLE players (
     adr FLOAT,
     fk_diff INT,
     rating FLOAT,
+    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_scraped_at TIMESTAMP,
+    last_updated_at TIMESTAMP,
     data_complete BOOLEAN DEFAULT TRUE,
     PRIMARY KEY (map_id, player_id)
 );
