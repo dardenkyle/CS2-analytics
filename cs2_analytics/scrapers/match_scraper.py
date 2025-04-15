@@ -16,6 +16,7 @@ from cs2_analytics.utils.log_manager import get_logger
 logger = get_logger(__name__)
 match_queue = MatchScrapeQueue()
 
+
 class MatchScraper:
     """
     Scrapes match pages from match_scrape_queue and returns raw soup for later parsing.
@@ -60,5 +61,6 @@ class MatchScraper:
         return BeautifulSoup(self.driver.page_source, "html.parser")
 
     def close(self) -> None:
+        """Closes the Selenium driver."""
         self.driver.quit()
         logger.info("🚪 Selenium driver closed.")
