@@ -7,7 +7,6 @@ interactions including:
 - Data models representing persistent entities
 """
 
-from .storage_models import Match, Player
 from .db_instance import db
 
 __all__ = [
