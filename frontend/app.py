@@ -1,49 +1,42 @@
+"""
+Streamlit debug app to visually verify top players from CS2 Analytics API.
+"""
+
 import streamlit as st
-import pandas as pd
 import requests
 
-# Config
-API_URL = "http://localhost:8000/api/top_players"
 
-# Page setup
-st.set_page_config(page_title="Top CS2 Players", layout="centered")
-st.title("🔝 Top CS2 Players by Average Rating")
-
-# User filter
-min_maps = st.slider("Minimum Maps Played", min_value=1, max_value=20, value=5)
-
-
-@st.cache_data
-def get_top_players(min_maps: int) -> pd.DataFrame:
+def fetch_top_players(min_maps: int = 5, limit: int = 10) -> list[dict]:
     """
-    Fetch top players by average rating from FastAPI backend.
+    Fetches top players from the FastAPI backend.
+
+    Args:
+        min_maps (int): Minimum number of maps played.
+        limit (int): Number of top players to retrieve.
+
+    Returns:
+        list[dict]: List of player stats.
     """
+    url = "http://localhost:8000/api/top_players"
+    params = {"min_maps": min_maps, "limit": limit}
     try:
-        response = requests.get(f"{API_URL}?min_maps={min_maps}")
+        response = requests.get(url, params=params)
         response.raise_for_status()
-        data = response.json()
-
-        # Handle backend errors
-        if isinstance(data, dict) and "error" in data:
-            st.error(f"❌ Backend error: {data['error']}")
-            return pd.DataFrame()
-
-        if not isinstance(data, list):
-            st.error("❌ Unexpected response format from backend.")
-            return pd.DataFrame()
-
-        return pd.DataFrame(data)
-
+        return response.json()
     except requests.RequestException as e:
-        st.error(f"❌ Failed to connect to backend: {e}")
-        return pd.DataFrame()
+        st.error(f"Error fetching data: {e}")
+        return []
 
 
-# Fetch and display
-df = get_top_players(min_maps)
+st.title("🔍 CS2 Top Player Debug View")
 
-if not df.empty:
-    st.dataframe(df, use_container_width=True)
-    st.bar_chart(df.set_index("player_name")["avg_rating"])
-else:
-    st.info("No data available for the selected filter.")
+min_maps = st.slider("Minimum Maps", 1, 50, 5)
+limit = st.slider("Number of Players", 1, 50, 10)
+
+if st.button("Fetch Top Players"):
+    players = fetch_top_players(min_maps, limit)
+    if players:
+        st.success("✅ Data retrieved successfully.")
+        st.dataframe(players)
+    else:
+        st.warning("No data returned.")
