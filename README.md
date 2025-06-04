@@ -1,171 +1,152 @@
-# **Counter-Strike 2 Pro Match Analytics Tool**
+# 🎯 CS2 Analytics – Pro Match Data Pipeline
 
-## **📌 Project Overview**
-
-This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape **match, game, and player data** from HLTV and other sources, download demos, parse demo files, and analyze player performance. The goal is to help players **gain insights into maps, matchups, and player statistics** using real professional match data.
+**CS2 Analytics** is a modular backend pipeline that scrapes and analyzes **Counter-Strike 2 professional match data** from HLTV, downloads and parses demo files, and provides structured insights into players, teams, and map performance. Designed for esports analysts, bettors, and curious fans, the system emphasizes **auditability**, **modularity**, and **future API readiness**.
 
 ---
 
-## **🚀 Features**
+## 🚀 Features
 
-### **1️⃣ Data Scraping**
+### 🔹 Match Scraping
 
-- **Match Data:** Scrapes CS2 professional match results (teams, scores, events, etc.).
-- **Game Data:** Extracts detailed round-by-round statistics.
-- **Player Stats:** Collects individual player performance metrics (kills, deaths, assists, ADR, etc.).
+- Collects structured match data (teams, scores, events, map links) using **SeleniumBase** and **BeautifulSoup**
+- Queues map URLs for asynchronous parsing
+- Tracks scraping status and completeness via metadata fields and timestamps
 
-### **2️⃣ Demo File Download & Parsing**
+### 🔹 Demo File Handling (Planned)
 
-- Automatically **downloads demos** of matches for deeper analysis.
-- Parses **demo files** to extract movement, grenade usage, and combat engagements.
+- Auto-downloads `.dem` files from HLTV
+- Parses player POVs for movement, grenades, and engagements (under development)
 
-### **3️⃣ Player Analytics & Insights**
+### 🔹 Structured Analytics
 
-- **Combines scraped match/player stats with parsed demo data** for in-depth analysis.
-- Helps players understand **map control, team strategies, and player efficiency.**
-- Generates **matchup insights** to improve player knowledge of specific pro team playstyles.
-
----
-
-## **🛠️ Tech Stack**
-
-- **Python 3.13.1**
-- **Selenium & BeautifulSoup** (for web scraping)
-- **PostgreSQL** (for structured data storage)
-- **Pandas & NumPy** (for analytics and data processing)
-- **SeleniumBase** (for automated demo downloads)
-- **HLTV API & Demo Parsing Tools**
+- Normalized **PostgreSQL schema** with foreign keys and audit timestamps
+- Per-map **player statistics**, team tracking, aliases, and transfers
+- Designed for **reprocessing and historical accuracy**
 
 ---
 
-## **📂 Project Structure**
+## 🧱 Tech Stack
+
+| Category           | Tools Used                                                                 |
+|--------------------|----------------------------------------------------------------------------|
+| **Language**       | Python 3.13+                                                               |
+| **Scraping**       | SeleniumBase, BeautifulSoup                                                |
+| **Database**       | PostgreSQL, SQLAlchemy, Alembic                                            |
+| **Architecture**   | Queue-based scraping, modular services, OOP, structured logging            |
+| **Testing**        | Pytest, CLI tools                                                          |
+| **Deployment Ready** | `.env` configs, Docker-friendly structure, CI/CD ready                    |
+
+---
+
+## 📂 Project Structure
 
 ```
-CS2-Analytics/
-│── config.py              # Configuration settings (URLs, DB credentials, etc.)
-│── main_scraper.py        # Main entry point for scraping match, game, and player data
-│── demo_scraper.py        # Downloads and manages demo files
-│── demo_parser.py         # Parses demo files for gameplay analytics
-│── player_analytics.py    # Processes parsed data for advanced insights
-│── db_connection.py       # Handles PostgreSQL database operations
-│── data_storage.py        # Inserts and retrieves data efficiently
-│── logger_config.py       # Configures logging for debugging & monitoring
-│── requirements.txt       # Required dependencies for the project
-│── README.md              # Project documentation (this file)
-│── __pycache__/           # Auto-generated Python cache (ignored in Git)
-│── logs/                  # Log files for debugging (ignored in Git)
-└── __pycache__/           # Python bytecode cache
+cs2_analytics/
+├── match_scraper/         # Collects match pages and metadata
+├── match_parser/          # Extracts structured data from soup
+├── map_scrape_queue/      # Queues maps for scraping and demo download
+├── player_stats/          # Handles player extraction and stat storage
+├── database/              # DB session management and schema definitions
+├── utils/                 # Shared utilities and logger setup
+├── main.py                # Batch controller for match scraping
+├── README.md
+└── ...
 ```
 
 ---
 
-## **⚙️ Installation & Setup**
+## ⚙️ Installation & Setup
 
-### **🔹 1. Clone the Repository**
+### 1️⃣ Clone the Repository
 
-```sh
-git clone https://github.com/yourusername/CS2-Analytics.git
-cd CS2-Analytics
+```bash
+git clone https://github.com/yourusername/cs2-analytics.git
+cd cs2-analytics
 ```
 
-### **🔹 2. Create a Virtual Environment**
+### 2️⃣ Create Virtual Environment
 
-```sh
+```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate      # Windows: venv\Scripts\activate
 ```
 
-### **🔹 3. Install Dependencies**
+### 3️⃣ Install Dependencies
 
-```sh
+```bash
 pip install -r requirements.txt
 ```
 
-### **🔹 4. Set Up Database**
+### 4️⃣ Configure Environment
 
-Ensure you have **PostgreSQL installed** and update `config.py` with your database credentials.
+Create a `.env` file with your PostgreSQL credentials:
 
-```python
-DB_NAME = "cs2_db"
-DB_USER = "your_user"
-DB_PASS = "your_password"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-```
-
-Run:
-
-```sh
-python db_connection.py  # Ensures tables are created
-```
-
-### **🔹 5. Run the Scraper**
-
-```sh
-python main_scraper.py
-```
-
-### **🔹 6. Run Demo Download & Parsing**
-
-```sh
-python demo_scraper.py
-python demo_parser.py
-```
-
-### **🔹 7. Generate Player Analytics**
-
-```sh
-python player_analytics.py
+```env
+SQLALCHEMY_DATABASE_URL=postgresql://user:pass@localhost:5432/cs2_analytics_db
 ```
 
 ---
 
-## **📊 Data Insights & Usage**
+## 🔁 Usage
 
-### **🔍 Match & Player Stats**
+### Run Match Scraper
 
-- View **per-match player performance**.
-- Compare **teams' win rates on specific maps**.
-- Identify **key players in matchups**.
+```bash
+python cs2_analytics/main.py
+```
 
-### **📈 Demo Analysis**
+### Run Map Parser (Queued)
 
-- **Heatmaps** of player movements.
-- **Grenade usage patterns** and efficiency.
-- **Kill zone maps** showing key engagements.
+```bash
+python cs2_analytics/map_scraper/main.py
+```
 
-### **🤖 Future Improvements**
-
-- AI-based **predictive modeling** for player performance.
-- **Automated video highlight generation** from demos.
-- **Cloud database integration** for long-term data storage.
+*(Demo file parsing module is in development)*
 
 ---
 
-## **📝 License**
+## 📈 Planned Features
 
-This project is licensed under the **MIT License** – feel free to contribute and modify!
-
----
-
-## **🙌 Contributing**
-
-### **Want to help improve this project?**
-
-1. **Fork the repository** on GitHub.
-2. **Create a feature branch** (`git checkout -b new-feature`).
-3. **Commit changes** (`git commit -m "Added new feature"`).
-4. **Push to GitHub** (`git push origin new-feature`).
-5. **Submit a Pull Request** – we review & merge!
+- [ ] Demo file ingestion and parsed POV analytics
+- [ ] REST API to expose insights
+- [ ] Player performance dashboards
+- [ ] Cloud deployment and long-term storage
 
 ---
 
-## **📬 Contact & Support**
+## 🧠 Insights & Applications
 
-Have questions or want to contribute? Reach out!
+- Compare **player stats per map**
+- Track **team roster changes and aliases**
+- Build custom **esports betting models**
+- Analyze **demo data** for advanced positional analysis *(coming soon)*
 
-- GitHub Issues: [Your Repository Issues Page](https://github.com/yourusername/CS2-Analytics/issues)
-- Email: [your.email@example.com](mailto\:your.email@example.com)
+---
 
-🚀 **Happy Analyzing!** 🎯
+## 🤝 Contributing
 
+Pull requests are welcome! To contribute:
+
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature-xyz`)
+3. Commit your changes
+4. Open a PR with a clear description
+
+---
+
+## 📜 License
+
+MIT License — use, fork, improve, and build on it.
+
+---
+
+## 📬 Contact
+
+For questions, feedback, or collaboration:
+
+- GitHub Issues: [Submit a Bug or Feature](https://github.com/yourusername/cs2-analytics/issues)
+- Email: your.email@example.com
+
+---
+
+🧪 **Built with care, sweat, and lots of grenades.**
