@@ -1,5 +1,7 @@
 # 🎯 CS2 Analytics – Pro Match Data Pipeline
 
+**(Data sourced for educational use; project is not used commercially and follows scraping ethics)**
+
 **CS2 Analytics** is a modular backend pipeline that scrapes and analyzes **Counter-Strike 2 professional match data** from HLTV, downloads and parses demo files, and provides structured insights into players, teams, and map performance. Designed for esports analysts, bettors, and curious fans, the system emphasizes **auditability**, **modularity**, and **future API readiness**.
 
 ---
