@@ -86,21 +86,58 @@ class MapParser:
 
                     map_id = int(map_url.split("/")[6])
 
-                    match = re.match(r"(\d+)\s+\((\d+)\)", cols[1].text.strip())
-                    if match:
-                        kills = int(match.group(1))
-                        headshots = int(match.group(2))
+                    # Parse K(hs) format from column 5: "19(10)" -> kills=19, headshots=10
+                    k_hs_match = re.match(r"(\d+)\s*\((\d+)\)", cols[5].text.strip())
+                    if k_hs_match:
+                        kills = int(k_hs_match.group(1))
+                        headshots = int(k_hs_match.group(2))
                     else:
-                        kills = "Error"
-                        headshots = "Error"
+                        kills = 0
+                        headshots = 0
+                        logger.warning("Could not parse K(hs) from: %s", cols[5].text.strip())
 
-                    match = re.match(r"(\d+)\s+\((\d+)\)", cols[2].text.strip())
-                    if match:
-                        assists = int(match.group(1))  # 26
-                        flash_assists = int(match.group(2))  # 14
+                    # Parse A(f) format from column 6: "3(0)" -> assists=3, flash_assists=0
+                    a_f_match = re.match(r"(\d+)\s*\((\d+)\)", cols[6].text.strip())
+                    if a_f_match:
+                        assists = int(a_f_match.group(1))
+                        flash_assists = int(a_f_match.group(2))
                     else:
-                        assists = "Error"
-                        flash_assists = "Error"
+                        assists = 0
+                        flash_assists = 0
+                        logger.warning("Could not parse A(f) from: %s", cols[6].text.strip())
+
+                    # Parse D(q) format from column 7: "16(5)" -> deaths=16
+                    d_q_match = re.match(r"(\d+)\s*\((\d+)\)", cols[7].text.strip())
+                    if d_q_match:
+                        deaths = int(d_q_match.group(1))
+                    else:
+                        deaths = 0
+                        logger.warning("Could not parse D(q) from: %s", cols[7].text.strip())
+
+                    # Parse KAST percentage from column 3: "72.7%" -> 0.727
+                    try:
+                        kast_text = cols[3].text.strip().replace("%", "")
+                        kast = round(float(kast_text) / 100, 3)
+                    except ValueError:
+                        kast = 0.0
+                        logger.warning("Could not parse KAST from: %s", cols[3].text.strip())
+
+                    # Parse other numeric fields with error handling
+                    try:
+                        adr = float(cols[8].text.strip())
+                    except ValueError:
+                        adr = 0.0
+                        logger.warning("Could not parse ADR from: %s", cols[8].text.strip())
+
+                    # Parse rating from column 10 (skip the Swing column 9 which has percentages)
+                    try:
+                        rating_text = cols[10].text.strip()
+                        # Remove any color indicators or extra formatting
+                        rating_clean = rating_text.replace("+", "").replace("-", "").replace("%", "")
+                        rating = float(rating_clean)
+                    except (ValueError, IndexError):
+                        rating = 0.0
+                        logger.warning("Could not parse Rating from: %s", cols[10].text.strip() if len(cols) > 10 else "missing column")
 
                     player = Player(
                         map_id=map_id,
@@ -113,16 +150,12 @@ class MapParser:
                         headshots=headshots,
                         assists=assists,
                         flash_assists=flash_assists,
-                        deaths=int(
-                            cols[3].text.strip()
-                        ),  # may want to adjust if deaths are in different col
-                        kast=round(
-                            float(cols[4].text.strip().replace("%", "")) / 100, 3
-                        ),
-                        kd_diff=int(cols[5].text.strip()),
-                        adr=float(cols[6].text.strip()),
-                        fk_diff=int(cols[7].text.strip()),
-                        rating=float(cols[8].text.strip()),
+                        deaths=deaths,
+                        kast=kast,
+                        kd_diff=0,  # OpK-D is ratio format, need different parsing
+                        adr=adr,
+                        fk_diff=0,  # Not visible in current HLTV format
+                        rating=rating,
                         last_inserted_at=dt.datetime.now(),
                         last_scraped_at=dt.datetime.now(),
                         last_updated_at=dt.datetime.now(),

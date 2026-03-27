@@ -34,9 +34,9 @@ ENABLE_ANALYTICS = False
 
 # Scraping Config
 HLTV_URL = "https://www.hltv.org/results"  # HLTV Results URL
-START_DATE = str(dt.datetime.today().date())
+START_DATE = "2025-10-01"  # Extended to get more matches
 END_DATE = str(dt.datetime.today().date())
-MAX_MATCHES = 1
+MAX_MATCHES = 10  # Process more matches for testing
 
 # Debugging Mode
 DEBUG_MODE = True

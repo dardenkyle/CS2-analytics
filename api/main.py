@@ -5,7 +5,7 @@ Includes middleware setup and route registration.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from cs2_analytics.api.routes import players
+from .routes import players
 
 
 def create_app() -> FastAPI:

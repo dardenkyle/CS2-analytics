@@ -4,7 +4,7 @@ Implements business logic separate from route handlers.
 """
 
 from typing import List
-from cs2_analytics.api.schemas.player import PlayerStats
+from ..schemas.player import PlayerStats
 from cs2_analytics.storage.database import Database
 
 
