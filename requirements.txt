@@ -8,7 +8,6 @@ pandas
 seleniumbase
 beautifulsoup4
 requests
-seleniumbase
 
 # Database
 psycopg2-binary  # PostgreSQL driver for Python
@@ -22,7 +21,6 @@ python-dotenv  # Load environment variables from .env file
 
 # Testing
 pytest  # Unit testing framework
-unittest  # Python's built-in testing module (optional)
 
 # Scheduling (if running scraper periodically)
 schedule  # Lightweight job scheduler for Python
@@ -35,5 +33,4 @@ seaborn
 fastapi
 uvicorn
 streamlit
-requests
 
