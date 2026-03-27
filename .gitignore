@@ -12,3 +12,6 @@ downloaded_files\*.rar
 *.pyc
 .pyc
 __pycache__/
+.venv/
+venv/
+env/
