@@ -1,4 +1,3 @@
-/esl-pro-league-season-21-stage-1-flyquest-vs-pain-bo3-1lNOB01Tcpf6F8Jo6rYwI4
 /test_awpy.py
 project.log
 __pycache__/data_storage.cpython-313.pyc
@@ -9,6 +8,7 @@ __pycache__/player_scraper.cpython-313.pyc
 app.log
 *.env
 downloaded_files\*.rar
+downloaded_files/
 *.pyc
 .pyc
 __pycache__/

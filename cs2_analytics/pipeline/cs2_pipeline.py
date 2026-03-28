@@ -31,8 +31,4 @@ class CS2AnalyticsPipeline:
         self.logger.info("🗺️ Processing maps...")
         self.map_controller.run(batch_size=50)
 
-        # # Step 4: Process demos from demo_scrape_queue
-        # self.logger.info("📦 Processing demos...")
-        # self.demo_controller.run(batch_size=10)
-
         self.logger.info("✅ CS2 Analytics Pipeline complete.")
