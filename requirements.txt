@@ -11,7 +11,6 @@ requests
 
 # Database
 psycopg2-binary  # PostgreSQL driver for Python
-sqlalchemy  # ORM (optional, for advanced DB operations)
 
 # Logging & Error Handling
 loguru  # Better logging than built-in logging module
@@ -24,6 +23,7 @@ pytest  # Unit testing framework
 
 # Scheduling (if running scraper periodically)
 schedule  # Lightweight job scheduler for Python
+more-itertools  # Utilities for working with iterables (used in queue_helpers)
 
 # Data Visualization (optional, if analytics will be displayed)
 matplotlib

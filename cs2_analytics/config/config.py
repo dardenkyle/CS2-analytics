@@ -13,8 +13,6 @@ import logging
 import datetime as dt
 from dotenv import load_dotenv
 
-logger = logging.getLogger(__name__)
-
 # ✅ Load environment variables from `.env` file
 load_dotenv()
 
@@ -50,12 +48,6 @@ LOG_FILE = os.path.join(os.getcwd(), "logs", "app.log")
 
 # ✅ Environment Type (dev, staging, production)
 ENVIRONMENT = os.getenv("ENVIRONMENT", default="development").lower()
-print(ENVIRONMENT)
-
-# Log file path
-logging.basicConfig(level=logging.DEBUG)
-print(f"🔍 [DEBUG] LOG_LEVEL from config: {LOG_LEVEL}")
-
 
 # ✅ Print Configuration on Startup (For Debugging)
 logging.debug(

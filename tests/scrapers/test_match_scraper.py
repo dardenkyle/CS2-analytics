@@ -1,4 +1,4 @@
-from scrapers.match_scraper import MatchScraper
+from cs2_analytics.scrapers.match_scraper import MatchScraper
 
 # ✅ Example match URL (replace with real match from HLTV)
 test_match_url = "https://www.hltv.org/matches/2380400/just-swing-vs-gods-reign-esl-challenger-league-season-49-asia-pacific"
