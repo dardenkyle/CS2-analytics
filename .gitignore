@@ -1,17 +1,52 @@
-/esl-pro-league-season-21-stage-1-flyquest-vs-pain-bo3-1lNOB01Tcpf6F8Jo6rYwI4
-/test_awpy.py
-project.log
-__pycache__/data_storage.cpython-313.pyc
-__pycache__/db_connection.cpython-313.pyc
-__pycache__/logger_config.cpython-313.pyc
-__pycache__/match_scraper.cpython-313.pyc
-__pycache__/player_scraper.cpython-313.pyc
-app.log
-*.env
-downloaded_files\*.rar
-*.pyc
-.pyc
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environments
 .venv/
 venv/
 env/
+ENV/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs & Temp Files
+*.log
+project.log
+app.log
+
+# Environment variables
+.env
+.env.local
+
+# Downloaded files & data
+demos/
+downloaded_files/
+parsed_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Type checking
+.mypy_cache/
+
+# Old/test files
+/test_awpy.py
+/esl-pro-league-season-21-stage-1-flyquest-vs-pain-bo3-1lNOB01Tcpf6F8Jo6rYwI4
