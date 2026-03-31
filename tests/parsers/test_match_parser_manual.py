@@ -11,7 +11,7 @@ This test:
 
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
-from parsers.match_parser import MatchParser
+from cs2_analytics.parsers.match_parser import MatchParser
 
 
 def main():

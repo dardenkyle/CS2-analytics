@@ -3,7 +3,7 @@ Manually tests the MapScraper by scraping map pages from the queue
 and printing confirmation of retrieved HTML content.
 """
 
-from scrapers.map_scraper import MapScraper
+from cs2_analytics.scrapers.map_scraper import MapScraper
 
 
 def main():

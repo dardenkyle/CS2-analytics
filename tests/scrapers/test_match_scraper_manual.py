@@ -2,9 +2,10 @@
 Manually tests the refactored MatchScraper by pulling soups from the queue.
 """
 
-from scrapers.match_scraper import MatchScraper
-from parsers.match_parser import MatchParser
-from storage import db, match_queue
+from cs2_analytics.scrapers.match_scraper import MatchScraper
+from cs2_analytics.parsers.match_parser import MatchParser
+from cs2_analytics.storage import db
+from cs2_analytics.queues import match_queue
 
 
 def main():

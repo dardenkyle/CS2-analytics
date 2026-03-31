@@ -1,6 +1,7 @@
-from scrapers.map_scraper import MapScraper
-from parsers.map_parser import MapParser
-from storage import db, map_queue
+from cs2_analytics.scrapers.map_scraper import MapScraper
+from cs2_analytics.parsers.map_parser import MapParser
+from cs2_analytics.storage import db
+from cs2_analytics.queues import map_queue
 
 
 def main():
