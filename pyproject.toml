@@ -30,6 +30,7 @@ classifiers = [
 dependencies = [
     "numpy",
     "pandas",
+    "more-itertools",
     "seleniumbase",
     "beautifulsoup4",
     "requests",
@@ -133,7 +134,6 @@ select = [
 ignore = [
     "E501",   # line too long (handled by formatter)
     "E741",   # ambiguous variable name
-    "W503",   # line break before binary operator
 ]
 
 [tool.ruff.lint.isort]
