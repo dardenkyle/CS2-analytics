@@ -13,10 +13,8 @@ Controllers enable modular batch processing for automation or scheduled runs.
 
 from .match_controller import MatchController
 from .map_controller import MapController
-from .demo_controller import DemoController
 
 __all__ = [
     "MatchController",
     "MapController",
-    "DemoController",
 ]

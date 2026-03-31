@@ -1,6 +1,5 @@
 from cs2_analytics.controllers.match_controller import MatchController
 from cs2_analytics.controllers.map_controller import MapController
-from cs2_analytics.controllers.demo_controller import DemoController
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -13,7 +12,6 @@ class CS2AnalyticsPipeline:
         self.results_scraper = ResultsScraper()
         self.match_controller = MatchController()
         self.map_controller = MapController()
-        self.demo_controller = DemoController()
 
     def run(self) -> None:
         self.logger.info("🚀 CS2 Analytics Pipeline started.")
