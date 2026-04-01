@@ -1,8 +1,10 @@
 """Scrapes HLTV map stats pages from the queue and returns soup for parsing."""
 
 import time
+
 from seleniumbase import Driver
 from bs4 import BeautifulSoup
+
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -19,6 +21,7 @@ class MapScraper:
 
     def __init__(self) -> None:
         self.driver = Driver(uc=True, headless=True)
+        self.map_queue = MapScrapeQueue()
 
     def __enter__(self) -> "MapScraper":
         return self
@@ -36,7 +39,7 @@ class MapScraper:
         Returns:
             List of tuples: (soup, map_id, map_url)
         """
-        queued = map_queue.fetch(limit=limit)
+        queued = self.map_queue.fetch(limit=limit)
         results = []
 
         for map_id, map_url in queued:
@@ -44,11 +47,11 @@ class MapScraper:
                 logger.info("🌍 Fetching map page: %s", map_url)
                 soup = self._fetch_soup(map_url)
                 results.append((soup, map_id, map_url))
-                map_queue.mark_parsed(map_id)
+                self.map_queue.mark_parsed(map_id)
                 time.sleep(1.0)
             except Exception as e:
                 logger.error("❌ Failed to fetch map %s: %s", map_url, e)
-                map_queue.mark_failed(map_id, str(e)[:500])
+                self.map_queue.mark_failed(map_id, str(e)[:500])
 
         return results
 
