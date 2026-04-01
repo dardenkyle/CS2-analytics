@@ -1,6 +1,6 @@
 from cs2_analytics.controllers.map_controller import MapController
 from cs2_analytics.controllers.match_controller import MatchController
-from cs2_analytics.scrapers.results_scraper import ResultsScraper
+from cs2_analytics.controllers.results_controller import ResultsController
 from cs2_analytics.utils.log_manager import get_logger
 
 
@@ -9,7 +9,7 @@ class CS2AnalyticsPipeline:
 
     def __init__(self) -> None:
         self.logger = get_logger(__name__)
-        self.results_scraper = ResultsScraper()
+        self.results_controller = ResultsController()
         self.match_controller = MatchController()
         self.map_controller = MapController()
 
@@ -18,8 +18,7 @@ class CS2AnalyticsPipeline:
 
         # Step 1: Scrape results and queue match links
         self.logger.info("🔍 Scraping match results page...")
-        with self.results_scraper as scraper:
-            scraper.run(max_matches=50)
+        self.results_controller.run(max_matches=50)
 
         # Step 2: Process matches from match_scrape_queue
         self.logger.info("🎯 Processing matches...")
