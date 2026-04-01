@@ -50,8 +50,6 @@ CS2-Analytics/
 |   ├── routes/
 |   ├── schemas/
 |   └── services/
-├── backend/
-|   └── main.py
 ├── cs2_analytics/
 |   ├── config/
 |   ├── controllers/
