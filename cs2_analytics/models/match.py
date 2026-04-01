@@ -1,8 +1,7 @@
 """This module defines the Match class, which represents a match in the system."""
 
-from datetime import datetime
 from dataclasses import dataclass
-from typing import List
+from datetime import datetime
 
 
 @dataclass
@@ -11,8 +10,8 @@ class Match:
 
     match_id: int
     match_url: str
-    map_links: List[str]
-    demo_links: List[str]
+    map_links: list[str]
+    demo_links: list[str]
     team1: str
     team2: str
     score1: int
@@ -27,7 +26,7 @@ class Match:
     last_updated_at: datetime
     data_complete: bool
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, int | str | bool | datetime | list[str]]:
         """Converts match object to a dictionary."""
         return {
             "match_id": self.match_id,

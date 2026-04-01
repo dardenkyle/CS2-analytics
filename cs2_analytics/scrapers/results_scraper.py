@@ -1,16 +1,17 @@
 """Scrapes HLTV results page to extract match links and queues them."""
 
-import time
-import random
 import datetime as dt
+import random
 import re
-from typing import List, Tuple
-from seleniumbase import Driver
+import time
+
 from bs4 import BeautifulSoup
-from cs2_analytics.config.config import HLTV_URL, START_DATE, END_DATE, MAX_MATCHES
+from seleniumbase import Driver
+
+from cs2_analytics.config.config import END_DATE, HLTV_URL, MAX_MATCHES, START_DATE
+from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 from cs2_analytics.utils.log_manager import get_logger
 from cs2_analytics.utils.queue_helpers import chunk_and_queue
-from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 
 logger = get_logger(__name__)
 
@@ -76,7 +77,7 @@ class ResultsScraper:
 
         logger.info("✅ Queued %s matches total.", total_queued)
 
-    def _extract_matches_from_page(self, url: str) -> Tuple[List[str], bool]:
+    def _extract_matches_from_page(self, url: str) -> tuple[list[str], bool]:
         """
         Extracts match links from a results page.
 

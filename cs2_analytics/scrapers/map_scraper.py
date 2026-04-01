@@ -2,8 +2,8 @@
 
 import time
 
-from seleniumbase import Driver
 from bs4 import BeautifulSoup
+from seleniumbase import Driver
 
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 from cs2_analytics.utils.log_manager import get_logger

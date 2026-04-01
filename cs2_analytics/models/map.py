@@ -17,7 +17,7 @@ class Map:
     date: str
     data_complete: bool
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, int | str | bool]:
         """ "Converts the object to a dictionary for database insertion."""
         return {
             "map_id": self.map_id,

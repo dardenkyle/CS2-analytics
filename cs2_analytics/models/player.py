@@ -29,7 +29,7 @@ class Player:
     last_updated_at: datetime
     data_complete: bool
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, int | str | bool | float | datetime]:
         """Converts the Player object to a dictionary."""
         return {
             "map_id": self.map_id,

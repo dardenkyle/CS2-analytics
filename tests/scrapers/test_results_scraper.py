@@ -1,5 +1,5 @@
 import sys
-import os
+
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
 
 # ✅ Absolute path to your project root (edit this if needed)

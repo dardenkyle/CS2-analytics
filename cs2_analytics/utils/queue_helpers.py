@@ -1,11 +1,10 @@
 """Utility for chunking and queuing data into scrape queues."""
 
-from typing import List, Tuple
 from more_itertools import chunked
 
 
 def chunk_and_queue(
-    items: List[Tuple[str, str]],
+    items: list[tuple[str, str]],
     queue_obj,
     chunk_size: int = 1000,
     source: str = "scraper",

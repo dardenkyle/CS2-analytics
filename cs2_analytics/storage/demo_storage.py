@@ -1,6 +1,7 @@
+import datetime as dt
+
 from cs2_analytics.storage.db_instance import db
 from cs2_analytics.utils.log_manager import get_logger
-import datetime as dt
 
 logger = get_logger(__name__)
 

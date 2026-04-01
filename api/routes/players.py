@@ -3,9 +3,9 @@ Route definitions related to player data for the CS2 Analytics API.
 """
 
 from fastapi import APIRouter, Query
+
 from ..schemas.player import PlayerStats
 from ..services.player_service import PlayerService
-
 
 router: APIRouter = APIRouter()
 

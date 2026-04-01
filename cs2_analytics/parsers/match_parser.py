@@ -1,11 +1,11 @@
 """Parses match metadata from HLTV match pages."""
 
-import re
 import datetime as dt
-from cs2_analytics.utils.log_manager import get_logger
-from cs2_analytics.models.match import Match
-from cs2_analytics.queues import map_queue, demo_queue, match_queue
+import re
 
+from cs2_analytics.models.match import Match
+from cs2_analytics.queues import demo_queue, map_queue
+from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
@@ -13,7 +13,9 @@ logger = get_logger(__name__)
 class MatchParser:
     """Parses match metadata from HLTV match pages."""
 
-    def parse_match(self, soup, match_url: str) -> tuple[Match, list[tuple[str, str]], list[tuple[str, str]]]:
+    def parse_match(
+        self, soup, match_url: str
+    ) -> tuple[Match, list[tuple[str, str]], list[tuple[str, str]]]:
         """Parses match metadata and returns a Match object. Queues map and demo links."""
         try:
             match_id = match_url.split("/")[-2]

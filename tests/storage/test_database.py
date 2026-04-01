@@ -1,9 +1,10 @@
-import unittest
 import sys
-from datetime import datetime, timezone
-from cs2_analytics.storage.database import Database
+import unittest
+from datetime import UTC, datetime
+
 from cs2_analytics.models.match import Match
 from cs2_analytics.models.player import Player
+from cs2_analytics.storage.database import Database
 
 
 class TestDatabase(unittest.TestCase):
@@ -30,7 +31,7 @@ class TestDatabase(unittest.TestCase):
         print("\n🟢 Running test_store_match...")
         sys.stdout.flush()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         test_match = Match(
             match_id=999999,
@@ -78,7 +79,7 @@ class TestDatabase(unittest.TestCase):
         print("\n🟢 Running test_store_player...")
         sys.stdout.flush()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         test_player = Player(
             map_id=999999,

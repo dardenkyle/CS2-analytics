@@ -1,10 +1,10 @@
 """This module contains the MatchController class, which orchestrates the scraping and parsing of match data."""
 
-from cs2_analytics.scrapers.match_scraper import MatchScraper
 from cs2_analytics.parsers.match_parser import MatchParser
-from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
-from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 from cs2_analytics.queues.demo_scrape_queue import DemoScrapeQueue
+from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
+from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
+from cs2_analytics.scrapers.match_scraper import MatchScraper
 from cs2_analytics.storage.match_storage import store_matches
 from cs2_analytics.utils.log_manager import get_logger
 

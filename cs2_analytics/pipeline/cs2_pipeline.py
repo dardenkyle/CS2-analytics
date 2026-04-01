@@ -1,5 +1,5 @@
-from cs2_analytics.controllers.match_controller import MatchController
 from cs2_analytics.controllers.map_controller import MapController
+from cs2_analytics.controllers.match_controller import MatchController
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
 from cs2_analytics.utils.log_manager import get_logger
 
