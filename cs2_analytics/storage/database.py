@@ -140,15 +140,35 @@ class Database:
 
             cur = conn.cursor()
             query = """
-                INSERT INTO players (map_id, player_id, player_name, player_url, map_name, team_name, kills, headshots, assists, flash_assists, deaths, kast, kd_diff, adr, fk_diff, rating, data_complete)
-                VALUES (%(map_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s, %(team_name)s, %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s, %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(rating)s, %(data_complete)s)
-                ON CONFLICT (map_id, player_id) DO UPDATE 
-                SET 
+                INSERT INTO players (
+                    map_id, player_id, player_name, player_url, map_name, team_name,
+                    kills, headshots, assists, flash_assists, deaths, traded_deaths,
+                    opening_kills, opening_deaths, multi_kills, clutches_won,
+                    kast, kd_diff, adr, fk_diff, round_swing, rating, data_complete
+                )
+                VALUES (
+                    %(map_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s, %(team_name)s,
+                    %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s, %(traded_deaths)s,
+                    %(opening_kills)s, %(opening_deaths)s, %(multi_kills)s, %(clutches_won)s,
+                    %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(round_swing)s, %(rating)s, %(data_complete)s
+                )
+                ON CONFLICT (map_id, player_id) DO UPDATE
+                SET
                     kills = EXCLUDED.kills,
                     headshots = EXCLUDED.headshots,
                     assists = EXCLUDED.assists,
+                    flash_assists = EXCLUDED.flash_assists,
                     deaths = EXCLUDED.deaths,
+                    traded_deaths = EXCLUDED.traded_deaths,
+                    opening_kills = EXCLUDED.opening_kills,
+                    opening_deaths = EXCLUDED.opening_deaths,
+                    multi_kills = EXCLUDED.multi_kills,
+                    clutches_won = EXCLUDED.clutches_won,
                     kast = EXCLUDED.kast,
+                    kd_diff = EXCLUDED.kd_diff,
+                    adr = EXCLUDED.adr,
+                    fk_diff = EXCLUDED.fk_diff,
+                    round_swing = EXCLUDED.round_swing,
                     rating = EXCLUDED.rating,
                     data_complete = EXCLUDED.data_complete;
             """
@@ -172,6 +192,13 @@ class Database:
             cur = conn.cursor()
             cur.execute(
                 """
+                ALTER TABLE players ADD COLUMN IF NOT EXISTS traded_deaths INT;
+                ALTER TABLE players ADD COLUMN IF NOT EXISTS opening_kills INT;
+                ALTER TABLE players ADD COLUMN IF NOT EXISTS opening_deaths INT;
+                ALTER TABLE players ADD COLUMN IF NOT EXISTS multi_kills INT;
+                ALTER TABLE players ADD COLUMN IF NOT EXISTS clutches_won INT;
+                ALTER TABLE players ADD COLUMN IF NOT EXISTS round_swing FLOAT;
+
                 CREATE INDEX IF NOT EXISTS idx_matches_date ON matches (date);
                 CREATE INDEX IF NOT EXISTS idx_players_map_id ON players (map_id);
                 CREATE INDEX IF NOT EXISTS idx_players_team_name ON players (team_name);
