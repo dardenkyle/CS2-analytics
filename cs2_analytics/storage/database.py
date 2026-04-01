@@ -10,59 +10,83 @@ from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
-# ✅ Initialize connection pool
-try:
-    DB_POOL = psycopg2.pool.SimpleConnectionPool(
-        minconn=1,
-        maxconn=10,  # ✅ Adjust based on expected load
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS,
-        host=DB_HOST,
-        port=DB_PORT,
-    )
-    logger.info("✅ PostgreSQL connection pool initialized successfully.")
-except ConnectionError as e:
-    logger.error("❌ Failed to initialize database connection pool: %s", e)
-    DB_POOL = None
+DB_POOL: psycopg2.pool.SimpleConnectionPool | None = None
+
+
+def _initialize_db_pool() -> psycopg2.pool.SimpleConnectionPool | None:
+    """Lazily initializes and returns the shared DB connection pool."""
+    global DB_POOL
+
+    if DB_POOL is not None:
+        return DB_POOL
+
+    try:
+        DB_POOL = psycopg2.pool.SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS,
+            host=DB_HOST,
+            port=DB_PORT,
+        )
+        logger.info("✅ PostgreSQL connection pool initialized successfully.")
+    except (psycopg2.pool.PoolError, psycopg2.Error) as e:
+        logger.error("❌ Failed to initialize database connection pool: %s", e)
+        DB_POOL = None
+
+    return DB_POOL
 
 
 class Database:
     """Handles all database interactions, including connection management and data storage."""
 
+    _indexes_ensured = False
+
     def __init__(self):
         """Initialize database connection."""
-        if DB_POOL is None:
+        self.pool = _initialize_db_pool()
+        if self.pool is None:
             raise ConnectionError("Database connection pool is not available.")
 
-        self.create_indexes()  # Automatically ensure indexes exist
+        if not Database._indexes_ensured:
+            self.create_indexes()
+            Database._indexes_ensured = True
 
     def get_connection(self):
         """Retrieves a database connection from the pool."""
         try:
-            conn = DB_POOL.getconn()
+            conn = self.pool.getconn()
             logger.debug("✅ Retrieved database connection from pool.")
             return conn
-        except ConnectionError as e:
+        except (psycopg2.pool.PoolError, psycopg2.Error) as e:
             logger.error("Database connection error: %s", e)
             return None
 
     def release_connection(self, conn):
         """Releases a database connection back to the pool."""
-        if DB_POOL and conn:
-            DB_POOL.putconn(conn)
+        if self.pool and conn:
+            self.pool.putconn(conn)
             logger.debug("🔄 Database connection released back to the pool.")
 
     def close_db_pool(self):
         """Closes all connections in the database pool."""
-        if DB_POOL:
-            DB_POOL.closeall()
+        global DB_POOL
+
+        if self.pool:
+            self.pool.closeall()
+            DB_POOL = None
             logger.info("❌ Database connection pool closed.")
 
     @contextmanager
     def get_cursor(self):
         """Yields a DB cursor and handles commit/rollback and connection release."""
         conn = self.get_connection()
+        if conn is None:
+            raise ConnectionError(
+                "Unable to acquire a database connection from the pool."
+            )
+
         try:
             cur = conn.cursor()
             yield cur
