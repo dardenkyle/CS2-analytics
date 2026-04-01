@@ -18,7 +18,7 @@ class CS2AnalyticsPipeline:
 
         # Step 1: Scrape results and queue match links
         self.logger.info("🔍 Scraping match results page...")
-        self.results_controller.run(max_matches=1)
+        self.results_controller.run()
 
         # Step 2: Process matches from match_scrape_queue
         self.logger.info("🎯 Processing matches...")
