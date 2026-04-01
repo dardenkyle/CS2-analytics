@@ -1,14 +1,8 @@
 #!/usr/bin/env python
-"""Simple script to run the FastAPI server with proper Python path."""
+"""Simple script to run the FastAPI backend server."""
 
-import sys
-import os
-
-# Add current directory to Python path
-sys.path.insert(0, os.getcwd())
-
-# Now import and run
 import uvicorn
+
 from api.main import app
 
 if __name__ == "__main__":
