@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cs2-analytics"
 version = "0.1.0"
-description = "Counter-Strike 2 Pro Match Analytics Tool - Scrape and analyze professional CS2 match data from HLTV"
+description = "Counter-Strike 2 Pro Match Analytics Tool - Scrape and analyze professional CS2 match data"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "Kyle Darden", email = "dardenkyle@example.com"}
 ]
-keywords = ["cs2", "counter-strike", "analytics", "scraping", "hltv", "esports"]
+keywords = ["cs2", "counter-strike", "analytics", "scraping", "esports"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -59,6 +59,9 @@ test = [
     "pytest>=9.0.0",
     "pytest-cov",
 ]
+demo = [
+    "rarfile",
+]
 
 [project.urls]
 Homepage = "https://github.com/dardenkyle/CS2-analytics"
@@ -66,8 +69,9 @@ Repository = "https://github.com/dardenkyle/CS2-analytics.git"
 Issues = "https://github.com/dardenkyle/CS2-analytics/issues"
 Documentation = "https://github.com/dardenkyle/CS2-analytics/blob/main/README.md"
 
-[tool.setuptools]
-packages = ["cs2_analytics", "api"]
+[tool.setuptools.packages.find]
+include = ["cs2_analytics*", "api*"]
+exclude = ["tests*"]
 
 [tool.setuptools.package-data]
 cs2_analytics = ["storage/schema.sql"]
