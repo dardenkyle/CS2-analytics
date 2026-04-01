@@ -1,11 +1,12 @@
 """Extracts player stats from a map stats page."""
 
-import re
 import datetime as dt
-from cs2_analytics.utils.log_manager import get_logger
+import re
+
 from cs2_analytics.models.player import Player
 from cs2_analytics.queues import map_queue
 from cs2_analytics.storage.db_instance import db
+from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
@@ -94,7 +95,9 @@ class MapParser:
                     else:
                         kills = 0
                         headshots = 0
-                        logger.warning("Could not parse K(hs) from: %s", cols[5].text.strip())
+                        logger.warning(
+                            "Could not parse K(hs) from: %s", cols[5].text.strip()
+                        )
 
                     # Parse A(f) format from column 6: "3(0)" -> assists=3, flash_assists=0
                     a_f_match = re.match(r"(\d+)\s*\((\d+)\)", cols[6].text.strip())
@@ -104,7 +107,9 @@ class MapParser:
                     else:
                         assists = 0
                         flash_assists = 0
-                        logger.warning("Could not parse A(f) from: %s", cols[6].text.strip())
+                        logger.warning(
+                            "Could not parse A(f) from: %s", cols[6].text.strip()
+                        )
 
                     # Parse D(q) format from column 7: "16(5)" -> deaths=16
                     d_q_match = re.match(r"(\d+)\s*\((\d+)\)", cols[7].text.strip())
@@ -112,7 +117,9 @@ class MapParser:
                         deaths = int(d_q_match.group(1))
                     else:
                         deaths = 0
-                        logger.warning("Could not parse D(q) from: %s", cols[7].text.strip())
+                        logger.warning(
+                            "Could not parse D(q) from: %s", cols[7].text.strip()
+                        )
 
                     # Parse KAST percentage from column 3: "72.7%" -> 0.727
                     try:
@@ -120,24 +127,37 @@ class MapParser:
                         kast = round(float(kast_text) / 100, 3)
                     except ValueError:
                         kast = 0.0
-                        logger.warning("Could not parse KAST from: %s", cols[3].text.strip())
+                        logger.warning(
+                            "Could not parse KAST from: %s", cols[3].text.strip()
+                        )
 
                     # Parse other numeric fields with error handling
                     try:
                         adr = float(cols[8].text.strip())
                     except ValueError:
                         adr = 0.0
-                        logger.warning("Could not parse ADR from: %s", cols[8].text.strip())
+                        logger.warning(
+                            "Could not parse ADR from: %s", cols[8].text.strip()
+                        )
 
                     # Parse rating from column 10 (skip the Swing column 9 which has percentages)
                     try:
                         rating_text = cols[10].text.strip()
                         # Remove any color indicators or extra formatting
-                        rating_clean = rating_text.replace("+", "").replace("-", "").replace("%", "")
+                        rating_clean = (
+                            rating_text.replace("+", "")
+                            .replace("-", "")
+                            .replace("%", "")
+                        )
                         rating = float(rating_clean)
                     except (ValueError, IndexError):
                         rating = 0.0
-                        logger.warning("Could not parse Rating from: %s", cols[10].text.strip() if len(cols) > 10 else "missing column")
+                        logger.warning(
+                            "Could not parse Rating from: %s",
+                            cols[10].text.strip()
+                            if len(cols) > 10
+                            else "missing column",
+                        )
 
                     player = Player(
                         map_id=map_id,

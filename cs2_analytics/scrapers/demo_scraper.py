@@ -9,11 +9,12 @@ import io
 import os
 import time
 import zipfile
-import rarfile
-from seleniumbase import Driver
-from selenium.webdriver.chrome.options import Options
-from cs2_analytics.utils.log_manager import get_logger
 
+import rarfile
+from selenium.webdriver.chrome.options import Options
+from seleniumbase import Driver
+
+from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
@@ -47,7 +48,6 @@ class DemoScraper:
 
         # ✅ Use `Driver()` correctly (DO NOT use `options=chrome_options`)
         self.driver = Driver(uc=True, headless=True)  # ✅ No options argument
-
 
     def download_demo_in_memory(self, demo_url):
         """

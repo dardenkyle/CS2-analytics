@@ -1,7 +1,10 @@
-import unittest
 import sys
-from storage.database import Database
-from storage.storage_models import Match, Player
+import unittest
+from datetime import UTC, datetime
+
+from cs2_analytics.models.match import Match
+from cs2_analytics.models.player import Player
+from cs2_analytics.storage.database import Database
 
 
 class TestDatabase(unittest.TestCase):
@@ -28,18 +31,25 @@ class TestDatabase(unittest.TestCase):
         print("\n🟢 Running test_store_match...")
         sys.stdout.flush()
 
+        now = datetime.now(UTC)
+
         test_match = Match(
             match_id=999999,
             match_url="https://www.hltv.org/matches/999999/test-match",
-            map_stats_links=["https://www.hltv.org/matches/999999/test-map"],
+            map_links=["https://www.hltv.org/matches/999999/test-map"],
+            demo_links=[],
             team1="Test Team A",
             team2="Test Team B",
             score1=16,
             score2=10,
+            winner="Test Team A",
             event="Test Event",
             match_type="BO1",
             forfeit=False,
             date="2025-03-15",
+            last_inserted_at=now,
+            last_scraped_at=now,
+            last_updated_at=now,
             data_complete=True,
         )
 
@@ -69,6 +79,8 @@ class TestDatabase(unittest.TestCase):
         print("\n🟢 Running test_store_player...")
         sys.stdout.flush()
 
+        now = datetime.now(UTC)
+
         test_player = Player(
             map_id=999999,
             player_id=888888,
@@ -86,6 +98,9 @@ class TestDatabase(unittest.TestCase):
             adr=85.0,
             fk_diff=2,
             rating=1.32,
+            last_inserted_at=now,
+            last_scraped_at=now,
+            last_updated_at=now,
             data_complete=True,
         )
 

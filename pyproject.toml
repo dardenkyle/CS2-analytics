@@ -1,0 +1,196 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cs2-analytics"
+version = "0.1.0"
+description = "Counter-Strike 2 Pro Match Analytics Tool - Scrape and analyze professional CS2 match data"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Kyle Darden", email = "dardenkyle@example.com"}
+]
+keywords = ["cs2", "counter-strike", "analytics", "scraping", "esports"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment",
+]
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "more-itertools",
+    "seleniumbase",
+    "beautifulsoup4",
+    "requests",
+    "psycopg2-binary",
+    "sqlalchemy",
+    "loguru",
+    "python-dotenv",
+    "schedule",
+    "matplotlib",
+    "seaborn",
+    "fastapi",
+    "uvicorn",
+    "streamlit",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-cov",
+    "mypy>=1.19.0",
+    "ruff>=0.3.0",
+    "black>=24.0.0",
+    "isort>=5.13.0",
+]
+test = [
+    "pytest>=9.0.0",
+    "pytest-cov",
+]
+demo = [
+    "rarfile",
+]
+
+[project.urls]
+Homepage = "https://github.com/dardenkyle/CS2-analytics"
+Repository = "https://github.com/dardenkyle/CS2-analytics.git"
+Issues = "https://github.com/dardenkyle/CS2-analytics/issues"
+Documentation = "https://github.com/dardenkyle/CS2-analytics/blob/main/README.md"
+
+[tool.setuptools.packages.find]
+include = ["cs2_analytics*", "api*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+cs2_analytics = ["storage/schema.sql"]
+
+# MyPy Configuration
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+check_untyped_defs = true
+strict_equality = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+no_implicit_optional = true
+warn_incomplete_stub = false
+strict_optional = true
+
+[[tool.mypy.overrides]]
+module = [
+    "seleniumbase.*",
+    "bs4.*",
+    "psycopg2.*",
+    "loguru.*",
+    "streamlit.*",
+]
+ignore_missing_imports = true
+
+# Ruff Configuration (Linting & Formatting)
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    "*.egg-info",
+    ".pytest_cache",
+    ".mypy_cache",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E741",   # ambiguous variable name
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cs2_analytics", "api"]
+
+# Black Configuration (Code Formatter)
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+extend-exclude = '''
+/(
+  # Directories
+  \.git
+  | \.venv
+  | venv
+  | env
+  | __pycache__
+  | build
+  | dist
+  | \.pytest_cache
+  | \.mypy_cache
+)/
+'''
+
+# Pytest Configuration
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow running tests",
+    "scraper: Scraper tests",
+]
+
+[tool.coverage.run]
+source = ["cs2_analytics", "api"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

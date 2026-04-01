@@ -1,4 +1,11 @@
-from scrapers.demo_scraper import DemoScraper
+import pytest
+
+pytest.skip(
+    "Demo scraping tests are optional and excluded from standard test runs.",
+    allow_module_level=True,
+)
+
+from cs2_analytics.scrapers.demo_scraper import DemoScraper
 
 # ✅ Replace this with a real HLTV demo link
 demo_url = "https://www.hltv.org/download/demo/95241"

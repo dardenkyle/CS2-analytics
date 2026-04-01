@@ -1,6 +1,7 @@
 """Base class for managing scrape queues."""
 
 import datetime as dt
+
 from cs2_analytics.storage.db_instance import db
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -34,7 +35,9 @@ class BaseScrapeQueue:
             cur.execute(query, (limit,))
             return cur.fetchall()
 
-    def queue(self, id_value: str, url: str, source: str = "unknown", priority: int = 0) -> None:
+    def queue(
+        self, id_value: str, url: str, source: str = "unknown", priority: int = 0
+    ) -> None:
         """Adds a single item to the queue."""
         query = f"""
         INSERT INTO {self.table_name} ({self.id_field}, {self.url_field}, status, source, priority, last_inserted_at)
@@ -44,7 +47,9 @@ class BaseScrapeQueue:
         with db.get_cursor() as cur:
             cur.execute(query, (id_value, url, source, priority, dt.datetime.now()))
 
-    def queue_many(self, items: list[tuple[str, str]], source: str = "unknown", priority: int = 0) -> None:
+    def queue_many(
+        self, items: list[tuple[str, str]], source: str = "unknown", priority: int = 0
+    ) -> None:
         """Adds multiple items to the queue in batch."""
         if not items:
             return
@@ -55,7 +60,10 @@ class BaseScrapeQueue:
         ON CONFLICT ({self.id_field}) DO NOTHING;
         """
 
-        values = [(item_id, url, source, priority, dt.datetime.now()) for item_id, url in items]
+        values = [
+            (item_id, url, source, priority, dt.datetime.now())
+            for item_id, url in items
+        ]
 
         try:
             with db.get_cursor() as cur:

@@ -8,9 +8,10 @@ This file centralizes all configurable settings, including:
 - Logging settings
 """
 
-import os
-import logging
 import datetime as dt
+import logging
+import os
+
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
@@ -50,33 +51,3 @@ LOG_FILE = os.path.join(os.getcwd(), "logs", "app.log")
 
 # ✅ Environment Type (dev, staging, production)
 ENVIRONMENT = os.getenv("ENVIRONMENT", default="development").lower()
-print(ENVIRONMENT)
-
-# Log file path
-logging.basicConfig(level=logging.DEBUG)
-print(f"🔍 [DEBUG] LOG_LEVEL from config: {LOG_LEVEL}")
-
-
-# ✅ Print Configuration on Startup (For Debugging)
-logging.debug(
-    """
-🔧 CONFIGURATION LOADED:
--------------------------
-🌍 ENVIRONMENT: %s
-📦 DATABASE: %s (Host: %s, Port: %s)
-⚙️ FEATURES:
-   - Demo Downloads: %s
-   - Data Storage: %s
-   - Analytics: %s
-🛠️ LOG LEVEL: %s
--------------------------
-""",
-    ENVIRONMENT,
-    DB_NAME,
-    DB_HOST,
-    DB_PORT,
-    ENABLE_DEMO_DOWNLOADS,
-    ENABLE_DATA_STORAGE,
-    ENABLE_ANALYTICS,
-    LOG_LEVEL,
-)

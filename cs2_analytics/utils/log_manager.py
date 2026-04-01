@@ -2,6 +2,7 @@
 
 import logging
 import os
+
 from cs2_analytics.config.config import LOG_LEVEL
 
 # Ensure the "logs" directory exists
@@ -12,7 +13,7 @@ if not os.path.exists(LOG_DIR):
 LOG_FILE = os.path.join(LOG_DIR, "app.log")
 
 
-def get_logger(name):
+def get_logger(name: str) -> logging.Logger:
     """
     Sets up and returns a logger with the specified name.
     Logs are written to logs/app.log and displayed in the console.

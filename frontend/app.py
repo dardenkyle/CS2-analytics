@@ -2,8 +2,8 @@
 Streamlit debug app to visually verify top players from CS2 Analytics API.
 """
 
-import streamlit as st
 import requests
+import streamlit as st
 
 
 def fetch_top_players(min_maps: int = 5, limit: int = 10) -> list[dict]:

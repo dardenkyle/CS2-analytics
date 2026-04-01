@@ -1,8 +1,10 @@
-import os
 import json
-from utils.log_manager import get_logger
+import os
+
+from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
+
 
 class PlayerAnalytics:
     """Analyzes player performance based on parsed demo data."""
@@ -20,13 +22,17 @@ class PlayerAnalytics:
 
     def analyze_all_players(self):
         """Processes all parsed demo data and extracts player performance insights."""
-        parsed_files = [f for f in os.listdir(self.parsed_data_dir) if f.endswith(".json")]
+        parsed_files = [
+            f for f in os.listdir(self.parsed_data_dir) if f.endswith(".json")
+        ]
 
         if not parsed_files:
             logger.warning("⚠️ No parsed demo data found for analysis.")
             return
 
-        logger.info(f"🔄 Analyzing player performance from {len(parsed_files)} demo files...")
+        logger.info(
+            f"🔄 Analyzing player performance from {len(parsed_files)} demo files..."
+        )
 
         aggregated_data = {}
 
@@ -58,7 +64,7 @@ class PlayerAnalytics:
         """
         logger.info(f"📂 Analyzing file: {file_path}")
 
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             demo_data = json.load(f)
 
         players = demo_data.get("players", {})
@@ -86,7 +92,9 @@ class PlayerAnalytics:
                 "headshot_percentage": headshot_percentage,
             }
 
-            logger.info(f"📊 {player_name} - K/D: {kd_ratio}, ADR: {adr}, HS%: {headshot_percentage}%")
+            logger.info(
+                f"📊 {player_name} - K/D: {kd_ratio}, ADR: {adr}, HS%: {headshot_percentage}%"
+            )
 
         return player_analysis
 
@@ -103,4 +111,3 @@ class PlayerAnalytics:
             json.dump(aggregated_data, f, indent=4)
 
         logger.info(f"💾 Saved aggregated player performance data: {output_file}")
-

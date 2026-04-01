@@ -1,6 +1,6 @@
 import sys
-import os
-from scrapers.results_scraper import ResultsScraper
+
+from cs2_analytics.scrapers.results_scraper import ResultsScraper
 
 # ✅ Absolute path to your project root (edit this if needed)
 project_root = r"C:\Users\Kyle\Desktop\projects\CS2 analytics"

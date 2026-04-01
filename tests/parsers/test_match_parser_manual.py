@@ -9,9 +9,10 @@ This test:
 - Prints the Match object and queues demo/map links
 """
 
-from seleniumbase import Driver
 from bs4 import BeautifulSoup
-from parsers.match_parser import MatchParser
+from seleniumbase import Driver
+
+from cs2_analytics.parsers.match_parser import MatchParser
 
 
 def main():

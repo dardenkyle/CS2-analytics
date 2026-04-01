@@ -1,9 +1,11 @@
 """Handles all database interactions, including connection management and data storage."""
 
+from contextlib import contextmanager
+
 import psycopg2
 import psycopg2.pool
-from contextlib import contextmanager
-from cs2_analytics.config.config import DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT
+
+from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -71,7 +73,6 @@ class Database:
             raise
         finally:
             self.release_connection(conn)
-
 
     def store_matches(self, match_data):
         """Stores match data with upsert logic."""

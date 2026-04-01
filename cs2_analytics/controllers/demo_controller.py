@@ -1,6 +1,6 @@
-from cs2_analytics.scrapers.demo_scraper import DemoScraper
 from cs2_analytics.parsers.demo_parser import DemoParser
 from cs2_analytics.queues.demo_scrape_queue import DemoScrapeQueue
+from cs2_analytics.scrapers.demo_scraper import DemoScraper
 from cs2_analytics.storage.demo_storage import store_demo_file
 from cs2_analytics.utils.log_manager import get_logger
 

@@ -1,8 +1,10 @@
-import os
 import json
+import os
+
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
+
 
 class DemoParser:
     """Parses CS2 demo files and extracts player insights."""
@@ -37,7 +39,9 @@ class DemoParser:
             except Exception as e:
                 logger.error(f"❌ Error parsing {demo_file}: {e}")
 
-    def _parse_demo_file(self, demo_path: str) -> dict:
+    def _parse_demo_file(
+        self, demo_path: str
+    ) -> dict[str, int | str | bool | float | dict[str, int]]:
         """
         Extracts player and match insights from a demo file.
 
@@ -78,7 +82,9 @@ class DemoParser:
             },
         }
 
-        logger.info(f"📊 Extracted match data: {parsed_data['map']} - Match ID: {parsed_data['match_id']}")
+        logger.info(
+            f"📊 Extracted match data: {parsed_data['map']} - Match ID: {parsed_data['match_id']}"
+        )
         return parsed_data
 
     def _save_parsed_data(self, demo_file: str, parsed_data: dict):
@@ -89,7 +95,9 @@ class DemoParser:
             demo_file (str): Name of the original demo file.
             parsed_data (dict): Extracted player statistics and match insights.
         """
-        output_file = os.path.join(self.parsed_data_dir, demo_file.replace(".dem", ".json"))
+        output_file = os.path.join(
+            self.parsed_data_dir, demo_file.replace(".dem", ".json")
+        )
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(parsed_data, f, indent=4)
         logger.info(f"💾 Saved parsed data: {output_file}")
@@ -115,4 +123,3 @@ class DemoParser:
                 f.write("Simulated demo content.")  # Placeholder content
 
             logger.info(f"✅ Downloaded: {demo_file}")
-
