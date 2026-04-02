@@ -113,7 +113,8 @@ class MatchController:
                         consecutive_recoverable_errors = 0
                         break
         finally:
-            scraper.close()
+            with suppress(Exception):
+                scraper.close()
 
         logger.info("🏁 MatchController complete.")
 

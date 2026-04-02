@@ -47,7 +47,6 @@ class MapScraper:
                 logger.info("🌍 Fetching map page: %s", map_url)
                 soup = self._fetch_soup(map_url)
                 results.append((soup, map_id, map_url))
-                self.map_queue.mark_as_parsed(map_id)
                 time.sleep(1.0)
             except Exception as e:
                 logger.error("❌ Failed to fetch map %s: %s", map_url, e)

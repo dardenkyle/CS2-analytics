@@ -1,4 +1,5 @@
 import time
+from contextlib import suppress
 
 from cs2_analytics.parsers.map_parser import MapParser
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
@@ -77,7 +78,8 @@ class MapController:
                         logger.exception("❌ Error processing map %s: %s", map_id, e)
                         break
         finally:
-            scraper.close()
+            with suppress(Exception):
+                scraper.close()
 
         logger.info("🏁 MapController complete.")
 
