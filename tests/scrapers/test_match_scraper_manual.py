@@ -5,7 +5,7 @@ Manually tests the refactored MatchScraper by pulling soups from the queue.
 from cs2_analytics.parsers.match_parser import MatchParser
 from cs2_analytics.queues import match_queue
 from cs2_analytics.scrapers.match_scraper import MatchScraper
-from cs2_analytics.storage import db
+from cs2_analytics.storage.match_storage import store_matches
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
         match = parser.parse_match(soup, match_url)
         if match:
             parsed_matches.append(match)
-            db.store_matches([match])
+            store_matches([match])
             match_queue.mark_parsed(match_id)
             print(f"✅ Stored match {match_id}")
         else:

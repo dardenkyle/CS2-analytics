@@ -5,6 +5,8 @@ from datetime import UTC, datetime
 from cs2_analytics.models.match import Match
 from cs2_analytics.models.player import Player
 from cs2_analytics.storage.database import Database
+from cs2_analytics.storage.match_storage import store_matches
+from cs2_analytics.storage.player_storage import store_players
 
 
 class TestDatabase(unittest.TestCase):
@@ -55,7 +57,7 @@ class TestDatabase(unittest.TestCase):
 
         print("🟡 Inserting test match into database...")
         sys.stdout.flush()
-        self.db.store_matches([test_match.to_dict()])
+        store_matches([test_match])
 
         print("🔍 Fetching match from database...")
         sys.stdout.flush()
@@ -117,7 +119,7 @@ class TestDatabase(unittest.TestCase):
 
         print("🟡 Inserting test player into database...")
         sys.stdout.flush()
-        self.db.store_players([test_player])
+        store_players([test_player])
 
         print("🔍 Fetching player from database...")
         sys.stdout.flush()

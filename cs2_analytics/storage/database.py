@@ -50,8 +50,7 @@ class Database:
             raise ConnectionError("Database connection pool is not available.")
 
         if not Database._indexes_ensured:
-            self.create_indexes()
-            Database._indexes_ensured = True
+            Database._indexes_ensured = self.create_indexes()
 
     def get_connection(self):
         """Retrieves a database connection from the pool."""
@@ -98,95 +97,11 @@ class Database:
         finally:
             self.release_connection(conn)
 
-    def store_matches(self, match_data):
-        """Stores match data with upsert logic."""
-        conn = self.get_connection()
-        if conn is None:
-            return
-
-        try:
-            cur = conn.cursor()
-            query = """
-                INSERT INTO matches (match_id, match_url, map_links, demo_links, team1, team2, score1, score2, winner, event, match_type, forfeit, date, last_inserted_at, last_scraped_at, last_updated_at, data_complete)
-                VALUES (%(match_id)s, %(match_url)s, %(map_links)s, %(demo_links)s, %(team1)s, %(team2)s, %(score1)s, %(score2)s, %(winner)s, %(event)s, %(match_type)s, %(forfeit)s, %(date)s, %(last_inserted_at)s, %(last_scraped_at)s, %(last_updated_at)s, %(data_complete)s)
-                ON CONFLICT (match_id) DO UPDATE 
-                SET 
-                    score1 = EXCLUDED.score1,
-                    score2 = EXCLUDED.score2,
-                    event = EXCLUDED.event,
-                    data_complete = EXCLUDED.data_complete;
-            """
-
-            cur.executemany(query, match_data)
-            conn.commit()
-            logger.info("Stored %s matches successfully.", len(match_data))
-
-        except Exception as e:
-            logger.error("Error storing match data: %s", e)
-        finally:
-            self.release_connection(conn)
-
-    def store_players(self, player_stats):
-        """Stores player statistics with upsert logic."""
-        conn = self.get_connection()
-        if conn is None:
-            return
-
-        try:
-            # ✅ Ensure player_stats are dictionaries before inserting
-            formatted_data = [
-                p.to_dict() if hasattr(p, "to_dict") else p for p in player_stats
-            ]
-
-            cur = conn.cursor()
-            query = """
-                INSERT INTO players (
-                    map_id, player_id, player_name, player_url, map_name, team_name,
-                    kills, headshots, assists, flash_assists, deaths, traded_deaths,
-                    opening_kills, opening_deaths, multi_kills, clutches_won,
-                    kast, kd_diff, adr, fk_diff, round_swing, rating, data_complete
-                )
-                VALUES (
-                    %(map_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s, %(team_name)s,
-                    %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s, %(traded_deaths)s,
-                    %(opening_kills)s, %(opening_deaths)s, %(multi_kills)s, %(clutches_won)s,
-                    %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(round_swing)s, %(rating)s, %(data_complete)s
-                )
-                ON CONFLICT (map_id, player_id) DO UPDATE
-                SET
-                    kills = EXCLUDED.kills,
-                    headshots = EXCLUDED.headshots,
-                    assists = EXCLUDED.assists,
-                    flash_assists = EXCLUDED.flash_assists,
-                    deaths = EXCLUDED.deaths,
-                    traded_deaths = EXCLUDED.traded_deaths,
-                    opening_kills = EXCLUDED.opening_kills,
-                    opening_deaths = EXCLUDED.opening_deaths,
-                    multi_kills = EXCLUDED.multi_kills,
-                    clutches_won = EXCLUDED.clutches_won,
-                    kast = EXCLUDED.kast,
-                    kd_diff = EXCLUDED.kd_diff,
-                    adr = EXCLUDED.adr,
-                    fk_diff = EXCLUDED.fk_diff,
-                    round_swing = EXCLUDED.round_swing,
-                    rating = EXCLUDED.rating,
-                    data_complete = EXCLUDED.data_complete;
-            """
-
-            cur.executemany(query, formatted_data)
-            conn.commit()
-            logger.info("Stored %s players successfully.", len(player_stats))
-
-        except Exception as e:
-            logger.error("Error storing player stats: %s", e)
-        finally:
-            self.release_connection(conn)
-
-    def create_indexes(self):
+    def create_indexes(self) -> bool:
         """Ensures necessary indexes exist for optimized queries."""
         conn = self.get_connection()
         if conn is None:
-            return
+            return False
 
         try:
             cur = conn.cursor()
@@ -207,8 +122,12 @@ class Database:
             )
             conn.commit()
             logger.info("✅ Database indexes ensured.")
+            return True
 
         except Exception as e:
             logger.error("Error creating indexes: %s", e)
+            return False
         finally:
             self.release_connection(conn)
+
+

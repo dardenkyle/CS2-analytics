@@ -5,7 +5,7 @@ import re
 
 from cs2_analytics.models.player import Player
 from cs2_analytics.queues import map_queue
-from cs2_analytics.storage.db_instance import db
+from cs2_analytics.storage.player_storage import store_players
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -29,7 +29,7 @@ class MapParser:
         for soup, map_id, map_url in map_soups:
             try:
                 players = self.parse_map(soup, map_url, map_id)
-                db.store_players(players)
+                store_players(players)
                 map_queue.mark_as_parsed(str(map_id))
                 logger.info("✅ Stored %s players for map %s", len(players), map_id)
                 all_players.extend(players)

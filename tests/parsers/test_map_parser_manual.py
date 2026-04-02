@@ -1,7 +1,7 @@
 from cs2_analytics.parsers.map_parser import MapParser
 from cs2_analytics.queues import map_queue
 from cs2_analytics.scrapers.map_scraper import MapScraper
-from cs2_analytics.storage import db
+from cs2_analytics.storage.player_storage import store_players
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
     for soup, map_id, map_url in map_soups:
         players = parser.parse_map(soup, map_url, match_id=2381532)  # use real match_id
         if players:
-            db.store_players(players)  # ✅ <--- THIS STORES THE DATA
+            store_players(players)  # ✅ <--- THIS STORES THE DATA
             map_queue.mark_parsed(map_id)
             print(f"✅ Parsed {len(players)} players from {map_url}")
             total_players.extend(players)
