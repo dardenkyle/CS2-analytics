@@ -4,7 +4,6 @@ import datetime as dt
 import re
 
 from cs2_analytics.models.match import Match
-from cs2_analytics.queues import demo_queue, map_queue
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -16,7 +15,7 @@ class MatchParser:
     def parse_match(
         self, soup, match_url: str
     ) -> tuple[Match, list[tuple[str, str]], list[tuple[str, str]]]:
-        """Parses match metadata and returns a Match object. Queues map and demo links."""
+        """Parses match metadata and returns match data with extracted follow-up links."""
         try:
             match_id = match_url.split("/")[-2]
 
@@ -72,11 +71,6 @@ class MatchParser:
 
             demo_links = self._extract_demo_links(soup)
             map_links = self._extract_map_stats_links(soup)
-
-            for demo_id, demo_url in demo_links:
-                demo_queue.queue(demo_id, demo_url, source="match_parser")
-            for map_id, map_url in map_links:
-                map_queue.queue(map_id, map_url, source="match_parser")
 
             match_obj = Match(
                 match_id=match_id,

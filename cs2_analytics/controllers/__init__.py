@@ -11,10 +11,12 @@ Each controller:
 Controllers enable modular batch processing for automation or scheduled runs.
 """
 
-from .match_controller import MatchController
 from .map_controller import MapController
+from .match_controller import MatchController
+from .results_controller import ResultsController
 
 __all__ = [
     "MatchController",
     "MapController",
+    "ResultsController",
 ]

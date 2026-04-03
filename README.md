@@ -12,7 +12,8 @@ This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape p
 
 - **Match Data:** Scrapes CS2 professional match results (teams, scores, events, etc.).
 - **Game Data:** Extracts detailed round-by-round statistics.
-- **Player Stats:** Collects individual player performance metrics (kills, deaths, assists, ADR, etc.).
+- **Player Stats:** Collects individual player performance metrics (kills, deaths, assists, ADR, KAST, opening duels, multi-kills, clutches, round swing, etc.).
+- **Reliability Hardening:** Uses retry/backoff and browser session recovery for resilient scraping runs.
 
 ### **Demo File Download & Parsing (Under Development)**
 
@@ -50,8 +51,6 @@ CS2-Analytics/
 |   ├── routes/
 |   ├── schemas/
 |   └── services/
-├── backend/
-|   └── main.py
 ├── cs2_analytics/
 |   ├── config/
 |   ├── controllers/
@@ -137,6 +136,12 @@ python -m cs2_analytics.services.player_analytics
 pytest -q
 ```
 
+Run the map parser hidden-vs-visible regression test directly:
+
+```sh
+pytest tests/parsers/test_map_parser_regression.py -v
+```
+
 Note: Demo scraping/parsing is still in progress and is intentionally excluded from standard test runs.
 
 ---
@@ -159,7 +164,7 @@ Then open: `http://127.0.0.1:8000/docs`
 
 ---
 
-## **Data Insights & Usage**
+## **Data Insights & Usage (planned)**
 
 ### **Match & Player Stats**
 
