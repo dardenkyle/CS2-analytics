@@ -204,6 +204,15 @@ This project is licensed under the **MIT License** – feel free to contribute a
 
 ---
 
+## Developer Notes
+
+See `/docs` for:
+- architecture overview
+- pipeline design
+- current development focus
+
+These documents are used to improve development clarity and AI-assisted coding.
+
 ## **Contact & Support**
 
 Have questions or want to contribute? Reach out!
