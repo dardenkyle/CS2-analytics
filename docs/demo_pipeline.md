@@ -2,7 +2,13 @@
 
 ## Status
 
-Not yet implemented.
+Partially implemented, but not enabled as part of the active hardened pipeline.
+
+Current reality:
+
+- demo URLs are discovered and queued during match processing
+- demo-specific components exist in the codebase
+- end-to-end demo processing remains deferred/experimental
 
 The demo pipeline is intentionally deferred until:
 
