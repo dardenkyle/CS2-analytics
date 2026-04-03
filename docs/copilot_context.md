@@ -6,12 +6,12 @@ Key rules:
 
 - Scrapers fetch content only; they do not parse or write domain tables
 - Parsers extract structured data only; they do not orchestrate pipelines
-- Pipelines orchestrate
+- Controllers orchestrate pipeline stages
 - Queues are stored in PostgreSQL
 - Demo files are temporary
 
 Architecture:
-match pipeline -> map pipeline -> demo pipeline
+results stage -> match stage -> map stage -> demo stage (deferred)
 
 Do not tightly couple stages together.
 Prefer queue-based handoff between stages.
