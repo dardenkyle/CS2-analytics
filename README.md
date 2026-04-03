@@ -206,7 +206,7 @@ This project is licensed under the **MIT License** – feel free to contribute a
 
 ## Developer Notes
 
-See `/docs` for:
+See `docs/` for:
 - architecture overview
 - pipeline design
 - current development focus
