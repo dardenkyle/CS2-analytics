@@ -14,7 +14,7 @@ Keep the ingestion pipeline reliable while preserving clear stage boundaries.
 
 ## Current Work
 
-- Closing review feedback on queue status transitions and cleanup behavior
+- Queue-status and responsibility cleanup is complete for the active match/map flow
 - Stabilizing retry/backoff and session-recovery paths
 - Keeping match/player persistence centralized in storage modules
 

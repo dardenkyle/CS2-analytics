@@ -5,19 +5,25 @@
 - Fetch remote content only
 - No parsing
 - No domain-table writes
-- Queue failure/status updates are allowed when needed
+- No queue status transitions in the active controller-driven flow
 
 ## Parsers
 
 - Extract structured data only
 - No orchestration logic
-- No queue state transitions in normal flow
+- No queue state transitions
+- No storage writes
+
+## Controllers
+
+- Coordinate workflow
+- Handle queue interaction and queue status transitions
+- Call scrapers, parsers, and storage modules
 
 ## Pipelines
 
-- Coordinate workflow
-- Handle queue interaction
-- Call scrapers and parsers
+- Coordinate stage order
+- Invoke controllers rather than reaching into scraper/parser internals
 
 ## Storage
 
