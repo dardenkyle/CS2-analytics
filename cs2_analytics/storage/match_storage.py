@@ -57,7 +57,9 @@ def store_matches(matches: list[Match]) -> None:
             )
         conn.commit()
         logger.info("📥 Stored %d match records.", len(matches))
-    except Exception as e:
-        logger.error("❌ Error storing matches: %s", e)
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         db.release_connection(conn)
+

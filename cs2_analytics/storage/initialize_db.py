@@ -30,8 +30,9 @@ def initialize_database():
         logger.info("✅ Database initialized successfully.")
 
     except Exception as e:
-        logger.error("Error initializing database: %s", e)
+        raise RuntimeError("Failed to initialize database schema.") from e
 
 
 if __name__ == "__main__":
     initialize_database()
+

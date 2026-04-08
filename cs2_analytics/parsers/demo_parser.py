@@ -37,7 +37,7 @@ class DemoParser:
                 self._save_parsed_data(demo_file, parsed_data)
                 logger.info(f"✅ Successfully parsed {demo_file}.")
             except Exception as e:
-                logger.error(f"❌ Error parsing {demo_file}: {e}")
+                raise ValueError(f"Failed to parse demo file: {demo_file}") from e
 
     def _parse_demo_file(
         self, demo_path: str
@@ -123,3 +123,4 @@ class DemoParser:
                 f.write("Simulated demo content.")  # Placeholder content
 
             logger.info(f"✅ Downloaded: {demo_file}")
+

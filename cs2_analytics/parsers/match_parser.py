@@ -95,8 +95,7 @@ class MatchParser:
             return match_obj, map_links, demo_links
 
         except (AttributeError, ValueError, TypeError, KeyError) as e:
-            logger.error("Error extracting match info: %s", e)
-            return None, [], []
+            raise ValueError(f"Failed to parse match page: {match_url}") from e
 
     def _extract_teams(self, soup) -> tuple[str, str]:
         """Extracts team names from the match page."""
@@ -104,8 +103,7 @@ class MatchParser:
         try:
             team1, team2 = [t.text.strip() for t in team_names[0:2]]
         except ValueError as e:
-            logger.error("Error extracting team names: %s", e)
-            return None, None
+            raise ValueError("Failed to extract team names from match page") from e
         return team1, team2
 
     def _extract_demo_links(self, soup) -> list[tuple[str, str]]:
@@ -119,7 +117,7 @@ class MatchParser:
                 demo_links.append((demo_id, url))
             logger.info("Successfully found %s demo link(s).", len(demo_links))
         except (AttributeError, IndexError) as e:
-            logger.error("Error extracting demo link: %s", e)
+            raise ValueError("Failed to extract demo links from match page") from e
         return demo_links
 
     def _extract_map_stats_links(self, soup) -> list[tuple[str, str]]:
@@ -134,7 +132,7 @@ class MatchParser:
                     map_links.append((map_id, url))
             logger.info("Found %s map stats links.", len(map_links))
         except (AttributeError, IndexError) as e:
-            logger.error("Error extracting map stats links: %s", e)
+            raise ValueError("Failed to extract map links from match page") from e
         return map_links
 
     def _extract_id(self, url: str) -> str:

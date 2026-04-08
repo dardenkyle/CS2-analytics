@@ -86,9 +86,8 @@ class MapParser:
                             if name_tag and "href" in name_tag.attrs
                             else None
                         )
-                    except Exception as e:
+                    except Exception:
                         player_url = None
-                        logger.error("Failed to extract player URL: %s", e)
 
                     player_id = (
                         self._extract_numeric_id(player_url) if player_url else -1
@@ -230,7 +229,7 @@ class MapParser:
                     players.append(player)
 
         except Exception as e:
-            logger.error("Failed to extract player stats from %s: %s", map_url, e)
+            raise ValueError(f"Failed to extract player stats from {map_url}") from e
 
         logger.info("Extracted %s player stats from %s", len(players), map_url)
         return players

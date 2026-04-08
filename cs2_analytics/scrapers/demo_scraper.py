@@ -67,8 +67,7 @@ class DemoScraper:
             # ✅ Get the most recently downloaded file
             demo_file = self._get_latest_downloaded_file()
             if not demo_file:
-                logger.error("❌ No demo file detected in download folder.")
-                return None
+                raise FileNotFoundError("No demo file detected in download folder.")
 
             # ✅ Read the file into RAM
             with open(demo_file, "rb") as f:
@@ -81,8 +80,7 @@ class DemoScraper:
             return archive_buffer
 
         except Exception as e:
-            logger.error("Failed to download demo: %s", e)
-            return None
+            raise RuntimeError("Failed to download demo archive.") from e
 
     def _get_latest_downloaded_file(self):
         """Returns the most recently downloaded file in the configured directory."""
@@ -95,8 +93,7 @@ class DemoScraper:
                 return None
             return max(files, key=os.path.getctime)  # ✅ Get most recent file
         except Exception as e:
-            logger.error("Error retrieving downloaded file: %s", e)
-            return None
+            raise RuntimeError("Failed to inspect downloaded demo files.") from e
 
     def extract_demo_in_memory(self, archive_buffer):
         """
@@ -134,8 +131,7 @@ class DemoScraper:
             return extracted_files
 
         except Exception as e:
-            logger.error(f"❌ Error extracting demo in memory: {e}")
-            return None
+            raise RuntimeError("Failed to extract demo archive in memory.") from e
 
     def process_demo(self, demo_data):
         """
@@ -155,3 +151,4 @@ class DemoScraper:
         """Closes SeleniumBase driver."""
         self.driver.quit()
         logger.info("🚪 Selenium driver closed.")
+

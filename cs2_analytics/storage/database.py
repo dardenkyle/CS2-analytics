@@ -32,8 +32,8 @@ def _initialize_db_pool() -> psycopg2.pool.SimpleConnectionPool | None:
         )
         logger.info("✅ PostgreSQL connection pool initialized successfully.")
     except (psycopg2.pool.PoolError, psycopg2.Error) as e:
-        logger.error("❌ Failed to initialize database connection pool: %s", e)
         DB_POOL = None
+        raise ConnectionError("Failed to initialize database connection pool.") from e
 
     return DB_POOL
 
@@ -59,8 +59,9 @@ class Database:
             logger.debug("✅ Retrieved database connection from pool.")
             return conn
         except (psycopg2.pool.PoolError, psycopg2.Error) as e:
-            logger.error("Database connection error: %s", e)
-            return None
+            raise ConnectionError(
+                "Failed to acquire a database connection from the pool."
+            ) from e
 
     def release_connection(self, conn):
         """Releases a database connection back to the pool."""
@@ -90,9 +91,8 @@ class Database:
             cur = conn.cursor()
             yield cur
             conn.commit()
-        except Exception as e:
+        except Exception:
             conn.rollback()
-            logger.error("❌ Error during DB operation: %s", e)
             raise
         finally:
             self.release_connection(conn)
@@ -125,9 +125,9 @@ class Database:
             return True
 
         except Exception as e:
-            logger.error("Error creating indexes: %s", e)
-            return False
+            raise RuntimeError("Failed to create database indexes.") from e
         finally:
             self.release_connection(conn)
+
 
 

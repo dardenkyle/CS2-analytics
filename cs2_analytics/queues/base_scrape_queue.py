@@ -65,12 +65,9 @@ class BaseScrapeQueue:
             for item_id, url in items
         ]
 
-        try:
-            with db.get_cursor() as cur:
-                cur.executemany(query, values)
-                logger.info("📥 Queued %d items in %s", len(items), self.table_name)
-        except Exception as e:
-            logger.error("❌ Failed to queue batch in %s: %s", self.table_name, e)
+        with db.get_cursor() as cur:
+            cur.executemany(query, values)
+            logger.info("Queued %d items in %s", len(items), self.table_name)
 
     def mark_as_parsed(self, id_value: str) -> None:
         """Marks the item as successfully processed."""
@@ -91,3 +88,4 @@ class BaseScrapeQueue:
         """
         with db.get_cursor() as cur:
             cur.execute(query, (dt.datetime.now(), reason, id_value))
+

@@ -62,5 +62,6 @@ def store_demo_file(
             cur.execute(query, values)
             db.commit()
             logger.info("📥 Stored demo file for map_id: %s", map_id)
-    except Exception as e:
-        logger.error("❌ Failed to store demo file for map_id %s: %s", map_id, e)
+    except Exception:
+        raise
+
