@@ -12,11 +12,17 @@ Keep the ingestion pipeline reliable while preserving clear stage boundaries.
 - Queues stay PostgreSQL-backed
 - Demo-related work remains deferred until ingestion hardening is stable
 
+## Recently Completed
+
+- Queue-status and responsibility cleanup for the active match/map flow
+- Match/player persistence remains centralized in storage modules
+
 ## Current Work
 
-- Queue-status and responsibility cleanup is complete for the active match/map flow
 - Stabilizing retry/backoff and session-recovery paths
-- Keeping match/player persistence centralized in storage modules
+- Deciding failure handling when retries are exhausted
+- Improving observability around retry exhaustion and run-level outcomes
+- Adding targeted tests for controller retry and recovery behavior
 
 ## Rules
 
