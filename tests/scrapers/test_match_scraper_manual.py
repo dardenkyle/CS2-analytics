@@ -1,4 +1,7 @@
-"""Manually tests MatchScraper + MatchParser integration from queued matches."""
+"""Manually tests MatchScraper + MatchParser integration from queued matches.
+
+This helper bypasses controllers intentionally and is only for manual debugging.
+"""
 
 from cs2_analytics.parsers.match_parser import MatchParser
 from cs2_analytics.queues import match_queue

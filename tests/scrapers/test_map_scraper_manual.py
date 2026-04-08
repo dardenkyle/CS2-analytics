@@ -1,4 +1,7 @@
-"""Manually tests MapScraper by fetching queued map pages."""
+"""Manually tests MapScraper by fetching queued map pages.
+
+This helper bypasses controllers intentionally and is only for manual debugging.
+"""
 
 from cs2_analytics.queues import map_queue
 from cs2_analytics.scrapers.map_scraper import MapScraper
