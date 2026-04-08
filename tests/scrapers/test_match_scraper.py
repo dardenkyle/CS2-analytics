@@ -9,7 +9,7 @@ test_match_url = "https://www.hltv.org/matches/2380400/just-swing-vs-gods-reign-
 # Bo1 map URL = https://www.hltv.org/matches/2380400/just-swing-vs-gods-reign-esl-challenger-league-season-49-asia-pacific
 
 scraper = MatchScraper()
-match_data = scraper.fetch_match_data(test_match_url)
+match_data = scraper.fetch_soup(test_match_url)
 scraper.close()
 
 # ✅ Print results
