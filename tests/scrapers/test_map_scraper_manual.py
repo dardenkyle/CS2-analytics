@@ -1,26 +1,24 @@
-"""
-Manually tests the MapScraper by scraping map pages from the queue
-and printing confirmation of retrieved HTML content.
-"""
+"""Manually tests MapScraper by fetching queued map pages."""
 
+from cs2_analytics.queues import map_queue
 from cs2_analytics.scrapers.map_scraper import MapScraper
 
 
 def main():
     """Main test function for MapScraper."""
-    print("🧪 Starting MapScraper manual test...")
+    print("Starting MapScraper manual test...")
 
-    with MapScraper() as scraper:
-        scraped = scraper.run(limit=3)
-
-    if not scraped:
-        print("⚠️ No queued map links found. You may need to run MatchParser first.")
+    queued_maps = map_queue.fetch(limit=3)
+    if not queued_maps:
+        print("No queued map links found. You may need to run MatchParser first.")
         return
 
-    for soup, map_id, map_url in scraped:
-        print(f"✅ Scraped map {map_id} from {map_url} — Soup length: {len(soup.text)}")
+    with MapScraper() as scraper:
+        for map_id, map_url in queued_maps:
+            soup = scraper.fetch_soup(map_url)
+            print(f"Scraped map {map_id} from {map_url}. Soup length: {len(soup.text)}")
 
-    print(f"🏁 Finished scraping {len(scraped)} map(s).")
+    print(f"Finished scraping {len(queued_maps)} map(s).")
 
 
 if __name__ == "__main__":

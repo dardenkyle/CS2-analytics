@@ -5,31 +5,31 @@ from cs2_analytics.storage.player_storage import store_players
 
 
 def main():
-    print("🧪 Starting manual test for MapParser...")
+    print("Starting manual test for MapParser...")
 
-    with MapScraper() as scraper:
-        map_soups = scraper.run(limit=1)
-
-    if not map_soups:
-        print("⚠️ No map pages in queue.")
+    queued_maps = map_queue.fetch(limit=1)
+    if not queued_maps:
+        print("No map pages in queue.")
         return
 
     parser = MapParser()
     total_players = []
 
-    for soup, map_id, map_url in map_soups:
-        players = parser.parse_map(soup, map_url, match_id=2381532)  # use real match_id
-        if players:
-            store_players(players)  # ✅ <--- THIS STORES THE DATA
-            map_queue.mark_parsed(map_id)
-            print(f"✅ Parsed {len(players)} players from {map_url}")
-            total_players.extend(players)
-        else:
-            map_queue.mark_failed(map_id, "Map parser returned empty")
-            print(f"❌ Failed to parse {map_url}")
+    with MapScraper() as scraper:
+        for map_id, map_url in queued_maps:
+            soup = scraper.fetch_soup(map_url)
+            players = parser.parse_map(soup, map_url, map_id)
+            if players:
+                store_players(players)
+                map_queue.mark_as_parsed(map_id)
+                print(f"Parsed {len(players)} players from {map_url}")
+                total_players.extend(players)
+            else:
+                map_queue.mark_as_failed(map_id, "Map parser returned empty")
+                print(f"Failed to parse {map_url}")
 
     if total_players:
-        print(f"🔍 Example Player: {total_players[0]}")
+        print(f"Example Player: {total_players[0]}")
 
 
 if __name__ == "__main__":
