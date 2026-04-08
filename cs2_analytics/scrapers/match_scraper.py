@@ -12,11 +12,9 @@ import time
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
 
-from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
-match_queue = MatchScrapeQueue()
 
 
 class MatchScraper:
@@ -48,7 +46,7 @@ class MatchScraper:
         for match_id, match_url in matches:
             try:
                 logger.info("🔄 Fetching match %s", match_url)
-                soup = self._fetch_soup(match_url)
+                soup = self.fetch_soup(match_url)
                 result.append((soup, match_id, match_url))
                 time.sleep(1.0)
             except Exception as e:
@@ -56,6 +54,10 @@ class MatchScraper:
                 match_queue.mark_failed(match_id, str(e)[:500])
 
         return result
+
+    def fetch_soup(self, url: str) -> BeautifulSoup:
+        """Loads a match page and returns its parsed HTML."""
+        return self._fetch_soup(url)
 
     def _fetch_soup(self, url: str) -> BeautifulSoup:
         self.driver.get(url)
