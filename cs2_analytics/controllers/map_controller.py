@@ -41,7 +41,7 @@ class MapController:
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
-                        soup = scraper._fetch_soup(map_url)
+                        soup = scraper.fetch_soup(map_url)
                         player_obj = self.parser.parse_map(soup, map_url, map_id)
 
                         if player_obj:

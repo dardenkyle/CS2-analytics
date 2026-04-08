@@ -4,8 +4,6 @@ import datetime as dt
 import re
 
 from cs2_analytics.models.player import Player
-from cs2_analytics.queues import map_queue
-from cs2_analytics.storage.player_storage import store_players
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -13,31 +11,6 @@ logger = get_logger(__name__)
 
 class MapParser:
     """Extracts player stats from a map stats page."""
-
-    def run(self, map_soups: list[tuple[object, int | str, str]]) -> list[Player]:
-        """
-        Runs parsing logic for a list of soup objects and stores players.
-
-        Args:
-            map_soups (list): List of tuples (soup, map_id, map_url)
-
-        Returns:
-            List[Player]: All parsed player objects
-        """
-        all_players = []
-
-        for soup, map_id, map_url in map_soups:
-            try:
-                players = self.parse_map(soup, map_url, map_id)
-                store_players(players)
-                map_queue.mark_as_parsed(str(map_id))
-                logger.info("✅ Stored %s players for map %s", len(players), map_id)
-                all_players.extend(players)
-            except Exception as e:
-                map_queue.mark_as_failed(str(map_id), str(e)[:500])
-                logger.error("❌ Failed to parse map %s: %s", map_id, e)
-
-        return all_players
 
     def __init__(self):
         """Initializes the parser."""

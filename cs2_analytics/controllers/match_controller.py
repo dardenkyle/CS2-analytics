@@ -58,7 +58,7 @@ class MatchController:
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
-                        soup = scraper._fetch_soup(match_url)
+                        soup = scraper.fetch_soup(match_url)
                         match, map_links, demo_links = self.parser.parse_match(
                             soup, match_url
                         )

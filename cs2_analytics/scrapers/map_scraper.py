@@ -1,11 +1,10 @@
-"""Scrapes HLTV map stats pages from the queue and returns soup for parsing."""
+"""Fetches raw map HTML for downstream parsing."""
 
 import time
 
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
 
-from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -13,15 +12,13 @@ logger = get_logger(__name__)
 
 class MapScraper:
     """
-    Fetches map pages from `map_scrape_queue`, returning soup objects for parsing.
+    Fetches map pages and returns soup objects for parsing.
 
-    This scraper does NOT handle parsing or saving to the database.
-    Use it with `MapParser` after fetching soups.
+    This scraper does NOT handle queue orchestration, parsing, or persistence.
     """
 
     def __init__(self) -> None:
         self.driver = Driver(uc=True, headless=True)
-        self.map_queue = MapScrapeQueue()
 
     def __enter__(self) -> "MapScraper":
         return self
@@ -29,30 +26,9 @@ class MapScraper:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.close()
 
-    def run(self, limit: int = 25) -> list[tuple[BeautifulSoup, str, str]]:
-        """
-        Fetches queued map pages and returns soups for parsing.
-
-        Args:
-            limit (int): Maximum number of queued map pages to scrape.
-
-        Returns:
-            List of tuples: (soup, map_id, map_url)
-        """
-        queued = self.map_queue.fetch(limit=limit)
-        results = []
-
-        for map_id, map_url in queued:
-            try:
-                logger.info("🌍 Fetching map page: %s", map_url)
-                soup = self._fetch_soup(map_url)
-                results.append((soup, map_id, map_url))
-                time.sleep(1.0)
-            except Exception as e:
-                logger.error("❌ Failed to fetch map %s: %s", map_url, e)
-                self.map_queue.mark_as_failed(map_id, str(e)[:500])
-
-        return results
+    def fetch_soup(self, url: str) -> BeautifulSoup:
+        """Loads a map page and returns its parsed HTML."""
+        return self._fetch_soup(url)
 
     def _fetch_soup(self, url: str) -> BeautifulSoup:
         """Loads a map page and returns its parsed HTML."""
@@ -63,4 +39,4 @@ class MapScraper:
     def close(self) -> None:
         """Closes the Selenium driver."""
         self.driver.quit()
-        logger.info("🚪 Selenium driver closed.")
+        logger.info("Selenium driver closed.")
