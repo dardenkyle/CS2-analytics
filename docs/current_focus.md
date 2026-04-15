@@ -21,6 +21,7 @@ Keep the ingestion pipeline reliable while preserving clear stage boundaries.
 - Retry-exhaustion policy defined for results vs match/map stages
 - Run-level retry/failure visibility added to controller summaries and retry-exhaustion logs
 - Targeted controller and retry-helper tests added for retry, recovery, and run summaries
+- Field-specific parser extraction errors added for required match/map fields with direct parser coverage
 
 ## Current Work
 

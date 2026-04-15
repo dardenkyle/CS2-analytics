@@ -27,7 +27,7 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 
 ### Remaining hardening priorities
 
-- [ ] Add field-specific parser extraction errors for required match/map fields
+- [x] Add field-specific parser extraction errors for required match/map fields
 - [ ] Evaluate queue schema upgrades (`processing`, locks, `available_at`) when multi-worker support is needed
 
 ---

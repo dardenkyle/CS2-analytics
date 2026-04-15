@@ -22,36 +22,14 @@ class MatchParser:
 
             team1, team2 = self._extract_teams(soup)
             logger.debug("Team1: %s Team2: %s", team1, team2)
-
-            # Extract scores
-            team1_gradient = soup.find("div", class_="team1-gradient")
-            score1 = int(team1_gradient.a.find_next_sibling("div").text.strip())
-
-            team2_gradient = soup.find("div", class_="team2-gradient")
-            score2 = int(team2_gradient.a.find_next_sibling("div").text.strip())
+            score1, score2 = self._extract_scores(soup)
 
             winner = team1 if score1 > score2 else team2
             logger.debug("Winner: %s", winner)
-
-            # Extract event name
-            event_tag = soup.find("div", class_="event text-ellipsis")
-            event = event_tag.text.strip() if event_tag else "Unknown Event"
-
+            event = self._extract_event_name(soup)
             best_ty = self._extract_match_type(soup)
-
-            # Check if match was forfeited
-            map_name_check = soup.find("div", class_="mapname").text.lower()
-            forfeit = map_name_check == "default"
-
-            # Extract match date
-            match_date_tag = soup.find("div", class_="date")
-            match_date = (
-                dt.datetime.fromtimestamp(
-                    int(match_date_tag["data-unix"]) / 1000
-                ).strftime("%Y-%m-%d")
-                if match_date_tag and match_date_tag.has_attr("data-unix")
-                else None
-            )
+            forfeit = self._extract_forfeit_status(soup)
+            match_date = self._extract_match_date(soup)
 
             demo_links = self._extract_demo_links(soup)
             map_links = self._extract_map_stats_links(soup)
@@ -87,9 +65,11 @@ class MatchParser:
         """Extracts team names from the match page."""
         team_names = soup.find_all("div", class_="teamName")
         try:
-            team1, team2 = [t.text.strip() for t in team_names[0:2]]
+            team1, team2 = [t.get_text(strip=True) for t in team_names[0:2]]
         except ValueError as e:
             raise MatchParseError("Missing team names on match page.") from e
+        if not team1 or not team2:
+            raise MatchParseError("Missing team names on match page.")
         return team1, team2
 
     def _extract_demo_links(self, soup) -> list[tuple[str, str]]:
@@ -126,14 +106,42 @@ class MatchParser:
         match = re.search(r"(\d+)", url)
         return match.group(1) if match else url
 
+    def _extract_scores(self, soup) -> tuple[int, int]:
+        """Extracts both team scores from the match page."""
+        try:
+            team1_gradient = soup.find("div", class_="team1-gradient")
+            score1 = int(team1_gradient.a.find_next_sibling("div").text.strip())
+
+            team2_gradient = soup.find("div", class_="team2-gradient")
+            score2 = int(team2_gradient.a.find_next_sibling("div").text.strip())
+        except (AttributeError, TypeError, ValueError) as e:
+            raise MatchParseError("Failed to extract team scores from match page.") from e
+        return score1, score2
+
+    def _extract_event_name(self, soup) -> str:
+        """Extracts the event name for the match."""
+        event_tag = soup.find("div", class_="event text-ellipsis")
+        if event_tag:
+            event_name = event_tag.text.strip()
+            if event_name:
+                return event_name
+        raise MatchParseError("Failed to extract event name from match page.")
+
     def _extract_match_type(self, soup) -> str:
         """Extracts a normalized best-of value such as bo1, bo3, or bo5."""
         match_type_tag = soup.find("div", class_="padding preformatted-text")
-        match_type_text = (
-            match_type_tag.text.strip().upper() if match_type_tag else "UNKNOWN"
-        )
+        if not match_type_tag:
+            raise MatchParseError("Failed to extract match type from match page.")
+
+        match_type_text = match_type_tag.text.strip().upper()
+        if not match_type_text:
+            raise MatchParseError("Failed to extract match type from match page.")
+
         best_of_match = re.search(r"^(.*?)(?=\n|$)", match_type_text)
-        best_of_text = best_of_match.group(1).strip() if best_of_match else "UNKNOWN"
+        if not best_of_match:
+            raise MatchParseError("Failed to extract match type from match page.")
+
+        best_of_text = best_of_match.group(1).strip()
         return self._normalize_best_of_type(best_of_text)
 
     def _normalize_best_of_type(self, text: str) -> str:
@@ -142,4 +150,29 @@ class MatchParser:
             return "bo3"
         if "5" in text:
             return "bo5"
-        return "bo1"
+        if "1" in text:
+            return "bo1"
+        raise MatchParseError("Failed to extract match type from match page.")
+
+    def _extract_forfeit_status(self, soup) -> bool:
+        """Extracts whether the match was forfeited/defaulted."""
+        map_name_tag = soup.find("div", class_="mapname")
+        if not map_name_tag:
+            raise MatchParseError("Failed to extract forfeit status from match page.")
+        map_name = map_name_tag.get_text(strip=True)
+        if not map_name:
+            raise MatchParseError("Failed to extract forfeit status from match page.")
+        return map_name.lower() == "default"
+
+    def _extract_match_date(self, soup) -> str:
+        """Extracts the match date in YYYY-MM-DD format."""
+        match_date_tag = soup.find("div", class_="date")
+        if not match_date_tag or not match_date_tag.has_attr("data-unix"):
+            raise MatchParseError("Failed to extract match date from match page.")
+
+        try:
+            return dt.datetime.fromtimestamp(
+                int(match_date_tag["data-unix"]) / 1000
+            ).strftime("%Y-%m-%d")
+        except (TypeError, ValueError, OSError, OverflowError) as e:
+            raise MatchParseError("Failed to extract match date from match page.") from e
