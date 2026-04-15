@@ -16,218 +16,15 @@ class MapParser:
     def parse_map(self, soup, map_url: str, map_id: int | str) -> list[Player]:
         """Extracts player object from a map stats page."""
         logger.info("Parsing %s for player stats", map_url)
-        players = []
         try:
-            map_id_value = int(map_id)
-        except (TypeError, ValueError):
-            map_id_value = self._extract_numeric_id(map_url)
-
-        map_name = self._extract_map_name(soup)
-        try:
-            tables = soup.select("table.stats-table.totalstats")
-            if not tables:
-                tables = soup.select("table.stats-table")
-            if not tables:
-                raise MapParseError("No player stats tables found on map page.")
-            for table in tables:
-                table_classes = table.get("class", [])
-                if "hidden" in table_classes:
-                    continue
-
-                team_header = table.find("th", class_="st-teamname")
-                team_name = team_header.text.strip() if team_header else "Unknown"
-
-                column_map = self._build_column_map(table)
-                opkd_idx = self._pick_column_index(
-                    column_map, ["op.k-d", "opkd", "op.kd"], 1
-                )
-                mks_idx = self._pick_column_index(column_map, ["mks"], 2)
-                kast_idx = self._pick_column_index(column_map, ["kast"], 4)
-                clutches_idx = self._pick_column_index(
-                    column_map, ["1vsx", "clutches"], 6
-                )
-                kills_idx = self._pick_column_index(
-                    column_map, ["k(hs)", "khs", "kills"], 7
-                )
-                assists_idx = self._pick_column_index(
-                    column_map, ["a(f)", "af", "assists"], 9
-                )
-                deaths_idx = self._pick_column_index(
-                    column_map, ["d(t)", "dt", "d(q)", "dq", "deaths", "d"], 10
-                )
-                adr_idx = self._pick_column_index(column_map, ["adr"], 12)
-                round_swing_idx = self._pick_column_index(
-                    column_map, ["swing", "roundswing"], 16
-                )
-                rating_idx = self._pick_column_index(
-                    column_map,
-                    ["rating3.0", "rating30", "rating2.1", "rating2.0", "rating", "rt"],
-                    17,
-                )
-
-                tbody = table.find("tbody")
-                if not tbody:
-                    logger.warning("Skipping table without tbody in %s", map_url)
-                    continue
-
-                player_rows = tbody.find_all("tr")
-                for row in player_rows:
-                    cols = row.find_all("td")
-                    if not cols:
-                        continue
-
-                    name_tag = cols[0].find("a")
-                    try:
-                        player_url = (
-                            f"https://www.hltv.org{name_tag['href']}"
-                            if name_tag and "href" in name_tag.attrs
-                            else None
-                        )
-                    except Exception:
-                        player_url = None
-
-                    player_id = (
-                        self._extract_numeric_id(player_url) if player_url else -1
-                    )
-
-                    player_name = self._extract_player_name(cols, name_tag)
-
-                    # Parse K(hs) format from column 5: "19(10)" -> kills=19, headshots=10
-                    kills_text = self._require_metric_text(
-                        self._extract_metric_text(
-                            cols,
-                            kills_idx,
-                            ["st-kills"],
-                        ),
-                        "No player kills logged.",
-                    )
-                    kills, headshots = self._parse_pair(kills_text)
-
-                    # Parse A(f) format from column 6: "3(0)" -> assists=3, flash_assists=0
-                    assists_text = self._extract_metric_text(
-                        cols,
-                        assists_idx,
-                        ["st-assists"],
-                    )
-                    assists, flash_assists = self._parse_pair(assists_text)
-
-                    # Parse D(t) format from table: "16(5)" -> deaths=16, traded_deaths=5
-                    deaths_text = self._require_metric_text(
-                        self._extract_metric_text(
-                            cols,
-                            deaths_idx,
-                            ["st-deaths"],
-                        ),
-                        "No player deaths logged.",
-                    )
-                    deaths, traded_deaths = self._parse_pair(deaths_text)
-
-                    opening_kills, opening_deaths = self._parse_colon_pair(
-                        self._extract_metric_text(cols, opkd_idx, ["st-opkd"])
-                    )
-                    multi_kills = self._parse_int_value(
-                        self._extract_metric_text(cols, mks_idx, ["st-mks"])
-                    )
-                    clutches_won = self._parse_int_value(
-                        self._extract_metric_text(cols, clutches_idx, ["st-clutches"])
-                    )
-                    round_swing = self._parse_percent_value(
-                        self._extract_metric_text(
-                            cols,
-                            round_swing_idx,
-                            ["st-roundSwing"],
-                            prefer_hidden=False,
-                        )
-                    )
-
-                    # Parse KAST percentage from column 3: "72.7%" -> 0.727
-                    try:
-                        kast_text = self._extract_metric_text(
-                            cols,
-                            kast_idx,
-                            ["st-kast"],
-                            prefer_hidden=False,
-                        ).replace("%", "")
-                        kast = round(float(kast_text) / 100, 3)
-                    except ValueError:
-                        kast = 0.0
-                        logger.warning(
-                            "Could not parse KAST from: %s",
-                            self._extract_metric_text(cols, kast_idx, ["st-kast"]),
-                        )
-
-                    # Parse other numeric fields with error handling
-                    try:
-                        adr = float(
-                            self._extract_metric_text(
-                                cols,
-                                adr_idx,
-                                ["st-adr"],
-                                prefer_hidden=False,
-                            )
-                        )
-                    except ValueError:
-                        adr = 0.0
-                        logger.warning(
-                            "Could not parse ADR from: %s",
-                            self._extract_metric_text(cols, adr_idx, ["st-adr"]),
-                        )
-
-                    # Parse rating from column 10 (skip the Swing column 9 which has percentages)
-                    try:
-                        rating_text = self._extract_metric_text(
-                            cols,
-                            rating_idx,
-                            ["st-rating"],
-                            prefer_hidden=False,
-                        )
-                        # Remove any color indicators or extra formatting
-                        rating_clean = (
-                            rating_text.replace("+", "")
-                            .replace("-", "")
-                            .replace("%", "")
-                        )
-                        rating = float(rating_clean)
-                    except (ValueError, IndexError):
-                        rating = 0.0
-                        logger.warning(
-                            "Could not parse Rating from: %s",
-                            self._extract_metric_text(cols, rating_idx, ["st-rating"]),
-                        )
-
-                    kd_diff = kills - deaths
-                    fk_diff = opening_kills - opening_deaths
-
-                    player = Player(
-                        map_id=map_id_value,
-                        player_id=player_id,
-                        player_name=player_name,
-                        player_url=player_url or "",
-                        map_name=map_name,
-                        team_name=team_name,
-                        kills=kills,
-                        headshots=headshots,
-                        assists=assists,
-                        flash_assists=flash_assists,
-                        deaths=deaths,
-                        traded_deaths=traded_deaths,
-                        opening_kills=opening_kills,
-                        opening_deaths=opening_deaths,
-                        multi_kills=multi_kills,
-                        clutches_won=clutches_won,
-                        kast=kast,
-                        kd_diff=kd_diff,
-                        adr=adr,
-                        fk_diff=fk_diff,
-                        round_swing=round_swing,
-                        rating=rating,
-                        last_inserted_at=dt.datetime.now(),
-                        last_scraped_at=dt.datetime.now(),
-                        last_updated_at=dt.datetime.now(),
-                        data_complete=True,
-                    )
-                    logger.debug("Extracted stats for player: %s", player.player_name)
-                    players.append(player)
+            map_id_value = self._resolve_map_id(map_id, map_url)
+            map_name = self._extract_map_name(soup)
+            players = self._extract_players_from_tables(
+                soup=soup,
+                map_url=map_url,
+                map_id_value=map_id_value,
+                map_name=map_name,
+            )
 
         except MapParseError:
             raise
@@ -236,6 +33,302 @@ class MapParser:
 
         logger.info("Extracted %s player stats from %s", len(players), map_url)
         return players
+
+    def _resolve_map_id(self, map_id: int | str, map_url: str) -> int:
+        """Resolves the numeric map identifier from the explicit id or URL."""
+        try:
+            return int(map_id)
+        except (TypeError, ValueError):
+            return self._extract_numeric_id(map_url)
+
+    def _iter_visible_stat_tables(self, soup, map_url: str):
+        """Yields visible player stat tables from the map page."""
+        tables = soup.select("table.stats-table.totalstats")
+        if not tables:
+            tables = soup.select("table.stats-table")
+        if not tables:
+            raise MapParseError("No player stats tables found on map page.")
+
+        for table in tables:
+            table_classes = table.get("class", [])
+            if "hidden" in table_classes:
+                continue
+            yield table
+
+    def _extract_team_name(self, table) -> str:
+        """Extracts the team name heading for a player stats table."""
+        team_header = table.find("th", class_="st-teamname")
+        return team_header.text.strip() if team_header else "Unknown"
+
+    def _extract_players_from_tables(
+        self, *, soup, map_url: str, map_id_value: int, map_name: str
+    ) -> list[Player]:
+        """Extracts parsed player rows from each visible stats table."""
+        players: list[Player] = []
+
+        for table in self._iter_visible_stat_tables(soup, map_url):
+            team_name = self._extract_team_name(table)
+            column_indexes = self._build_column_indexes(table)
+            tbody = table.find("tbody")
+            if not tbody:
+                logger.warning("Skipping table without tbody in %s", map_url)
+                continue
+
+            for row in tbody.find_all("tr"):
+                player = self._parse_player_row(
+                    row=row,
+                    map_id_value=map_id_value,
+                    map_name=map_name,
+                    team_name=team_name,
+                    column_indexes=column_indexes,
+                )
+                if player is None:
+                    continue
+                logger.debug("Extracted stats for player: %s", player.player_name)
+                players.append(player)
+
+        return players
+
+    def _build_column_indexes(self, table) -> dict[str, int]:
+        """Builds the column indexes used to parse a stats table row."""
+        column_map = self._build_column_map(table)
+        return {
+            "opkd": self._pick_column_index(column_map, ["op.k-d", "opkd", "op.kd"], 1),
+            "mks": self._pick_column_index(column_map, ["mks"], 2),
+            "kast": self._pick_column_index(column_map, ["kast"], 4),
+            "clutches": self._pick_column_index(
+                column_map, ["1vsx", "clutches"], 6
+            ),
+            "kills": self._pick_column_index(
+                column_map, ["k(hs)", "khs", "kills"], 7
+            ),
+            "assists": self._pick_column_index(
+                column_map, ["a(f)", "af", "assists"], 9
+            ),
+            "deaths": self._pick_column_index(
+                column_map, ["d(t)", "dt", "d(q)", "dq", "deaths", "d"], 10
+            ),
+            "adr": self._pick_column_index(column_map, ["adr"], 12),
+            "round_swing": self._pick_column_index(
+                column_map, ["swing", "roundswing"], 16
+            ),
+            "rating": self._pick_column_index(
+                column_map,
+                ["rating3.0", "rating30", "rating2.1", "rating2.0", "rating", "rt"],
+                17,
+            ),
+        }
+
+    def _parse_player_row(
+        self,
+        *,
+        row,
+        map_id_value: int,
+        map_name: str,
+        team_name: str,
+        column_indexes: dict[str, int],
+    ) -> Player | None:
+        """Parses a single player row into a Player model."""
+        cols = row.find_all("td")
+        if not cols:
+            return None
+
+        player_name, player_url, player_id = self._extract_player_identity(cols)
+        stats = self._extract_player_stats(cols, column_indexes)
+        return self._build_player(
+            map_id_value=map_id_value,
+            player_id=player_id,
+            player_name=player_name,
+            player_url=player_url,
+            map_name=map_name,
+            team_name=team_name,
+            stats=stats,
+        )
+
+    def _extract_player_identity(self, cols) -> tuple[str, str, int]:
+        """Extracts player display identity from the first row cell."""
+        name_tag = cols[0].find("a")
+        player_url = self._extract_player_url(name_tag)
+        player_id = self._extract_numeric_id(player_url) if player_url else -1
+        player_name = self._extract_player_name(cols, name_tag)
+        return player_name, player_url or "", player_id
+
+    def _extract_player_url(self, name_tag) -> str | None:
+        """Extracts the absolute player URL when one is present."""
+        try:
+            if name_tag and "href" in name_tag.attrs:
+                return f"https://www.hltv.org{name_tag['href']}"
+        except Exception:
+            return None
+        return None
+
+    def _extract_player_stats(
+        self, cols, column_indexes: dict[str, int]
+    ) -> dict[str, int | float]:
+        """Extracts parsed combat and utility stats from a player row."""
+        kills, headshots = self._extract_kills(cols, column_indexes["kills"])
+        assists, flash_assists = self._extract_assists(cols, column_indexes["assists"])
+        deaths, traded_deaths = self._extract_deaths(cols, column_indexes["deaths"])
+        opening_kills, opening_deaths = self._parse_colon_pair(
+            self._extract_metric_text(cols, column_indexes["opkd"], ["st-opkd"])
+        )
+        multi_kills = self._parse_int_value(
+            self._extract_metric_text(cols, column_indexes["mks"], ["st-mks"])
+        )
+        clutches_won = self._parse_int_value(
+            self._extract_metric_text(
+                cols, column_indexes["clutches"], ["st-clutches"]
+            )
+        )
+        round_swing = self._parse_percent_value(
+            self._extract_metric_text(
+                cols,
+                column_indexes["round_swing"],
+                ["st-roundSwing"],
+                prefer_hidden=False,
+            )
+        )
+        kast = self._extract_kast(cols, column_indexes["kast"])
+        adr = self._extract_adr(cols, column_indexes["adr"])
+        rating = self._extract_rating(cols, column_indexes["rating"])
+
+        return {
+            "kills": kills,
+            "headshots": headshots,
+            "assists": assists,
+            "flash_assists": flash_assists,
+            "deaths": deaths,
+            "traded_deaths": traded_deaths,
+            "opening_kills": opening_kills,
+            "opening_deaths": opening_deaths,
+            "multi_kills": multi_kills,
+            "clutches_won": clutches_won,
+            "round_swing": round_swing,
+            "kast": kast,
+            "adr": adr,
+            "rating": rating,
+        }
+
+    def _extract_kills(self, cols, kills_idx: int) -> tuple[int, int]:
+        """Extracts kills and headshots from the player row."""
+        kills_text = self._require_metric_text(
+            self._extract_metric_text(cols, kills_idx, ["st-kills"]),
+            "No player kills logged.",
+        )
+        return self._parse_pair(kills_text)
+
+    def _extract_assists(self, cols, assists_idx: int) -> tuple[int, int]:
+        """Extracts assists and flash assists from the player row."""
+        assists_text = self._extract_metric_text(cols, assists_idx, ["st-assists"])
+        return self._parse_pair(assists_text)
+
+    def _extract_deaths(self, cols, deaths_idx: int) -> tuple[int, int]:
+        """Extracts deaths and traded deaths from the player row."""
+        deaths_text = self._require_metric_text(
+            self._extract_metric_text(cols, deaths_idx, ["st-deaths"]),
+            "No player deaths logged.",
+        )
+        return self._parse_pair(deaths_text)
+
+    def _extract_kast(self, cols, kast_idx: int) -> float:
+        """Extracts KAST as a decimal ratio."""
+        try:
+            kast_text = self._extract_metric_text(
+                cols,
+                kast_idx,
+                ["st-kast"],
+                prefer_hidden=False,
+            ).replace("%", "")
+            return round(float(kast_text) / 100, 3)
+        except ValueError:
+            logger.warning(
+                "Could not parse KAST from: %s",
+                self._extract_metric_text(cols, kast_idx, ["st-kast"]),
+            )
+            return 0.0
+
+    def _extract_adr(self, cols, adr_idx: int) -> float:
+        """Extracts ADR as a float value."""
+        try:
+            return float(
+                self._extract_metric_text(
+                    cols,
+                    adr_idx,
+                    ["st-adr"],
+                    prefer_hidden=False,
+                )
+            )
+        except ValueError:
+            logger.warning(
+                "Could not parse ADR from: %s",
+                self._extract_metric_text(cols, adr_idx, ["st-adr"]),
+            )
+            return 0.0
+
+    def _extract_rating(self, cols, rating_idx: int) -> float:
+        """Extracts rating as a float value."""
+        try:
+            rating_text = self._extract_metric_text(
+                cols,
+                rating_idx,
+                ["st-rating"],
+                prefer_hidden=False,
+            )
+            rating_clean = rating_text.replace("+", "").replace("-", "").replace("%", "")
+            return float(rating_clean)
+        except (ValueError, IndexError):
+            logger.warning(
+                "Could not parse Rating from: %s",
+                self._extract_metric_text(cols, rating_idx, ["st-rating"]),
+            )
+            return 0.0
+
+    def _build_player(
+        self,
+        *,
+        map_id_value: int,
+        player_id: int,
+        player_name: str,
+        player_url: str,
+        map_name: str,
+        team_name: str,
+        stats: dict[str, int | float],
+    ) -> Player:
+        """Builds a Player model from a parsed row."""
+        now = dt.datetime.now()
+        kills = int(stats["kills"])
+        deaths = int(stats["deaths"])
+        opening_kills = int(stats["opening_kills"])
+        opening_deaths = int(stats["opening_deaths"])
+
+        return Player(
+            map_id=map_id_value,
+            player_id=player_id,
+            player_name=player_name,
+            player_url=player_url,
+            map_name=map_name,
+            team_name=team_name,
+            kills=kills,
+            headshots=int(stats["headshots"]),
+            assists=int(stats["assists"]),
+            flash_assists=int(stats["flash_assists"]),
+            deaths=deaths,
+            traded_deaths=int(stats["traded_deaths"]),
+            opening_kills=opening_kills,
+            opening_deaths=opening_deaths,
+            multi_kills=int(stats["multi_kills"]),
+            clutches_won=int(stats["clutches_won"]),
+            kast=float(stats["kast"]),
+            kd_diff=kills - deaths,
+            adr=float(stats["adr"]),
+            fk_diff=opening_kills - opening_deaths,
+            round_swing=float(stats["round_swing"]),
+            rating=float(stats["rating"]),
+            last_inserted_at=now,
+            last_scraped_at=now,
+            last_updated_at=now,
+            data_complete=True,
+        )
 
     def _normalize_header(self, value: str) -> str:
         return re.sub(r"[^a-z0-9.]", "", value.lower())

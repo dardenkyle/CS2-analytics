@@ -18,40 +18,15 @@ class MatchParser:
     ) -> tuple[Match, list[tuple[str, str]], list[tuple[str, str]]]:
         """Parses match metadata and returns match data with extracted follow-up links."""
         try:
-            match_id = match_url.split("/")[-2]
-
-            team1, team2 = self._extract_teams(soup)
-            logger.debug("Team1: %s Team2: %s", team1, team2)
-            score1, score2 = self._extract_scores(soup)
-
-            winner = team1 if score1 > score2 else team2
-            logger.debug("Winner: %s", winner)
-            event = self._extract_event_name(soup)
-            best_ty = self._extract_match_type(soup)
-            forfeit = self._extract_forfeit_status(soup)
-            match_date = self._extract_match_date(soup)
-
-            demo_links = self._extract_demo_links(soup)
-            map_links = self._extract_map_stats_links(soup)
-
-            match_obj = Match(
+            match_id = self._extract_match_id(match_url)
+            metadata = self._extract_match_metadata(soup)
+            map_links, demo_links = self._extract_follow_up_links(soup)
+            match_obj = self._build_match(
                 match_id=match_id,
                 match_url=match_url,
                 map_links=map_links,
                 demo_links=demo_links,
-                team1=team1,
-                team2=team2,
-                score1=score1,
-                score2=score2,
-                winner=winner,
-                event=event,
-                match_type=best_ty,
-                forfeit=forfeit,
-                date=match_date,
-                last_inserted_at=dt.datetime.now(),
-                last_scraped_at=dt.datetime.now(),
-                last_updated_at=dt.datetime.now(),
-                data_complete=True,
+                **metadata,
             )
 
             return match_obj, map_links, demo_links
@@ -60,6 +35,86 @@ class MatchParser:
             raise
         except (AttributeError, ValueError, TypeError, KeyError) as e:
             raise MatchParseError(f"Failed to parse match page: {match_url}") from e
+
+    def _extract_match_id(self, match_url: str) -> str:
+        """Extracts the match identifier from the match URL."""
+        return match_url.split("/")[-2]
+
+    def _extract_follow_up_links(
+        self, soup
+    ) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+        """Extracts map and demo follow-up links from the match page."""
+        map_links = self._extract_map_stats_links(soup)
+        demo_links = self._extract_demo_links(soup)
+        return map_links, demo_links
+
+    def _extract_match_metadata(self, soup) -> dict[str, str | int | bool]:
+        """Extracts the core match fields needed to build a Match model."""
+        team1, team2 = self._extract_teams(soup)
+        logger.debug("Team1: %s Team2: %s", team1, team2)
+        score1, score2 = self._extract_scores(soup)
+        winner = self._determine_winner(team1, team2, score1, score2)
+        event = self._extract_event_name(soup)
+        match_type = self._extract_match_type(soup)
+        forfeit = self._extract_forfeit_status(soup)
+        match_date = self._extract_match_date(soup)
+
+        return {
+            "team1": team1,
+            "team2": team2,
+            "score1": score1,
+            "score2": score2,
+            "winner": winner,
+            "event": event,
+            "match_type": match_type,
+            "forfeit": forfeit,
+            "match_date": match_date,
+        }
+
+    def _determine_winner(self, team1: str, team2: str, score1: int, score2: int) -> str:
+        """Determines the winning team name from the parsed scores."""
+        winner = team1 if score1 > score2 else team2
+        logger.debug("Winner: %s", winner)
+        return winner
+
+    def _build_match(
+        self,
+        *,
+        match_id: str,
+        match_url: str,
+        map_links: list[tuple[str, str]],
+        demo_links: list[tuple[str, str]],
+        team1: str,
+        team2: str,
+        score1: int,
+        score2: int,
+        winner: str,
+        event: str,
+        match_type: str,
+        forfeit: bool,
+        match_date: str,
+    ) -> Match:
+        """Builds a Match model from already-extracted values."""
+        now = dt.datetime.now()
+        return Match(
+            match_id=match_id,
+            match_url=match_url,
+            map_links=map_links,
+            demo_links=demo_links,
+            team1=team1,
+            team2=team2,
+            score1=score1,
+            score2=score2,
+            winner=winner,
+            event=event,
+            match_type=match_type,
+            forfeit=forfeit,
+            date=match_date,
+            last_inserted_at=now,
+            last_scraped_at=now,
+            last_updated_at=now,
+            data_complete=True,
+        )
 
     def _extract_teams(self, soup) -> tuple[str, str]:
         """Extracts team names from the match page."""
