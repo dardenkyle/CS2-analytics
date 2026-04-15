@@ -29,9 +29,6 @@ class MatchScraper:
 
     def fetch_soup(self, url: str) -> BeautifulSoup:
         """Loads a match page and returns its parsed HTML."""
-        return self._fetch_soup(url)
-
-    def _fetch_soup(self, url: str) -> BeautifulSoup:
         try:
             self.driver.get(url)
             time.sleep(3)

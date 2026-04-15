@@ -37,24 +37,7 @@ class MatchParser:
             event_tag = soup.find("div", class_="event text-ellipsis")
             event = event_tag.text.strip() if event_tag else "Unknown Event"
 
-            # Extract match type (BO1, BO3, etc.)
-            match_type_tag = soup.find("div", class_="padding preformatted-text")
-            match_type = (
-                match_type_tag.text.strip().upper() if match_type_tag else "UNKNOWN"
-            )
-            best_of_temp = re.search(r"^(.*?)(?=\n|$)", match_type)
-            best_type = best_of_temp.group(1).strip() if best_of_temp else "Unknown"
-
-            def determine_match_type(text: str) -> str:
-                """Determines match type based on presence of '3' or '5' in the text."""
-                if "3" in text:
-                    return "bo3"
-                elif "5" in text:
-                    return "bo5"
-                else:
-                    return "bo1"
-
-            best_ty: str = determine_match_type(best_type)
+            best_ty = self._extract_match_type(soup)
 
             # Check if match was forfeited
             map_name_check = soup.find("div", class_="mapname").text.lower()
@@ -142,3 +125,21 @@ class MatchParser:
         """Extracts the first numeric ID from a URL."""
         match = re.search(r"(\d+)", url)
         return match.group(1) if match else url
+
+    def _extract_match_type(self, soup) -> str:
+        """Extracts a normalized best-of value such as bo1, bo3, or bo5."""
+        match_type_tag = soup.find("div", class_="padding preformatted-text")
+        match_type_text = (
+            match_type_tag.text.strip().upper() if match_type_tag else "UNKNOWN"
+        )
+        best_of_match = re.search(r"^(.*?)(?=\n|$)", match_type_text)
+        best_of_text = best_of_match.group(1).strip() if best_of_match else "UNKNOWN"
+        return self._normalize_best_of_type(best_of_text)
+
+    def _normalize_best_of_type(self, text: str) -> str:
+        """Maps the scraped best-of text into the normalized match type."""
+        if "3" in text:
+            return "bo3"
+        if "5" in text:
+            return "bo5"
+        return "bo1"
