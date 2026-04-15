@@ -2,7 +2,7 @@
 
 ## Goal
 
-Keep the ingestion pipeline reliable while preserving clear stage boundaries.
+Transition from ingestion hardening into dbt while preserving clear stage boundaries.
 
 ## Key Decisions
 
@@ -11,7 +11,8 @@ Keep the ingestion pipeline reliable while preserving clear stage boundaries.
 - Controllers orchestrate queue transitions and persistence handoff
 - Results-stage retry exhaustion fails the run; match/map item exhaustion marks failed and continues
 - Queues stay PostgreSQL-backed
-- Demo-related work remains deferred until ingestion hardening is stable
+- Demo-related work remains deferred until much later in development (TBD)
+- The next major phase is dbt, after one small parser/scraper readability cleanup
 
 ## Recently Completed
 
@@ -24,6 +25,10 @@ Keep the ingestion pipeline reliable while preserving clear stage boundaries.
 - Field-specific parser extraction errors added for required match/map fields with direct parser coverage
 
 ## Current Work
+
+- Do one last parser/scraper class structure cleanup branch focused on readability only
+- Initialize the dbt project once that cleanup lands
+- Start with staging models for matches, maps, and players
 
 ## Rules
 
