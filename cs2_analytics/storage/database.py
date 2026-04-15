@@ -6,6 +6,7 @@ import psycopg2
 import psycopg2.pool
 
 from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
+from cs2_analytics.exceptions import DatabaseConnectionError, DatabaseOperationError
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -33,7 +34,9 @@ def _initialize_db_pool() -> psycopg2.pool.SimpleConnectionPool | None:
         logger.info("✅ PostgreSQL connection pool initialized successfully.")
     except (psycopg2.pool.PoolError, psycopg2.Error) as e:
         DB_POOL = None
-        raise ConnectionError("Failed to initialize database connection pool.") from e
+        raise DatabaseConnectionError(
+            "Failed to initialize database connection pool."
+        ) from e
 
     return DB_POOL
 
@@ -47,7 +50,7 @@ class Database:
         """Initialize database connection."""
         self.pool = _initialize_db_pool()
         if self.pool is None:
-            raise ConnectionError("Database connection pool is not available.")
+            raise DatabaseConnectionError("Database connection pool is not available.")
 
         if not Database._indexes_ensured:
             Database._indexes_ensured = self.create_indexes()
@@ -59,7 +62,7 @@ class Database:
             logger.debug("✅ Retrieved database connection from pool.")
             return conn
         except (psycopg2.pool.PoolError, psycopg2.Error) as e:
-            raise ConnectionError(
+            raise DatabaseConnectionError(
                 "Failed to acquire a database connection from the pool."
             ) from e
 
@@ -83,7 +86,7 @@ class Database:
         """Yields a DB cursor and handles commit/rollback and connection release."""
         conn = self.get_connection()
         if conn is None:
-            raise ConnectionError(
+            raise DatabaseConnectionError(
                 "Unable to acquire a database connection from the pool."
             )
 
@@ -91,9 +94,9 @@ class Database:
             cur = conn.cursor()
             yield cur
             conn.commit()
-        except Exception:
+        except Exception as e:
             conn.rollback()
-            raise
+            raise DatabaseOperationError("Failed during database operation.") from e
         finally:
             self.release_connection(conn)
 
@@ -125,7 +128,7 @@ class Database:
             return True
 
         except Exception as e:
-            raise RuntimeError("Failed to create database indexes.") from e
+            raise DatabaseOperationError("Failed to create database indexes.") from e
         finally:
             self.release_connection(conn)
 

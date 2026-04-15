@@ -1,5 +1,6 @@
 """Manages queue operations for map-level data scraping."""
 
+from cs2_analytics.exceptions import MapQueueError
 from cs2_analytics.queues.base_scrape_queue import BaseScrapeQueue
 
 
@@ -11,4 +12,9 @@ class MapScrapeQueue(BaseScrapeQueue):
     """
 
     def __init__(self) -> None:
-        super().__init__(table_name="map_scrape_queue", id_field="map_id", url_field="map_url")
+        super().__init__(
+            table_name="map_scrape_queue",
+            id_field="map_id",
+            url_field="map_url",
+            error_cls=MapQueueError,
+        )

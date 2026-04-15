@@ -1,3 +1,4 @@
+from cs2_analytics.exceptions import MatchStorageError
 from cs2_analytics.models.match import Match
 from cs2_analytics.storage.db_instance import db
 from cs2_analytics.utils.log_manager import get_logger
@@ -57,9 +58,9 @@ def store_matches(matches: list[Match]) -> None:
             )
         conn.commit()
         logger.info("📥 Stored %d match records.", len(matches))
-    except Exception:
+    except Exception as e:
         conn.rollback()
-        raise
+        raise MatchStorageError("Failed to store match records.") from e
     finally:
         db.release_connection(conn)
 

@@ -1,5 +1,6 @@
 import datetime as dt
 
+from cs2_analytics.exceptions import DemoStorageError
 from cs2_analytics.storage.db_instance import db
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -62,6 +63,6 @@ def store_demo_file(
             cur.execute(query, values)
             db.commit()
             logger.info("📥 Stored demo file for map_id: %s", map_id)
-    except Exception:
-        raise
+    except Exception as e:
+        raise DemoStorageError("Failed to store demo file.") from e
 

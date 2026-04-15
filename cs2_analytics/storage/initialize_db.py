@@ -5,6 +5,7 @@ import os
 import psycopg2
 
 from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
+from cs2_analytics.exceptions import DatabaseOperationError
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -30,7 +31,7 @@ def initialize_database():
         logger.info("✅ Database initialized successfully.")
 
     except Exception as e:
-        raise RuntimeError("Failed to initialize database schema.") from e
+        raise DatabaseOperationError("Failed to initialize database schema.") from e
 
 
 if __name__ == "__main__":

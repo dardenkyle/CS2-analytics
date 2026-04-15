@@ -1,3 +1,4 @@
+from cs2_analytics.exceptions import PlayerStorageError
 from cs2_analytics.models.player import Player
 from cs2_analytics.storage.db_instance import db
 from cs2_analytics.utils.log_manager import get_logger
@@ -45,37 +46,40 @@ def store_players(players: list[Player]) -> None:
         data_complete = EXCLUDED.data_complete;
     """
 
-    with db.get_cursor() as cur:
-        for p in players:
-            cur.execute(
-                insert_query,
-                {
-                    "map_id": p.map_id,
-                    "player_id": p.player_id,
-                    "player_name": p.player_name,
-                    "player_url": p.player_url,
-                    "map_name": p.map_name,
-                    "team_name": p.team_name,
-                    "kills": p.kills,
-                    "headshots": p.headshots,
-                    "assists": p.assists,
-                    "flash_assists": p.flash_assists,
-                    "deaths": p.deaths,
-                    "traded_deaths": p.traded_deaths,
-                    "opening_kills": p.opening_kills,
-                    "opening_deaths": p.opening_deaths,
-                    "multi_kills": p.multi_kills,
-                    "clutches_won": p.clutches_won,
-                    "kast": p.kast,
-                    "kd_diff": p.kd_diff,
-                    "adr": p.adr,
-                    "fk_diff": p.fk_diff,
-                    "round_swing": p.round_swing,
-                    "rating": p.rating,
-                    "last_inserted_at": p.last_inserted_at,
-                    "last_scraped_at": p.last_scraped_at,
-                    "last_updated_at": p.last_updated_at,
-                    "data_complete": p.data_complete,
-                },
-            )
-        logger.info("📥 Stored %d player stat records.", len(players))
+    try:
+        with db.get_cursor() as cur:
+            for p in players:
+                cur.execute(
+                    insert_query,
+                    {
+                        "map_id": p.map_id,
+                        "player_id": p.player_id,
+                        "player_name": p.player_name,
+                        "player_url": p.player_url,
+                        "map_name": p.map_name,
+                        "team_name": p.team_name,
+                        "kills": p.kills,
+                        "headshots": p.headshots,
+                        "assists": p.assists,
+                        "flash_assists": p.flash_assists,
+                        "deaths": p.deaths,
+                        "traded_deaths": p.traded_deaths,
+                        "opening_kills": p.opening_kills,
+                        "opening_deaths": p.opening_deaths,
+                        "multi_kills": p.multi_kills,
+                        "clutches_won": p.clutches_won,
+                        "kast": p.kast,
+                        "kd_diff": p.kd_diff,
+                        "adr": p.adr,
+                        "fk_diff": p.fk_diff,
+                        "round_swing": p.round_swing,
+                        "rating": p.rating,
+                        "last_inserted_at": p.last_inserted_at,
+                        "last_scraped_at": p.last_scraped_at,
+                        "last_updated_at": p.last_updated_at,
+                        "data_complete": p.data_complete,
+                    },
+                )
+            logger.info("Stored %d player stat records.", len(players))
+    except Exception as e:
+        raise PlayerStorageError("Failed to store player records.") from e
