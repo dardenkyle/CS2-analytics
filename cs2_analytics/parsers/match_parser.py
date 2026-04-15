@@ -36,9 +36,9 @@ class MatchParser:
         except (AttributeError, ValueError, TypeError, KeyError) as e:
             raise MatchParseError(f"Failed to parse match page: {match_url}") from e
 
-    def _extract_match_id(self, match_url: str) -> str:
+    def _extract_match_id(self, match_url: str) -> int:
         """Extracts the match identifier from the match URL."""
-        return match_url.split("/")[-2]
+        return int(match_url.split("/")[-2])
 
     def _extract_follow_up_links(
         self, soup
@@ -80,7 +80,7 @@ class MatchParser:
     def _build_match(
         self,
         *,
-        match_id: str,
+        match_id: int,
         match_url: str,
         map_links: list[tuple[str, str]],
         demo_links: list[tuple[str, str]],
