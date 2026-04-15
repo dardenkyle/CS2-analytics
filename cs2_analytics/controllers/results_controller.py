@@ -37,10 +37,8 @@ class ResultsController:
                     logger.info("ResultsController complete.")
                     return
                 except Exception as e:
-                    should_retry = (
-                        attempt < max_attempts
-                        and self._is_recoverable_scraper_error(e)
-                    )
+                    is_retryable = self._is_recoverable_scraper_error(e)
+                    should_retry = attempt < max_attempts and is_retryable
 
                     if should_retry:
                         retries += 1
@@ -55,10 +53,19 @@ class ResultsController:
                         continue
 
                     terminal_failures += 1
-                    if self._is_recoverable_scraper_error(e):
+                    if is_retryable:
                         logger.error(
                             "ResultsController exhausted retries after %d attempts; failing stage run.",
                             max_attempts,
+                        )
+                        failure_message = (
+                            "Results stage failed after exhausting retries "
+                            f"({attempt}/{max_attempts} attempts)."
+                        )
+                    else:
+                        failure_message = (
+                            "Results stage failed on non-retryable error "
+                            f"at attempt {attempt}/{max_attempts}."
                         )
                     logger.exception(
                         "ResultsController failed on attempt %d/%d: %s",
@@ -66,9 +73,7 @@ class ResultsController:
                         max_attempts,
                         e,
                     )
-                    raise PipelineError(
-                        "Results stage failed after exhausting retries."
-                    ) from e
+                    raise PipelineError(failure_message) from e
         finally:
             try:
                 scraper.close()
