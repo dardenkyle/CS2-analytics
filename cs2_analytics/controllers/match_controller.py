@@ -41,6 +41,9 @@ class MatchController:
         retry_backoff_seconds = 3.0
         processed_since_reset = 0
         consecutive_recoverable_errors = 0
+        succeeded = 0
+        failed = 0
+        retries = 0
 
         scraper = self.scraper
         try:
@@ -65,11 +68,13 @@ class MatchController:
                             store_matches([match])
                             self._queue_followups(map_links, demo_links)
                             self.match_queue.mark_as_parsed(match_id)
+                            succeeded += 1
                             logger.info("Stored match: %s", match_id)
                         else:
                             self.match_queue.mark_as_failed(
                                 match_id, "Parsing returned None"
                             )
+                            failed += 1
                             logger.warning("Match %s returned no parsed data", match_id)
 
                         consecutive_recoverable_errors = 0
@@ -84,6 +89,7 @@ class MatchController:
                         )
 
                         if should_retry:
+                            retries += 1
                             consecutive_recoverable_errors += 1
                             logger.warning(
                                 "Retryable scraper error for match %s (attempt %d/%d): %s",
@@ -104,6 +110,15 @@ class MatchController:
                             scraper = self._reset_scraper(scraper)
                             continue
 
+                        if (
+                            attempt == max_attempts
+                            and self._is_recoverable_scraper_error(e)
+                        ):
+                            logger.error(
+                                "Exhausted retries for match %s after %d attempts; marking failed and continuing.",
+                                match_id,
+                                max_attempts,
+                            )
                         mark_item_failed(
                             self.match_queue,
                             match_id,
@@ -115,12 +130,20 @@ class MatchController:
                             attempt=attempt,
                             max_attempts=max_attempts,
                         )
+                        failed += 1
                         consecutive_recoverable_errors = 0
                         break
         finally:
             with suppress(Exception):
                 scraper.close()
 
+        logger.info(
+            "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d",
+            len(queued),
+            succeeded,
+            failed,
+            retries,
+        )
         logger.info("MatchController complete.")
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:

@@ -45,6 +45,7 @@ def test_map_controller_continues_after_item_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stored_players: list[list[object]] = []
+    info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     monkeypatch.setattr(map_module, "MapScraper", _SuccessfulScraper)
     monkeypatch.setattr(map_module, "MapParser", _FailOnceThenSucceedParser)
     monkeypatch.setattr(map_module, "MapScrapeQueue", _FakeMapQueue)
@@ -54,6 +55,11 @@ def test_map_controller_continues_after_item_failure(
         lambda players: stored_players.append(players),
     )
     monkeypatch.setattr(map_module.time, "sleep", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        map_module.logger,
+        "info",
+        lambda *args, **kwargs: info_calls.append((args, kwargs)),
+    )
 
     controller = map_module.MapController()
     controller.run(batch_size=2)
@@ -61,3 +67,9 @@ def test_map_controller_continues_after_item_failure(
     assert controller.queue.failed == [("map-1", "No player kills logged.")]
     assert controller.queue.parsed == ["map-2"]
     assert len(stored_players) == 1
+    assert any(
+        call_args[0]
+        == "MapController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        and call_args[1:] == (2, 1, 1, 0)
+        for call_args, _ in info_calls
+    )

@@ -25,11 +25,15 @@ class ResultsController:
 
         max_attempts = 3
         scraper = self.scraper
+        retries = 0
+        terminal_failures = 0
+        run_status = "failed"
 
         try:
             for attempt in range(1, max_attempts + 1):
                 try:
                     scraper.run(max_matches=max_matches)
+                    run_status = "succeeded"
                     logger.info("ResultsController complete.")
                     return
                 except Exception as e:
@@ -39,6 +43,7 @@ class ResultsController:
                     )
 
                     if should_retry:
+                        retries += 1
                         logger.warning(
                             "Retryable results scraper error (attempt %d/%d): %s",
                             attempt,
@@ -49,6 +54,12 @@ class ResultsController:
                         scraper = self._reset_scraper(scraper)
                         continue
 
+                    terminal_failures += 1
+                    if self._is_recoverable_scraper_error(e):
+                        logger.error(
+                            "ResultsController exhausted retries after %d attempts; failing stage run.",
+                            max_attempts,
+                        )
                     logger.exception(
                         "ResultsController failed on attempt %d/%d: %s",
                         attempt,
@@ -63,6 +74,13 @@ class ResultsController:
                 scraper.close()
             except Exception as e:
                 logger.warning("Failed to close results scraper: %s", e)
+            logger.info(
+                "ResultsController summary: status=%s retries=%d terminal_failures=%d max_matches=%d",
+                run_status,
+                retries,
+                terminal_failures,
+                max_matches,
+            )
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
         return is_retryable_scraper_error(error)

@@ -111,10 +111,22 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
         _SuccessfulParser,
     )
     exception_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    error_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     monkeypatch.setattr(
         match_module.logger,
         "exception",
         lambda *args, **kwargs: exception_calls.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        match_module.logger,
+        "error",
+        lambda *args, **kwargs: error_calls.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        match_module.logger,
+        "info",
+        lambda *args, **kwargs: info_calls.append((args, kwargs)),
     )
     monkeypatch.setattr(controller, "_reset_scraper", lambda scraper: scraper)
 
@@ -125,16 +137,38 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
     assert failed_id == "match-1"
     assert "Failed to fetch match page" in reason
     assert len(exception_calls) == 1
+    assert error_calls == [
+        (
+            (
+                "Exhausted retries for match %s after %d attempts; marking failed and continuing.",
+                "match-1",
+                3,
+            ),
+            {},
+        )
+    ]
+    assert any(
+        call_args[0]
+        == "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        and call_args[1:] == (1, 0, 1, 2)
+        for call_args, _ in info_calls
+    )
 
 
 def test_match_controller_continues_after_item_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stored_matches: list[list[object]] = []
+    info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     controller = _build_match_controller(
         monkeypatch,
         _SuccessfulScraper,
         _FailOnceThenSucceedParser,
+    )
+    monkeypatch.setattr(
+        match_module.logger,
+        "info",
+        lambda *args, **kwargs: info_calls.append((args, kwargs)),
     )
     monkeypatch.setattr(
         controller.match_queue,
@@ -157,3 +191,9 @@ def test_match_controller_continues_after_item_failure(
     ]
     assert controller.match_queue.parsed == ["match-2"]
     assert len(stored_matches) == 1
+    assert any(
+        call_args[0]
+        == "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        and call_args[1:] == (2, 1, 1, 0)
+        for call_args, _ in info_calls
+    )

@@ -23,7 +23,7 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 
 - [x] Decide failure policy when retries are exhausted (results fails run; match/map fail item and continue)
 - [x] Standardize scraper/parser/storage error handling so controllers own retry and terminal queue outcomes
-- [ ] Improve observability around retry exhaustion and run-level outcomes
+- [x] Improve observability around retry exhaustion and run-level outcomes
 - [ ] Add targeted tests for controller retry and recovery behavior
 - [ ] Clean up scraper/parser helper methods to clarify responsibilities, naming, and public vs private method boundaries
 - [x] Centralize shared controller retry/session-recovery logic to reduce duplication across stages
