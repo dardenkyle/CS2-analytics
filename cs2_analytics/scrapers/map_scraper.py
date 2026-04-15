@@ -29,10 +29,6 @@ class MapScraper:
 
     def fetch_soup(self, url: str) -> BeautifulSoup:
         """Loads a map page and returns its parsed HTML."""
-        return self._fetch_soup(url)
-
-    def _fetch_soup(self, url: str) -> BeautifulSoup:
-        """Loads a map page and returns its parsed HTML."""
         try:
             self.driver.get(url)
             time.sleep(3.0)

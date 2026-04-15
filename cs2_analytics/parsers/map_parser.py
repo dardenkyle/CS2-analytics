@@ -13,9 +13,6 @@ logger = get_logger(__name__)
 class MapParser:
     """Extracts player stats from a map stats page."""
 
-    def __init__(self):
-        """Initializes the parser."""
-
     def parse_map(self, soup, map_url: str, map_id: int | str) -> list[Player]:
         """Extracts player object from a map stats page."""
         logger.info("Parsing %s for player stats", map_url)
@@ -52,20 +49,28 @@ class MapParser:
                 team_name = team_header.text.strip() if team_header else "Unknown"
 
                 column_map = self._build_column_map(table)
-                opkd_idx = self._pick_col(column_map, ["op.k-d", "opkd", "op.kd"], 1)
-                mks_idx = self._pick_col(column_map, ["mks"], 2)
-                kast_idx = self._pick_col(column_map, ["kast"], 4)
-                clutches_idx = self._pick_col(column_map, ["1vsx", "clutches"], 6)
-                kills_idx = self._pick_col(column_map, ["k(hs)", "khs", "kills"], 7)
-                assists_idx = self._pick_col(column_map, ["a(f)", "af", "assists"], 9)
-                deaths_idx = self._pick_col(
+                opkd_idx = self._pick_column_index(
+                    column_map, ["op.k-d", "opkd", "op.kd"], 1
+                )
+                mks_idx = self._pick_column_index(column_map, ["mks"], 2)
+                kast_idx = self._pick_column_index(column_map, ["kast"], 4)
+                clutches_idx = self._pick_column_index(
+                    column_map, ["1vsx", "clutches"], 6
+                )
+                kills_idx = self._pick_column_index(
+                    column_map, ["k(hs)", "khs", "kills"], 7
+                )
+                assists_idx = self._pick_column_index(
+                    column_map, ["a(f)", "af", "assists"], 9
+                )
+                deaths_idx = self._pick_column_index(
                     column_map, ["d(t)", "dt", "d(q)", "dq", "deaths", "d"], 10
                 )
-                adr_idx = self._pick_col(column_map, ["adr"], 12)
-                round_swing_idx = self._pick_col(
+                adr_idx = self._pick_column_index(column_map, ["adr"], 12)
+                round_swing_idx = self._pick_column_index(
                     column_map, ["swing", "roundswing"], 16
                 )
-                rating_idx = self._pick_col(
+                rating_idx = self._pick_column_index(
                     column_map,
                     ["rating3.0", "rating30", "rating2.1", "rating2.0", "rating", "rt"],
                     17,
@@ -102,7 +107,7 @@ class MapParser:
 
                     # Parse K(hs) format from column 5: "19(10)" -> kills=19, headshots=10
                     kills_text = self._require_metric_text(
-                        self._row_metric_text(
+                        self._extract_metric_text(
                             cols,
                             kills_idx,
                             ["st-kills"],
@@ -112,7 +117,7 @@ class MapParser:
                     kills, headshots = self._parse_pair(kills_text)
 
                     # Parse A(f) format from column 6: "3(0)" -> assists=3, flash_assists=0
-                    assists_text = self._row_metric_text(
+                    assists_text = self._extract_metric_text(
                         cols,
                         assists_idx,
                         ["st-assists"],
@@ -121,7 +126,7 @@ class MapParser:
 
                     # Parse D(t) format from table: "16(5)" -> deaths=16, traded_deaths=5
                     deaths_text = self._require_metric_text(
-                        self._row_metric_text(
+                        self._extract_metric_text(
                             cols,
                             deaths_idx,
                             ["st-deaths"],
@@ -131,16 +136,16 @@ class MapParser:
                     deaths, traded_deaths = self._parse_pair(deaths_text)
 
                     opening_kills, opening_deaths = self._parse_colon_pair(
-                        self._row_metric_text(cols, opkd_idx, ["st-opkd"])
+                        self._extract_metric_text(cols, opkd_idx, ["st-opkd"])
                     )
                     multi_kills = self._parse_int_value(
-                        self._row_metric_text(cols, mks_idx, ["st-mks"])
+                        self._extract_metric_text(cols, mks_idx, ["st-mks"])
                     )
                     clutches_won = self._parse_int_value(
-                        self._row_metric_text(cols, clutches_idx, ["st-clutches"])
+                        self._extract_metric_text(cols, clutches_idx, ["st-clutches"])
                     )
                     round_swing = self._parse_percent_value(
-                        self._row_metric_text(
+                        self._extract_metric_text(
                             cols,
                             round_swing_idx,
                             ["st-roundSwing"],
@@ -150,7 +155,7 @@ class MapParser:
 
                     # Parse KAST percentage from column 3: "72.7%" -> 0.727
                     try:
-                        kast_text = self._row_metric_text(
+                        kast_text = self._extract_metric_text(
                             cols,
                             kast_idx,
                             ["st-kast"],
@@ -161,13 +166,13 @@ class MapParser:
                         kast = 0.0
                         logger.warning(
                             "Could not parse KAST from: %s",
-                            self._row_metric_text(cols, kast_idx, ["st-kast"]),
+                            self._extract_metric_text(cols, kast_idx, ["st-kast"]),
                         )
 
                     # Parse other numeric fields with error handling
                     try:
                         adr = float(
-                            self._row_metric_text(
+                            self._extract_metric_text(
                                 cols,
                                 adr_idx,
                                 ["st-adr"],
@@ -178,12 +183,12 @@ class MapParser:
                         adr = 0.0
                         logger.warning(
                             "Could not parse ADR from: %s",
-                            self._row_metric_text(cols, adr_idx, ["st-adr"]),
+                            self._extract_metric_text(cols, adr_idx, ["st-adr"]),
                         )
 
                     # Parse rating from column 10 (skip the Swing column 9 which has percentages)
                     try:
-                        rating_text = self._row_metric_text(
+                        rating_text = self._extract_metric_text(
                             cols,
                             rating_idx,
                             ["st-rating"],
@@ -200,7 +205,7 @@ class MapParser:
                         rating = 0.0
                         logger.warning(
                             "Could not parse Rating from: %s",
-                            self._row_metric_text(cols, rating_idx, ["st-rating"]),
+                            self._extract_metric_text(cols, rating_idx, ["st-rating"]),
                         )
 
                     kd_diff = kills - deaths
@@ -261,7 +266,9 @@ class MapParser:
                 mapping[normalized] = idx
         return mapping
 
-    def _pick_col(self, mapping: dict[str, int], keys: list[str], default: int) -> int:
+    def _pick_column_index(
+        self, mapping: dict[str, int], keys: list[str], default: int
+    ) -> int:
         """Returns the first matching column index from candidate normalized keys."""
         for key in keys:
             normalized = self._normalize_header(key)
@@ -269,12 +276,12 @@ class MapParser:
                 return mapping[normalized]
         return default
 
-    def _safe_col_text(self, cols, idx: int) -> str:
+    def _column_text_or_empty(self, cols, idx: int) -> str:
         if idx < len(cols):
             return str(cols[idx].get_text(strip=True))
         return ""
 
-    def _row_metric_text(
+    def _extract_metric_text(
         self,
         cols,
         fallback_idx: int,
@@ -315,7 +322,7 @@ class MapParser:
             if hidden_match is not None:
                 return hidden_match
 
-        return self._safe_col_text(cols, fallback_idx)
+        return self._column_text_or_empty(cols, fallback_idx)
 
     def _parse_pair(self, text: str) -> tuple[int, int]:
         """Parses values like '19(10)' into tuple (19, 10)."""
