@@ -17,23 +17,12 @@ class MapParser:
         """Extracts player object from a map stats page."""
         logger.info("Parsing %s for player stats", map_url)
         players = []
-        map_name = "unknown"
         try:
             map_id_value = int(map_id)
         except (TypeError, ValueError):
             map_id_value = self._extract_numeric_id(map_url)
 
-        match_box = soup.find("div", class_="match-info-box")
-
-        if match_box:
-            # Find the small-text div and get the next sibling that's a string
-            small_text_div = match_box.find("div", class_="small-text")
-            if small_text_div:
-                for elem in small_text_div.next_siblings:
-                    if isinstance(elem, str):
-                        map_name = elem.strip()
-                        if map_name:
-                            break
+        map_name = self._extract_map_name(soup)
         try:
             tables = soup.select("table.stats-table.totalstats")
             if not tables:
@@ -101,9 +90,7 @@ class MapParser:
                         self._extract_numeric_id(player_url) if player_url else -1
                     )
 
-                    player_name = (
-                        name_tag.text.strip() if name_tag else cols[0].text.strip()
-                    )
+                    player_name = self._extract_player_name(cols, name_tag)
 
                     # Parse K(hs) format from column 5: "19(10)" -> kills=19, headshots=10
                     kills_text = self._require_metric_text(
@@ -216,7 +203,7 @@ class MapParser:
                         player_id=player_id,
                         player_name=player_name,
                         player_url=player_url or "",
-                        map_name=map_name or "unknown",
+                        map_name=map_name,
                         team_name=team_name,
                         kills=kills,
                         headshots=headshots,
@@ -253,6 +240,24 @@ class MapParser:
     def _normalize_header(self, value: str) -> str:
         return re.sub(r"[^a-z0-9.]", "", value.lower())
 
+    def _extract_map_name(self, soup) -> str:
+        """Extracts the map name from the match info box."""
+        match_box = soup.find("div", class_="match-info-box")
+        if not match_box:
+            raise MapParseError("Failed to extract map name from map stats page.")
+
+        small_text_div = match_box.find("div", class_="small-text")
+        if not small_text_div:
+            raise MapParseError("Failed to extract map name from map stats page.")
+
+        for elem in small_text_div.next_siblings:
+            if isinstance(elem, str):
+                map_name = elem.strip()
+                if map_name:
+                    return map_name
+
+        raise MapParseError("Failed to extract map name from map stats page.")
+
     def _build_column_map(self, table) -> dict[str, int]:
         """Builds a normalized header->index map from table headers."""
         mapping = {}
@@ -265,6 +270,20 @@ class MapParser:
             if normalized not in mapping:
                 mapping[normalized] = idx
         return mapping
+
+    def _extract_player_name(self, cols, name_tag) -> str:
+        """Extracts a non-empty player name from the first stats cell."""
+        if name_tag:
+            player_name = name_tag.get_text(strip=True)
+            if player_name:
+                return player_name
+
+        if cols:
+            player_name = cols[0].get_text(strip=True)
+            if player_name:
+                return player_name
+
+        raise MapParseError("Failed to extract player name from map stats page.")
 
     def _pick_column_index(
         self, mapping: dict[str, int], keys: list[str], default: int
