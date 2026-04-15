@@ -2,7 +2,10 @@
 
 import time
 
-from cs2_analytics.exceptions import RetryableScrapeError
+from cs2_analytics.controllers.retry_utils import (
+    is_retryable_scraper_error,
+    reset_scraper,
+)
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -59,14 +62,14 @@ class ResultsController:
                 logger.warning("Failed to close results scraper: %s", e)
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
-        return isinstance(error, RetryableScrapeError)
+        return is_retryable_scraper_error(error)
 
     def _reset_scraper(self, scraper: ResultsScraper) -> ResultsScraper:
-        try:
-            scraper.close()
-        except Exception as e:
-            logger.warning("Failed to close results scraper during recovery: %s", e)
-
-        self.scraper = ResultsScraper()
-        time.sleep(1.0)
+        self.scraper = reset_scraper(
+            scraper,
+            ResultsScraper,
+            logger=logger,
+            close_warning_message="Failed to close results scraper during recovery: %s",
+            startup_delay_seconds=1.0,
+        )
         return self.scraper

@@ -3,7 +3,11 @@
 import time
 from contextlib import suppress
 
-from cs2_analytics.exceptions import RetryableScrapeError
+from cs2_analytics.controllers.retry_utils import (
+    is_retryable_scraper_error,
+    mark_item_failed,
+    reset_scraper,
+)
 from cs2_analytics.parsers.map_parser import MapParser
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 from cs2_analytics.scrapers.map_scraper import MapScraper
@@ -79,13 +83,14 @@ class MapController:
                             scraper = self._reset_scraper(scraper)
                             continue
 
-                        self.queue.mark_as_failed(map_id, str(e)[:500])
-                        logger.exception(
-                            "Error processing map %s on attempt %d/%d: %s",
+                        mark_item_failed(
+                            self.queue,
                             map_id,
-                            attempt,
-                            max_attempts,
                             e,
+                            logger=logger,
+                            log_message="Error processing map %s on attempt %d/%d: %s",
+                            attempt=attempt,
+                            max_attempts=max_attempts,
                         )
                         break
         finally:
@@ -95,14 +100,14 @@ class MapController:
         logger.info("MapController complete.")
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
-        return isinstance(error, RetryableScrapeError)
+        return is_retryable_scraper_error(error)
 
     def _reset_scraper(self, scraper: MapScraper) -> MapScraper:
-        try:
-            scraper.close()
-        except Exception as e:
-            logger.warning("Failed to close map scraper during recovery: %s", e)
-
-        self.scraper = MapScraper()
-        time.sleep(1.0)
+        self.scraper = reset_scraper(
+            scraper,
+            MapScraper,
+            logger=logger,
+            close_warning_message="Failed to close map scraper during recovery: %s",
+            startup_delay_seconds=1.0,
+        )
         return self.scraper
