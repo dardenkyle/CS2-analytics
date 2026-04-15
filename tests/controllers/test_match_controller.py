@@ -52,6 +52,17 @@ class _SuccessfulParser:
         return object(), [], []
 
 
+class _FailOnceThenSucceedParser:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def parse_match(self, soup: object, match_url: str) -> tuple[object, list, list]:
+        self.calls += 1
+        if self.calls == 1:
+            raise MatchParseError("Missing team names on match page.")
+        return object(), [], []
+
+
 def _build_match_controller(
     monkeypatch: pytest.MonkeyPatch,
     scraper_cls: type[_PassiveScraper],
@@ -114,3 +125,35 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
     assert failed_id == "match-1"
     assert "Failed to fetch match page" in reason
     assert len(exception_calls) == 1
+
+
+def test_match_controller_continues_after_item_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stored_matches: list[list[object]] = []
+    controller = _build_match_controller(
+        monkeypatch,
+        _SuccessfulScraper,
+        _FailOnceThenSucceedParser,
+    )
+    monkeypatch.setattr(
+        controller.match_queue,
+        "fetch",
+        lambda limit=25: [
+            ("match-1", "https://www.hltv.org/matches/1/test"),
+            ("match-2", "https://www.hltv.org/matches/2/test"),
+        ],
+    )
+    monkeypatch.setattr(
+        match_module,
+        "store_matches",
+        lambda matches: stored_matches.append(matches),
+    )
+
+    controller.run(batch_size=2)
+
+    assert controller.match_queue.failed == [
+        ("match-1", "Missing team names on match page.")
+    ]
+    assert controller.match_queue.parsed == ["match-2"]
+    assert len(stored_matches) == 1

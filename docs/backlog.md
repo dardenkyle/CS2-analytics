@@ -21,7 +21,7 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 
 ### Remaining hardening priorities
 
-- [ ] Decide failure policy when retries are exhausted (continue stage vs fail run)
+- [x] Decide failure policy when retries are exhausted (results fails run; match/map fail item and continue)
 - [x] Standardize scraper/parser/storage error handling so controllers own retry and terminal queue outcomes
 - [ ] Improve observability around retry exhaustion and run-level outcomes
 - [ ] Add targeted tests for controller retry and recovery behavior

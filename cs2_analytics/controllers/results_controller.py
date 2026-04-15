@@ -6,6 +6,7 @@ from cs2_analytics.controllers.retry_utils import (
     is_retryable_scraper_error,
     reset_scraper,
 )
+from cs2_analytics.exceptions import PipelineError
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -54,7 +55,9 @@ class ResultsController:
                         max_attempts,
                         e,
                     )
-                    return
+                    raise PipelineError(
+                        "Results stage failed after exhausting retries."
+                    ) from e
         finally:
             try:
                 scraper.close()
