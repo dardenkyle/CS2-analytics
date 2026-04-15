@@ -16,10 +16,10 @@ Keep the ingestion pipeline reliable while preserving clear stage boundaries.
 
 - Queue-status and responsibility cleanup for the active match/map flow
 - Match/player persistence remains centralized in storage modules
+- Shared controller retry/session-recovery behavior centralized in controller-scoped helpers
 
 ## Current Work
 
-- Stabilizing retry/backoff and session-recovery paths
 - Deciding failure handling when retries are exhausted
 - Improving observability around retry exhaustion and run-level outcomes
 - Adding targeted tests for controller retry and recovery behavior
