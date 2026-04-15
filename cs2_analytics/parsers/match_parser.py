@@ -174,5 +174,5 @@ class MatchParser:
             return dt.datetime.fromtimestamp(
                 int(match_date_tag["data-unix"]) / 1000
             ).strftime("%Y-%m-%d")
-        except (TypeError, ValueError, OSError) as e:
+        except (TypeError, ValueError, OSError, OverflowError) as e:
             raise MatchParseError("Failed to extract match date from match page.") from e

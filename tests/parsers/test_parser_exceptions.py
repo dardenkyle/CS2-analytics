@@ -303,6 +303,37 @@ def test_match_parser_raises_typed_error_for_missing_match_date() -> None:
         parser.parse_match(soup, "https://www.hltv.org/matches/1/test-match")
 
 
+def test_match_parser_raises_typed_error_for_overflow_match_date() -> None:
+    parser = MatchParser()
+    soup = _build_match_soup(
+        """
+        <html>
+          <body>
+            <div class="teamName">Team One</div>
+            <div class="teamName">Team Two</div>
+            <div class="team1-gradient">
+              <a href="/team/1/team-one">Team One</a>
+              <div>16</div>
+            </div>
+            <div class="team2-gradient">
+              <a href="/team/2/team-two">Team Two</a>
+              <div>10</div>
+            </div>
+            <div class="event text-ellipsis">Test Event</div>
+            <div class="padding preformatted-text">Best of 3</div>
+            <div class="mapname">Inferno</div>
+            <div class="date" data-unix="999999999999999999999"></div>
+          </body>
+        </html>
+        """
+    )
+
+    with pytest.raises(
+        MatchParseError, match="Failed to extract match date from match page."
+    ):
+        parser.parse_match(soup, "https://www.hltv.org/matches/1/test-match")
+
+
 def test_map_parser_raises_typed_error_for_missing_map_name() -> None:
     parser = MapParser()
     soup = _build_map_soup(
