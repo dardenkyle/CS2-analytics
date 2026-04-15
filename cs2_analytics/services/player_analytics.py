@@ -1,6 +1,7 @@
 import json
 import os
 
+from cs2_analytics.exceptions import AnalyticsProcessingError
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -48,7 +49,9 @@ class PlayerAnalytics:
                 logger.info(f"✅ Processed player stats from {file}")
 
             except Exception as e:
-                logger.error(f"❌ Error processing {file}: {e}")
+                raise AnalyticsProcessingError(
+                    f"Failed to process analytics file: {file}"
+                ) from e
 
         self._save_aggregated_data(aggregated_data)
 
@@ -111,3 +114,4 @@ class PlayerAnalytics:
             json.dump(aggregated_data, f, indent=4)
 
         logger.info(f"💾 Saved aggregated player performance data: {output_file}")
+

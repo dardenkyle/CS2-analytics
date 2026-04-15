@@ -2,6 +2,11 @@
 
 import time
 
+from cs2_analytics.controllers.retry_utils import (
+    is_retryable_scraper_error,
+    reset_scraper,
+)
+from cs2_analytics.exceptions import PipelineError
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -16,25 +21,29 @@ class ResultsController:
 
     def run(self, max_matches: int = 50) -> None:
         """Scrapes result pages and queues match URLs for downstream stages."""
-        logger.info("🕹️ Running ResultsController with max_matches=%d", max_matches)
+        logger.info("Running ResultsController with max_matches=%d", max_matches)
 
         max_attempts = 3
         scraper = self.scraper
+        retries = 0
+        terminal_failures = 0
+        run_status = "failed"
 
         try:
             for attempt in range(1, max_attempts + 1):
                 try:
                     scraper.run(max_matches=max_matches)
-                    logger.info("🏁 ResultsController complete.")
+                    run_status = "succeeded"
+                    logger.info("ResultsController complete.")
                     return
                 except Exception as e:
-                    should_retry = (
-                        attempt < max_attempts and self._is_recoverable_scraper_error(e)
-                    )
+                    is_retryable = self._is_recoverable_scraper_error(e)
+                    should_retry = attempt < max_attempts and is_retryable
 
                     if should_retry:
+                        retries += 1
                         logger.warning(
-                            "⚠️ Recoverable results scraper error (attempt %d/%d): %s",
+                            "Retryable results scraper error (attempt %d/%d): %s",
                             attempt,
                             max_attempts,
                             e,
@@ -43,33 +52,50 @@ class ResultsController:
                         scraper = self._reset_scraper(scraper)
                         continue
 
-                    logger.exception("❌ ResultsController failed: %s", e)
-                    return
+                    terminal_failures += 1
+                    if is_retryable:
+                        logger.error(
+                            "ResultsController exhausted retries after %d attempts; failing stage run.",
+                            max_attempts,
+                        )
+                        failure_message = (
+                            "Results stage failed after exhausting retries "
+                            f"({attempt}/{max_attempts} attempts)."
+                        )
+                    else:
+                        failure_message = (
+                            "Results stage failed on non-retryable error "
+                            f"at attempt {attempt}/{max_attempts}."
+                        )
+                    logger.exception(
+                        "ResultsController failed on attempt %d/%d: %s",
+                        attempt,
+                        max_attempts,
+                        e,
+                    )
+                    raise PipelineError(failure_message) from e
         finally:
             try:
                 scraper.close()
             except Exception as e:
-                logger.warning("⚠️ Failed to close results scraper: %s", e)
+                logger.warning("Failed to close results scraper: %s", e)
+            logger.info(
+                "ResultsController summary: status=%s retries=%d terminal_failures=%d max_matches=%d",
+                run_status,
+                retries,
+                terminal_failures,
+                max_matches,
+            )
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
-        msg = str(error).lower()
-        recoverable_signatures = (
-            "connection refused",
-            "max retries exceeded",
-            "failed to establish a new connection",
-            "invalid session id",
-            "session deleted",
-            "disconnected",
-            "read timed out",
-        )
-        return any(sig in msg for sig in recoverable_signatures)
+        return is_retryable_scraper_error(error)
 
     def _reset_scraper(self, scraper: ResultsScraper) -> ResultsScraper:
-        try:
-            scraper.close()
-        except Exception as e:
-            logger.warning("⚠️ Failed to close results scraper during recovery: %s", e)
-
-        self.scraper = ResultsScraper()
-        time.sleep(1.0)
+        self.scraper = reset_scraper(
+            scraper,
+            ResultsScraper,
+            logger=logger,
+            close_warning_message="Failed to close results scraper during recovery: %s",
+            startup_delay_seconds=1.0,
+        )
         return self.scraper

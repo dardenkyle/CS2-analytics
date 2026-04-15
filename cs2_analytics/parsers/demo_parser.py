@@ -1,6 +1,7 @@
 import json
 import os
 
+from cs2_analytics.exceptions import DemoParseError
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -36,8 +37,10 @@ class DemoParser:
                 parsed_data = self._parse_demo_file(demo_path)
                 self._save_parsed_data(demo_file, parsed_data)
                 logger.info(f"✅ Successfully parsed {demo_file}.")
+            except DemoParseError:
+                raise
             except Exception as e:
-                logger.error(f"❌ Error parsing {demo_file}: {e}")
+                raise DemoParseError(f"Failed to parse demo file: {demo_file}") from e
 
     def _parse_demo_file(
         self, demo_path: str
@@ -123,3 +126,4 @@ class DemoParser:
                 f.write("Simulated demo content.")  # Placeholder content
 
             logger.info(f"✅ Downloaded: {demo_file}")
+

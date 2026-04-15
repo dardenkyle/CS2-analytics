@@ -1,5 +1,6 @@
 """Manages queue operations for demo file scraping and processing."""
 
+from cs2_analytics.exceptions import DemoQueueError
 from cs2_analytics.queues.base_scrape_queue import BaseScrapeQueue
 
 
@@ -11,4 +12,9 @@ class DemoScrapeQueue(BaseScrapeQueue):
     """
 
     def __init__(self) -> None:
-        super().__init__(table_name="demo_scrape_queue", id_field="demo_id", url_field="demo_url")
+        super().__init__(
+            table_name="demo_scrape_queue",
+            id_field="demo_id",
+            url_field="demo_url",
+            error_cls=DemoQueueError,
+        )

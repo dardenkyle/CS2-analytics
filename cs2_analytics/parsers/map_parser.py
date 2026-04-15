@@ -3,6 +3,7 @@
 import datetime as dt
 import re
 
+from cs2_analytics.exceptions import MapParseError
 from cs2_analytics.models.player import Player
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -40,6 +41,8 @@ class MapParser:
             tables = soup.select("table.stats-table.totalstats")
             if not tables:
                 tables = soup.select("table.stats-table")
+            if not tables:
+                raise MapParseError("No player stats tables found on map page.")
             for table in tables:
                 table_classes = table.get("class", [])
                 if "hidden" in table_classes:
@@ -86,9 +89,8 @@ class MapParser:
                             if name_tag and "href" in name_tag.attrs
                             else None
                         )
-                    except Exception as e:
+                    except Exception:
                         player_url = None
-                        logger.error("Failed to extract player URL: %s", e)
 
                     player_id = (
                         self._extract_numeric_id(player_url) if player_url else -1
@@ -99,10 +101,13 @@ class MapParser:
                     )
 
                     # Parse K(hs) format from column 5: "19(10)" -> kills=19, headshots=10
-                    kills_text = self._row_metric_text(
-                        cols,
-                        kills_idx,
-                        ["st-kills"],
+                    kills_text = self._require_metric_text(
+                        self._row_metric_text(
+                            cols,
+                            kills_idx,
+                            ["st-kills"],
+                        ),
+                        "No player kills logged.",
                     )
                     kills, headshots = self._parse_pair(kills_text)
 
@@ -115,10 +120,13 @@ class MapParser:
                     assists, flash_assists = self._parse_pair(assists_text)
 
                     # Parse D(t) format from table: "16(5)" -> deaths=16, traded_deaths=5
-                    deaths_text = self._row_metric_text(
-                        cols,
-                        deaths_idx,
-                        ["st-deaths"],
+                    deaths_text = self._require_metric_text(
+                        self._row_metric_text(
+                            cols,
+                            deaths_idx,
+                            ["st-deaths"],
+                        ),
+                        "No player deaths logged.",
                     )
                     deaths, traded_deaths = self._parse_pair(deaths_text)
 
@@ -229,8 +237,10 @@ class MapParser:
                     logger.debug("Extracted stats for player: %s", player.player_name)
                     players.append(player)
 
+        except MapParseError:
+            raise
         except Exception as e:
-            logger.error("Failed to extract player stats from %s: %s", map_url, e)
+            raise MapParseError(f"Failed to parse map stats page: {map_url}") from e
 
         logger.info("Extracted %s player stats from %s", len(players), map_url)
         return players
@@ -317,6 +327,12 @@ class MapParser:
         if single:
             return int(single.group(1)), 0
         return 0, 0
+
+    def _require_metric_text(self, text: str, message: str) -> str:
+        """Raises a parsing error when a required metric cell is missing."""
+        if text:
+            return text
+        raise MapParseError(message)
 
     def _extract_numeric_id(self, url: str) -> int:
         match = re.search(r"/(\d+)/", url)

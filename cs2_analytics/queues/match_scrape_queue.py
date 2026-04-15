@@ -1,5 +1,6 @@
 """Manages queue operations for match result scraping."""
 
+from cs2_analytics.exceptions import MatchQueueError
 from cs2_analytics.queues.base_scrape_queue import BaseScrapeQueue
 
 
@@ -12,4 +13,9 @@ class MatchScrapeQueue(BaseScrapeQueue):
     """
 
     def __init__(self) -> None:
-        super().__init__(table_name="match_scrape_queue", id_field="match_id", url_field="match_url")
+        super().__init__(
+            table_name="match_scrape_queue",
+            id_field="match_id",
+            url_field="match_url",
+            error_cls=MatchQueueError,
+        )

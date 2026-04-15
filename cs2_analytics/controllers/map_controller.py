@@ -1,6 +1,13 @@
+"""Controller for scraping and storing map-level player data."""
+
 import time
 from contextlib import suppress
 
+from cs2_analytics.controllers.retry_utils import (
+    is_retryable_scraper_error,
+    mark_item_failed,
+    reset_scraper,
+)
 from cs2_analytics.parsers.map_parser import MapParser
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 from cs2_analytics.scrapers.map_scraper import MapScraper
@@ -11,28 +18,33 @@ logger = get_logger("map_controller")
 
 
 class MapController:
+    """Orchestrates map scraping, parsing, and player storage."""
+
     def __init__(self) -> None:
         self.scraper = MapScraper()
         self.parser = MapParser()
         self.queue = MapScrapeQueue()
 
     def run(self, batch_size: int = 25) -> None:
-        logger.info("🕹️ Running MapController with batch size: %d", batch_size)
+        logger.info("Running MapController with batch size: %d", batch_size)
 
         queued = self.queue.fetch(batch_size)
-        logger.info("📥 %d map URLs pulled from queue", len(queued))
+        logger.info("%d map URLs pulled from queue", len(queued))
 
         rotate_every = 8
         inter_map_delay_seconds = 0.75
         retry_backoff_seconds = 3.0
         processed_since_reset = 0
+        succeeded = 0
+        failed = 0
+        retries = 0
 
         scraper = self.scraper
         try:
             for map_id, map_url in queued:
                 if processed_since_reset >= rotate_every:
                     logger.info(
-                        "🔁 Rotating map scraper session after %d processed maps",
+                        "Rotating map scraper session after %d processed maps",
                         processed_since_reset,
                     )
                     scraper = self._reset_scraper(scraper)
@@ -47,10 +59,12 @@ class MapController:
                         if player_obj:
                             store_players(player_obj)
                             self.queue.mark_as_parsed(map_id)
-                            logger.info("✅ Stored map: %s", map_id)
+                            succeeded += 1
+                            logger.info("Stored map: %s", map_id)
                         else:
                             self.queue.mark_as_failed(map_id, "Parsing returned None")
-                            logger.warning("❌ Map %s returned None", map_id)
+                            failed += 1
+                            logger.warning("Map %s returned no parsed data", map_id)
 
                         processed_since_reset += 1
                         time.sleep(inter_map_delay_seconds)
@@ -63,8 +77,9 @@ class MapController:
                         )
 
                         if should_retry:
+                            retries += 1
                             logger.warning(
-                                "⚠️ Recoverable scraper error for map %s (attempt %d/%d): %s",
+                                "Retryable scraper error for map %s (attempt %d/%d): %s",
                                 map_id,
                                 attempt,
                                 max_attempts,
@@ -74,34 +89,48 @@ class MapController:
                             scraper = self._reset_scraper(scraper)
                             continue
 
-                        self.queue.mark_as_failed(map_id, str(e)[:500])
-                        logger.exception("❌ Error processing map %s: %s", map_id, e)
+                        if (
+                            attempt == max_attempts
+                            and self._is_recoverable_scraper_error(e)
+                        ):
+                            logger.error(
+                                "Exhausted retries for map %s after %d attempts; marking failed and continuing.",
+                                map_id,
+                                max_attempts,
+                            )
+                        mark_item_failed(
+                            self.queue,
+                            map_id,
+                            e,
+                            logger=logger,
+                            log_message="Error processing map %s on attempt %d/%d: %s",
+                            attempt=attempt,
+                            max_attempts=max_attempts,
+                        )
+                        failed += 1
                         break
         finally:
             with suppress(Exception):
                 scraper.close()
 
-        logger.info("🏁 MapController complete.")
+        logger.info(
+            "MapController summary: queued=%d succeeded=%d failed=%d retries=%d",
+            len(queued),
+            succeeded,
+            failed,
+            retries,
+        )
+        logger.info("MapController complete.")
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
-        msg = str(error).lower()
-        recoverable_signatures = (
-            "connection refused",
-            "max retries exceeded",
-            "failed to establish a new connection",
-            "invalid session id",
-            "session deleted",
-            "disconnected",
-            "read timed out",
-        )
-        return any(sig in msg for sig in recoverable_signatures)
+        return is_retryable_scraper_error(error)
 
     def _reset_scraper(self, scraper: MapScraper) -> MapScraper:
-        try:
-            scraper.close()
-        except Exception as e:
-            logger.warning("⚠️ Failed to close map scraper during recovery: %s", e)
-
-        self.scraper = MapScraper()
-        time.sleep(1.0)
+        self.scraper = reset_scraper(
+            scraper,
+            MapScraper,
+            logger=logger,
+            close_warning_message="Failed to close map scraper during recovery: %s",
+            startup_delay_seconds=1.0,
+        )
         return self.scraper
