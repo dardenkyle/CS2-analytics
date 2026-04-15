@@ -111,6 +111,16 @@ def test_match_parser_returns_numeric_match_id() -> None:
     assert demo_links == []
 
 
+def test_match_parser_raises_typed_error_for_missing_match_id_in_url() -> None:
+    parser = MatchParser()
+    soup = _build_match_soup()
+
+    with pytest.raises(
+        MatchParseError, match="Failed to extract match id from match URL."
+    ):
+        parser.parse_match(soup, "https://www.hltv.org/match/test-match")
+
+
 def test_map_parser_raises_typed_error_for_missing_kills() -> None:
     parser = MapParser()
     soup = BeautifulSoup(

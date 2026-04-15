@@ -38,7 +38,10 @@ class MatchParser:
 
     def _extract_match_id(self, match_url: str) -> int:
         """Extracts the match identifier from the match URL."""
-        return int(match_url.split("/")[-2])
+        match = re.search(r"/matches/(\d+)", match_url)
+        if not match:
+            raise MatchParseError("Failed to extract match id from match URL.")
+        return int(match.group(1))
 
     def _extract_follow_up_links(
         self, soup
