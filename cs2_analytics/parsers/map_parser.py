@@ -41,7 +41,7 @@ class MapParser:
         except (TypeError, ValueError):
             return self._extract_numeric_id(map_url)
 
-    def _iter_visible_stat_tables(self, soup, map_url: str):
+    def _iter_visible_stat_tables(self, soup):
         """Yields visible player stat tables from the map page."""
         tables = soup.select("table.stats-table.totalstats")
         if not tables:
@@ -66,7 +66,7 @@ class MapParser:
         """Extracts parsed player rows from each visible stats table."""
         players: list[Player] = []
 
-        for table in self._iter_visible_stat_tables(soup, map_url):
+        for table in self._iter_visible_stat_tables(soup):
             team_name = self._extract_team_name(table)
             column_indexes = self._build_column_indexes(table)
             tbody = table.find("tbody")
