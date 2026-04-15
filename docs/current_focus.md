@@ -12,7 +12,7 @@ Transition from ingestion hardening into dbt while preserving clear stage bounda
 - Results-stage retry exhaustion fails the run; match/map item exhaustion marks failed and continues
 - Queues stay PostgreSQL-backed
 - Demo-related work remains deferred until much later in development (TBD)
-- The next major phase is dbt, after one small parser/scraper readability cleanup
+- The next major phase is dbt
 
 ## Recently Completed
 
@@ -23,11 +23,11 @@ Transition from ingestion hardening into dbt while preserving clear stage bounda
 - Run-level retry/failure visibility added to controller summaries and retry-exhaustion logs
 - Targeted controller and retry-helper tests added for retry, recovery, and run summaries
 - Field-specific parser extraction errors added for required match/map fields with direct parser coverage
+- Parser/scraper class structure cleaned up for readability without changing active-flow behavior
 
 ## Current Work
 
-- Do one last parser/scraper class structure cleanup branch focused on readability only
-- Initialize the dbt project once that cleanup lands
+- Initialize the dbt project
 - Start with staging models for matches, maps, and players
 
 ## Rules
