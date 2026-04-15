@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from seleniumbase import Driver
 
 from cs2_analytics.config.config import END_DATE, HLTV_URL, MAX_MATCHES, START_DATE
+from cs2_analytics.exceptions import ResultsScrapeError, SessionScrapeError
 from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 from cs2_analytics.utils.log_manager import get_logger
 from cs2_analytics.utils.queue_helpers import chunk_and_queue
@@ -52,7 +53,7 @@ class ResultsScraper:
 
         while total_queued < max_matches:
             page_url = f"{self.base_url}?offset={offset}&gameType=CS2"
-            logger.info("🔄 Scraping page: %s", page_url)
+            logger.info("Scraping page: %s", page_url)
 
             match_urls, stop = self._extract_matches_from_page(page_url)
             batch = []
@@ -73,9 +74,9 @@ class ResultsScraper:
                 break
 
             offset += 100
-            time.sleep(random.uniform(1.0, 2.0))  # Polite crawl delay
+            time.sleep(random.uniform(1.0, 2.0))
 
-        logger.info("✅ Queued %s matches total.", total_queued)
+        logger.info("Queued %s matches total.", total_queued)
 
     def _extract_matches_from_page(self, url: str) -> tuple[list[str], bool]:
         """
@@ -87,10 +88,13 @@ class ResultsScraper:
         Returns:
             Tuple of (list of match URLs, whether to stop scraping)
         """
-        self.driver.get(url)
-        time.sleep(random.uniform(3, 5))
+        try:
+            self.driver.get(url)
+            time.sleep(random.uniform(3, 5))
+            soup = BeautifulSoup(self.driver.page_source, "html.parser")
+        except Exception as e:
+            raise SessionScrapeError(f"Failed to fetch results page: {url}") from e
 
-        soup = BeautifulSoup(self.driver.page_source, "html.parser")
         matches = []
         stop_scraping = False
 
@@ -105,13 +109,13 @@ class ResultsScraper:
             try:
                 match_date = dt.datetime.strptime(raw_date.strip(), "%B %d %Y").date()
             except ValueError:
-                logger.warning("❌ Could not parse date: %s", raw_date)
+                logger.warning("Could not parse date: %s", raw_date)
                 continue
 
             if match_date > self.end_date:
                 continue
             if match_date < self.start_date:
-                logger.info("⏹️ Stopping at match date %s — out of range.", match_date)
+                logger.info("Stopping at match date %s because it is out of range.", match_date)
                 return matches, True
 
             for match in section.find_all("div", class_="result-con"):
@@ -138,8 +142,11 @@ class ResultsScraper:
 
     def close(self) -> None:
         """Closes the SeleniumBase driver."""
-        self.driver.quit()
-        logger.info("🚪 Selenium driver closed.")
+        try:
+            self.driver.quit()
+            logger.info("Selenium driver closed.")
+        except Exception as e:
+            raise ResultsScrapeError("Failed to close results scraper driver.") from e
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import time
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
 
+from cs2_analytics.exceptions import MapScrapeError, SessionScrapeError
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -32,11 +33,17 @@ class MapScraper:
 
     def _fetch_soup(self, url: str) -> BeautifulSoup:
         """Loads a map page and returns its parsed HTML."""
-        self.driver.get(url)
-        time.sleep(3.0)
-        return BeautifulSoup(self.driver.page_source, "html.parser")
+        try:
+            self.driver.get(url)
+            time.sleep(3.0)
+            return BeautifulSoup(self.driver.page_source, "html.parser")
+        except Exception as e:
+            raise SessionScrapeError(f"Failed to fetch map stats page: {url}") from e
 
     def close(self) -> None:
         """Closes the Selenium driver."""
-        self.driver.quit()
-        logger.info("Selenium driver closed.")
+        try:
+            self.driver.quit()
+            logger.info("Selenium driver closed.")
+        except Exception as e:
+            raise MapScrapeError("Failed to close map scraper driver.") from e

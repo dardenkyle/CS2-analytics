@@ -1,8 +1,9 @@
-"""This module contains the MatchController class, which orchestrates the scraping and parsing of match data."""
+"""Controller for scraping and storing match-level data."""
 
 import time
 from contextlib import suppress
 
+from cs2_analytics.exceptions import RetryableScrapeError
 from cs2_analytics.parsers.match_parser import MatchParser
 from cs2_analytics.queues.demo_scrape_queue import DemoScrapeQueue
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
@@ -15,8 +16,7 @@ logger = get_logger("match_controller")
 
 
 class MatchController:
-    """
-    MatchController orchestrates the scraping and parsing of match data."""
+    """Orchestrates match scraping, parsing, queueing, and storage."""
 
     def __init__(self) -> None:
         self.scraper = MatchScraper()
@@ -26,18 +26,12 @@ class MatchController:
         self.demo_queue = DemoScrapeQueue()
 
     def run(self, batch_size: int = 25) -> None:
-        """
-        Main method to run the MatchController.
-
-        Args:
-            batch_size (int): Number of matches to process in each batch.
-        """
-        logger.info("🕹️ Running MatchController with batch size: %d", batch_size)
+        """Runs the match stage for a batch of queued match URLs."""
+        logger.info("Running MatchController with batch size: %d", batch_size)
 
         queued = self.match_queue.fetch(limit=batch_size)
-        logger.info("📥 %d matches pulled from queue", len(queued))
+        logger.info("%d matches pulled from queue", len(queued))
 
-        # Refresh browser session before it reaches the observed instability window.
         rotate_every = 8
         inter_match_delay_seconds = 1.1
         retry_backoff_seconds = 3.0
@@ -49,7 +43,7 @@ class MatchController:
             for match_id, match_url in queued:
                 if processed_since_reset >= rotate_every:
                     logger.info(
-                        "🔁 Rotating scraper session after %d processed matches",
+                        "Rotating scraper session after %d processed matches",
                         processed_since_reset,
                     )
                     scraper = self._reset_scraper(scraper)
@@ -67,12 +61,12 @@ class MatchController:
                             store_matches([match])
                             self._queue_followups(map_links, demo_links)
                             self.match_queue.mark_as_parsed(match_id)
-                            logger.info("✅ Stored match: %s", match_id)
+                            logger.info("Stored match: %s", match_id)
                         else:
                             self.match_queue.mark_as_failed(
                                 match_id, "Parsing returned None"
                             )
-                            logger.warning("❌ Match %s returned None", match_id)
+                            logger.warning("Match %s returned no parsed data", match_id)
 
                         consecutive_recoverable_errors = 0
                         processed_since_reset += 1
@@ -88,7 +82,7 @@ class MatchController:
                         if should_retry:
                             consecutive_recoverable_errors += 1
                             logger.warning(
-                                "⚠️ Recoverable scraper error for match %s (attempt %d/%d): %s",
+                                "Retryable scraper error for match %s (attempt %d/%d): %s",
                                 match_id,
                                 attempt,
                                 max_attempts,
@@ -97,7 +91,7 @@ class MatchController:
 
                             if consecutive_recoverable_errors >= 2:
                                 logger.info(
-                                    "🧊 Applying cooldown after %d consecutive recoverable errors",
+                                    "Applying cooldown after %d consecutive recoverable errors",
                                     consecutive_recoverable_errors,
                                 )
                                 time.sleep(8.0)
@@ -108,7 +102,11 @@ class MatchController:
 
                         self.match_queue.mark_as_failed(match_id, str(e)[:500])
                         logger.exception(
-                            "❌ Error processing match %s: %s", match_id, e
+                            "Error processing match %s on attempt %d/%d: %s",
+                            match_id,
+                            attempt,
+                            max_attempts,
+                            e,
                         )
                         consecutive_recoverable_errors = 0
                         break
@@ -116,44 +114,33 @@ class MatchController:
             with suppress(Exception):
                 scraper.close()
 
-        logger.info("🏁 MatchController complete.")
+        logger.info("MatchController complete.")
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
-        """Returns True for transient Selenium/session failures worth retrying once."""
-        msg = str(error).lower()
-        recoverable_signatures = (
-            "connection refused",
-            "max retries exceeded",
-            "failed to establish a new connection",
-            "invalid session id",
-            "session deleted",
-            "disconnected",
-            "read timed out",
-        )
-        return any(sig in msg for sig in recoverable_signatures)
+        """Returns True for transient scraper failures worth retrying."""
+        return isinstance(error, RetryableScrapeError)
 
     def _reset_scraper(self, scraper: MatchScraper) -> MatchScraper:
         """Closes and recreates the scraper so the next attempt gets a fresh session."""
         try:
             scraper.close()
         except Exception as e:
-            logger.warning("⚠️ Failed to close scraper during recovery: %s", e)
+            logger.warning("Failed to close scraper during recovery: %s", e)
 
         for reset_attempt in range(1, 4):
             self.scraper = MatchScraper()
-            # Give the new browser session a brief moment to fully initialize.
             time.sleep(1.5)
 
             if self._is_scraper_session_ready(self.scraper):
                 if reset_attempt > 1:
                     logger.info(
-                        "✅ Scraper session recovered on reset attempt %d",
+                        "Scraper session recovered on reset attempt %d",
                         reset_attempt,
                     )
                 return self.scraper
 
             logger.warning(
-                "⚠️ New scraper session not ready on reset attempt %d/3; retrying reset",
+                "New scraper session not ready on reset attempt %d/3; retrying reset",
                 reset_attempt,
             )
             with suppress(Exception):
@@ -161,7 +148,7 @@ class MatchController:
             time.sleep(1.0)
 
         logger.warning(
-            "⚠️ Returning scraper after reset retries; first request may still require retry"
+            "Returning scraper after reset retries; first request may still require retry"
         )
         self.scraper = MatchScraper()
         time.sleep(1.5)
@@ -174,7 +161,7 @@ class MatchController:
             _ = scraper.driver.page_source
             return True
         except Exception as e:
-            logger.warning("⚠️ Scraper session health check failed: %s", e)
+            logger.warning("Scraper session health check failed: %s", e)
             return False
 
     def _queue_followups(
