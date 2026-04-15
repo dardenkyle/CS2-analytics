@@ -25,7 +25,7 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 - [x] Standardize scraper/parser/storage error handling so controllers own retry and terminal queue outcomes
 - [x] Improve observability around retry exhaustion and run-level outcomes
 - [x] Add targeted tests for controller retry and recovery behavior
-- [ ] Clean up scraper/parser helper methods to clarify responsibilities, naming, and public vs private method boundaries
+- [x] Clean up scraper/parser helper methods to clarify responsibilities, naming, and public vs private method boundaries
 - [x] Centralize shared controller retry/session-recovery logic to reduce duplication across stages
 - [ ] Evaluate queue schema upgrades (`processing`, locks, `available_at`) when multi-worker support is needed
 
