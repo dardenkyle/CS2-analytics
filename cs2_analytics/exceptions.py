@@ -45,6 +45,10 @@ class MapScrapeError(ScrapeError):
     """Raised when map HTML cannot be fetched."""
 
 
+class DemoScrapeError(ScrapeError):
+    """Raised when demo archives cannot be downloaded or extracted."""
+
+
 class StorageError(CS2AnalyticsError):
     """Base exception for persistence failures."""
 
@@ -69,6 +73,10 @@ class PlayerStorageError(StorageError):
     """Raised when player records cannot be stored."""
 
 
+class DemoStorageError(StorageError):
+    """Raised when demo records cannot be stored."""
+
+
 class QueueError(CS2AnalyticsError):
     """Base exception for queue operation failures."""
 
@@ -87,3 +95,7 @@ class DemoQueueError(QueueError):
 
 class PipelineError(CS2AnalyticsError):
     """Base exception for pipeline orchestration failures."""
+
+
+class AnalyticsProcessingError(PipelineError):
+    """Raised when analytics processing cannot complete."""
