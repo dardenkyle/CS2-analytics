@@ -24,11 +24,27 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 - [x] Add targeted tests for controller retry and recovery behavior
 - [x] Clean up scraper/parser helper methods to clarify responsibilities, naming, and public vs private method boundaries
 - [x] Centralize shared controller retry/session-recovery logic to reduce duplication across stages
-
-### Remaining hardening priorities
-
 - [x] Add field-specific parser extraction errors for required match/map fields
+
+### Future hardening backlog
+
 - [ ] Evaluate queue schema upgrades (`processing`, locks, `available_at`) when multi-worker support is needed
+- [ ] Add parser tests for malformed-but-partial HLTV markup
+- [ ] Define required vs optional fields for match/map parsing
+- [ ] Add idempotency tests for queue and storage writes
+- [ ] Standardize timezone-aware timestamps across parser/storage models
+- [ ] Add controller tests for queue/storage failure paths after parse success
+- [ ] Add structured run identifiers to controller logs for cross-stage tracing
+- [ ] Truncate and normalize stored error messages consistently across controllers
+- [ ] Add dead-letter/retry requeue policy for failed items
+- [ ] Validate follow-up queue payloads before enqueueing map/demo links
+- [ ] Add health-check coverage for scraper reset failure/fallback behavior
+- [ ] Add startup checks for required config/env vars before pipeline execution
+- [ ] Separate integration tests from unit tests for DB and scraper-dependent paths
+- [ ] Add protection against duplicate processing when the same item is queued twice
+- [ ] Audit and normalize naive `datetime.now()` usage outside the recent UTC fix
+- [ ] Add explicit controller summaries for zero-item runs
+- [ ] Document expected failure modes by stage in `docs/current_focus.md` or a dedicated hardening note
 
 ---
 
@@ -36,6 +52,10 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 
 Goal:
 Introduce transformation models after ingestion behavior is stable.
+
+### Before starting
+
+- [ ] Clean up parser/scraper class structure for readability without changing behavior
 
 ### Planned work
 
