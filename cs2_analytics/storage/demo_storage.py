@@ -45,7 +45,7 @@ def store_demo_file(
         last_processed_at = EXCLUDED.last_processed_at;
     """
 
-    now = dt.datetime.utcnow()
+    now = dt.datetime.now(dt.UTC)
 
     values = {
         "map_id": map_id,
@@ -61,7 +61,6 @@ def store_demo_file(
     try:
         with db.get_cursor() as cur:
             cur.execute(query, values)
-            db.commit()
             logger.info("📥 Stored demo file for map_id: %s", map_id)
     except Exception as e:
         raise DemoStorageError("Failed to store demo file.") from e
