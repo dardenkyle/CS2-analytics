@@ -97,6 +97,30 @@ def test_match_parser_raises_typed_error_for_missing_team_names() -> None:
     assert isinstance(exc_info.value.__cause__, ValueError)
 
 
+def test_match_parser_returns_numeric_match_id() -> None:
+    parser = MatchParser()
+    soup = _build_match_soup()
+
+    match, map_links, demo_links = parser.parse_match(
+        soup, "https://www.hltv.org/matches/123456/test-match"
+    )
+
+    assert match.match_id == 123456
+    assert isinstance(match.match_id, int)
+    assert map_links == [("2", "https://www.hltv.org/stats/matches/mapstatsid/2/test-map")]
+    assert demo_links == []
+
+
+def test_match_parser_raises_typed_error_for_missing_match_id_in_url() -> None:
+    parser = MatchParser()
+    soup = _build_match_soup()
+
+    with pytest.raises(
+        MatchParseError, match="Failed to extract match id from match URL."
+    ):
+        parser.parse_match(soup, "https://www.hltv.org/match/test-match")
+
+
 def test_map_parser_raises_typed_error_for_missing_kills() -> None:
     parser = MapParser()
     soup = BeautifulSoup(

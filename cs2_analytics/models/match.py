@@ -10,8 +10,8 @@ class Match:
 
     match_id: int
     match_url: str
-    map_links: list[str]
-    demo_links: list[str]
+    map_links: list[tuple[str, str]]
+    demo_links: list[tuple[str, str]]
     team1: str
     team2: str
     score1: int
@@ -26,7 +26,7 @@ class Match:
     last_updated_at: datetime
     data_complete: bool
 
-    def to_dict(self) -> dict[str, int | str | bool | datetime | list[str]]:
+    def to_dict(self) -> dict[str, int | str | bool | datetime | list[tuple[str, str]]]:
         """Converts match object to a dictionary."""
         return {
             "match_id": self.match_id,

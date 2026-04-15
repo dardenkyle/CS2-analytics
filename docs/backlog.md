@@ -55,7 +55,7 @@ Introduce transformation models after ingestion behavior is stable.
 
 ### Before starting
 
-- [ ] Clean up parser/scraper class structure for readability without changing behavior
+- [x] Clean up parser/scraper class structure for readability without changing behavior
 
 ### Planned work
 
