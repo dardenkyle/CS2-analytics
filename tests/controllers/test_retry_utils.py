@@ -21,12 +21,15 @@ class _Logger:
 
 
 class _Scraper:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, close_error: Exception | None = None) -> None:
         self.name = name
         self.close_calls = 0
+        self.close_error = close_error
 
     def close(self) -> None:
         self.close_calls += 1
+        if self.close_error is not None:
+            raise self.close_error
 
 
 class _FailingQueue:
@@ -99,3 +102,52 @@ def test_mark_item_failed_propagates_queue_errors(
         )
 
     assert logger.exceptions == []
+
+
+def test_reset_scraper_warns_on_close_failure_and_returns_fallback_scraper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(retry_utils.time, "sleep", lambda *_args, **_kwargs: None)
+    logger = _Logger()
+    original = _Scraper("original", close_error=RuntimeError("close failed"))
+    created: list[_Scraper] = []
+
+    def scraper_factory() -> _Scraper:
+        scraper = _Scraper(f"generated-{len(created) + 1}")
+        created.append(scraper)
+        return scraper
+
+    fallback = retry_utils.reset_scraper(
+        original,
+        scraper_factory,
+        logger=logger,
+        close_warning_message="Failed to close scraper during recovery: %s",
+        startup_delay_seconds=1.0,
+        health_check=lambda scraper: False,
+        max_reset_attempts=2,
+        between_attempt_delay_seconds=1.0,
+        not_ready_warning_message=(
+            "New scraper session not ready on reset attempt %d/%d; retrying reset"
+        ),
+        fallback_warning_message="Returning scraper after reset retries.",
+    )
+
+    assert fallback is created[2]
+    assert original.close_calls == 1
+    assert created[0].close_calls == 1
+    assert created[1].close_calls == 1
+    assert logger.warnings[0][0] == "Failed to close scraper during recovery: %s"
+    assert str(logger.warnings[0][1]) == "close failed"
+    assert logger.warnings[1:] == [
+        (
+            "New scraper session not ready on reset attempt %d/%d; retrying reset",
+            1,
+            2,
+        ),
+        (
+            "New scraper session not ready on reset attempt %d/%d; retrying reset",
+            2,
+            2,
+        ),
+        ("Returning scraper after reset retries.",),
+    ]

@@ -37,6 +37,17 @@ class _AlwaysRetryableScraper(_PassiveScraper):
         raise SessionScrapeError(f"Failed to fetch match page: {url}")
 
 
+class _RetryTwiceThenSucceedScraper(_PassiveScraper):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def fetch_soup(self, url: str) -> object:
+        self.calls += 1
+        if self.calls <= 2:
+            raise SessionScrapeError(f"Failed to fetch match page: {url}")
+        return object()
+
+
 class _SuccessfulScraper(_PassiveScraper):
     def fetch_soup(self, url: str) -> object:
         return object()
@@ -87,10 +98,16 @@ def test_match_controller_marks_non_retryable_parse_error_failed_immediately(
         _ParseFailureParser,
     )
     exception_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    reset_calls: list[object] = []
     monkeypatch.setattr(
         match_module.logger,
         "exception",
         lambda *args, **kwargs: exception_calls.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: reset_calls.append(scraper) or scraper,
     )
 
     controller.run(batch_size=1)
@@ -100,6 +117,7 @@ def test_match_controller_marks_non_retryable_parse_error_failed_immediately(
     ]
     assert controller.match_queue.parsed == []
     assert len(exception_calls) == 1
+    assert reset_calls == []
 
 
 def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_errors(
@@ -113,6 +131,7 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
     exception_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     error_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    reset_calls: list[object] = []
     monkeypatch.setattr(
         match_module.logger,
         "exception",
@@ -128,7 +147,11 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
         "info",
         lambda *args, **kwargs: info_calls.append((args, kwargs)),
     )
-    monkeypatch.setattr(controller, "_reset_scraper", lambda scraper: scraper)
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: reset_calls.append(scraper) or scraper,
+    )
 
     controller.run(batch_size=1)
 
@@ -137,6 +160,7 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
     assert failed_id == "match-1"
     assert "Failed to fetch match page" in reason
     assert len(exception_calls) == 1
+    assert len(reset_calls) == 2
     assert error_calls == [
         (
             (
@@ -195,5 +219,59 @@ def test_match_controller_continues_after_item_failure(
         call_args[0]
         == "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d"
         and call_args[1:] == (2, 1, 1, 0)
+        for call_args, _ in info_calls
+    )
+
+
+def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sleep_calls: list[float] = []
+    info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    stored_matches: list[list[object]] = []
+    reset_calls: list[object] = []
+    controller = _build_match_controller(
+        monkeypatch,
+        _RetryTwiceThenSucceedScraper,
+        _SuccessfulParser,
+    )
+    monkeypatch.setattr(
+        match_module.time,
+        "sleep",
+        lambda seconds, *_args, **_kwargs: sleep_calls.append(seconds),
+    )
+    monkeypatch.setattr(
+        match_module.logger,
+        "info",
+        lambda *args, **kwargs: info_calls.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: reset_calls.append(scraper) or scraper,
+    )
+    monkeypatch.setattr(
+        match_module,
+        "store_matches",
+        lambda matches: stored_matches.append(matches),
+    )
+
+    controller.run(batch_size=1)
+
+    assert controller.match_queue.failed == []
+    assert controller.match_queue.parsed == ["match-1"]
+    assert len(stored_matches) == 1
+    assert len(reset_calls) == 2
+    assert 8.0 in sleep_calls
+    assert any(
+        call_args[0]
+        == "Applying cooldown after %d consecutive recoverable errors"
+        and call_args[1:] == (2,)
+        for call_args, _ in info_calls
+    )
+    assert any(
+        call_args[0]
+        == "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        and call_args[1:] == (1, 1, 0, 2)
         for call_args, _ in info_calls
     )

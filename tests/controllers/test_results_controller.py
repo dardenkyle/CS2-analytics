@@ -35,6 +35,7 @@ def test_results_controller_retries_retryable_scrape_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    reset_calls: list[object] = []
     monkeypatch.setattr(results_module, "ResultsScraper", _RetryThenSucceedScraper)
     monkeypatch.setattr(results_module.time, "sleep", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
@@ -44,11 +45,16 @@ def test_results_controller_retries_retryable_scrape_error(
     )
 
     controller = results_module.ResultsController()
-    monkeypatch.setattr(controller, "_reset_scraper", lambda scraper: scraper)
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: reset_calls.append(scraper) or scraper,
+    )
 
     controller.run(max_matches=25)
 
     assert controller.scraper.run_calls == 2
+    assert len(reset_calls) == 1
     assert any(
         call_args[0]
         == "ResultsController summary: status=%s retries=%d terminal_failures=%d max_matches=%d"
@@ -63,6 +69,7 @@ def test_results_controller_raises_pipeline_error_after_exhausting_retries(
     error_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     exception_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    reset_calls: list[object] = []
     monkeypatch.setattr(
         results_module,
         "ResultsScraper",
@@ -86,7 +93,11 @@ def test_results_controller_raises_pipeline_error_after_exhausting_retries(
     )
 
     controller = results_module.ResultsController()
-    monkeypatch.setattr(controller, "_reset_scraper", lambda scraper: scraper)
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: reset_calls.append(scraper) or scraper,
+    )
 
     with pytest.raises(
         PipelineError, match="Results stage failed after exhausting retries."
@@ -95,6 +106,7 @@ def test_results_controller_raises_pipeline_error_after_exhausting_retries(
 
     assert isinstance(exc_info.value.__cause__, SessionScrapeError)
     assert controller.scraper.run_calls == 3
+    assert len(reset_calls) == 2
     assert error_calls == [
         (
             (
