@@ -18,15 +18,16 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 - [x] Map parser hidden-vs-visible metric regression fix + tests
 - [x] Storage ownership centralized for match/player writes
 - [x] Controller/parser/scraper responsibilities aligned for active match/map flow
-
-### Remaining hardening priorities
-
 - [x] Decide failure policy when retries are exhausted (results fails run; match/map fail item and continue)
 - [x] Standardize scraper/parser/storage error handling so controllers own retry and terminal queue outcomes
 - [x] Improve observability around retry exhaustion and run-level outcomes
 - [x] Add targeted tests for controller retry and recovery behavior
 - [x] Clean up scraper/parser helper methods to clarify responsibilities, naming, and public vs private method boundaries
 - [x] Centralize shared controller retry/session-recovery logic to reduce duplication across stages
+
+### Remaining hardening priorities
+
+- [ ] Add field-specific parser extraction errors for required match/map fields
 - [ ] Evaluate queue schema upgrades (`processing`, locks, `available_at`) when multi-worker support is needed
 
 ---
