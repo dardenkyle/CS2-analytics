@@ -2,12 +2,19 @@
 
 This document describes the planned dbt model structure for the CS2 Analytics project.
 
-dbt will be introduced after the pipeline is hardened and the match/map pipelines are stable, decoupled, and reliably writing data to PostgreSQL.
+dbt is a later-phase transformation layer. It should be introduced only after match/map ingestion semantics are stable and the active stage boundaries are clearer.
 
-At this stage, dbt is a planned transformation layer, not an active part of the ingestion pipeline.
+At this stage, dbt is planned work, not an active part of the ingestion pipeline.
 
 Note:
 Planned raw snapshot tables (for example `raw_matches` and `raw_maps`) are expected to be introduced around dbt rollout time, not before.
+
+Near-term dependency order:
+
+1. review lifecycle semantics for the current match/map discovery tables
+2. update the current state tables and their audit fields
+3. thin `MatchController` and `MapController` by introducing stage services
+4. add dbt after the ingestion contract is stable
 
 ---
 
@@ -49,10 +56,12 @@ dbt is not responsible for:
 - parsing HTML
 - downloading demos
 - transactional application writes
-- queue orchestration
+- ingestion-state orchestration
 - API request handling
 
 Those concerns belong elsewhere in the system.
+
+dbt should consume stable ingestion outputs, not compensate for unclear controller or lifecycle semantics.
 
 ---
 
@@ -686,16 +695,18 @@ This keeps transformation logic out of the API code and reinforces separation of
 
 ## Planned Rollout Order
 
-dbt should be introduced only after pipeline hardening is complete.
+dbt should be introduced only after lifecycle semantics and active-stage responsibilities are stable.
 
 Recommended rollout order:
 
-1. add dbt project scaffolding
-2. create staging models for matches, maps, and players
-3. add basic tests
-4. create intermediate reusable joins
-5. create fact and dimension marts
-6. update API/data consumers to use trusted marts where appropriate
+1. complete lifecycle/state-table review and updates
+2. introduce `MatchStageService` and `MapStageService`
+3. add dbt project scaffolding
+4. create staging models for matches, maps, and players
+5. add basic tests
+6. create intermediate reusable joins
+7. create fact and dimension marts
+8. update API/data consumers to use trusted marts where appropriate
 
 ---
 
@@ -703,6 +714,7 @@ Recommended rollout order:
 
 - dbt is a transformation layer, not an ingestion tool
 - dbt should not absorb application logic that belongs in Python services
+- dbt should not be used to paper over unclear ingestion-state semantics
 - keep staging models light and predictable
 - push reusable joins into intermediate models
 - expose only trusted, well-defined marts to downstream consumers

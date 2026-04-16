@@ -3,19 +3,19 @@
 This document is split into two parts:
 
 - Current schema: what exists today in `cs2_analytics/storage/schema.sql`
-- Planned schema: candidates for the dbt era and future pipeline expansion
+- Planned schema direction: candidates for lifecycle cleanup, dbt, and later orchestration
 
 Current intent:
 
-- The schema is good enough for current pipeline work.
-- Full schema lock-down is deferred until after hardening/stabilization milestones.
+- `cs2_analytics/storage/schema.sql` remains the source of truth for the current implementation.
+- The next schema work should focus on lifecycle semantics for match and map discovery before dbt or Airflow is added.
 
 ---
 
 ## Current Schema (Source of Truth)
 
 Use `cs2_analytics/storage/schema.sql` as final authority.
-Treat this as the working contract for now (stable enough, not yet final-frozen).
+Treat this as the working contract for the current codebase.
 
 ### Core tables
 
@@ -87,34 +87,43 @@ Grain: one row per player per map.
 - `new_team_id`, `new_team_name`
 - `transfer_date`
 
-### Queue tables (current standard)
+### Current ingestion and discovery tables
 
-Current queue status values:
+The current code uses queue-oriented names:
 
-- `queued`
-- `parsed`
-- `failed`
+- `match_scrape_queue`
+- `map_scrape_queue`
+- `demo_scrape_queue`
 
-Current queue metadata fields:
+For match and map processing, those tables are no longer best thought of as simple transient queues. They are increasingly acting as lifecycle/state tables for discovered entities.
 
-- `last_inserted_at`
-- `last_updated_at`
-- `retry_count`
-- `last_error`
-- `priority`
-- `source`
+That means they should eventually describe:
+
+- when an entity was first discovered
+- when it was last seen in discovery
+- whether it is ready for processing
+- whether processing was attempted
+- whether it succeeded or failed
+- what run or worker last touched it
+
+The existing code still uses the current table names, so this document uses those names when referring to the present implementation.
 
 #### `match_scrape_queue`
 
-- `match_id` (PK), `match_url`, status + metadata above
+- Current role in code: tracks discovered match work items
+- Intended direction: lifecycle/state table for discovered matches
+- Future-state naming candidate: `match_ingestion_state`
 
 #### `map_scrape_queue`
 
-- `map_id` (PK), `map_url`, status + metadata above
+- Current role in code: tracks discovered map work items
+- Intended direction: lifecycle/state table for discovered maps
+- Future-state naming candidate: `map_ingestion_state`
 
 #### `demo_scrape_queue`
 
-- `demo_id` (PK), `demo_url`, status + metadata above
+- Current role in code: tracks demo work items
+- Notes: this table remains closer to a true work queue until the demo stage is designed more fully
 
 ### Demo-processing support tables
 
@@ -125,7 +134,7 @@ Current queue metadata fields:
 - `parsed`, `heatmap_done`, `grenade_analysis_done`
 - `last_inserted_at`, `last_processed_at`
 
-### Operational/analytics support tables
+### Operational and analytics support tables
 
 #### `scrape_runs`
 
@@ -142,9 +151,59 @@ Current queue metadata fields:
 
 ---
 
-## Planned Schema (Post-Hardening / dbt era)
+## Lifecycle and Audit Field Guidance
 
-The following items are intentionally planned and are expected to be introduced around the time dbt is implemented and transformation needs are clearer.
+Lifecycle fields should only exist when they carry a distinct meaning. Do not add multiple timestamps that all mean "the last time something happened."
+
+Recommended field meanings:
+
+- `status`
+  Current lifecycle state for the entity. The exact value set should reflect real processing semantics, not only queue semantics.
+- `first_seen_at`
+  When the entity was first discovered.
+- `last_seen_at`
+  Most recent time the discovery stage saw the entity again.
+- `last_attempted_at`
+  Most recent time a processing stage began or attempted work on the entity.
+- `last_processed_at`
+  Most recent time processing completed successfully.
+- `last_failed_at`
+  Most recent time processing ended in failure.
+- `retry_count`
+  Count of retry attempts for the current processing model.
+- `failure_count`
+  Count of distinct failures over the lifetime of the row.
+- `last_error_message`
+  Most recent normalized failure message.
+- `run_id`
+  Identifier for the pipeline run or orchestration run that last touched the row.
+- `worker_id`
+  Identifier for the worker or process that last touched the row when that distinction matters.
+- `inserted_at`
+  Row creation timestamp.
+- `last_updated_at`
+  Most recent timestamp for any meaningful row update.
+
+Field selection guidance:
+
+- Prefer `inserted_at` over multiple variants of row-creation timestamps.
+- Prefer `last_updated_at` as the generic row-change timestamp.
+- Add `last_attempted_at`, `last_processed_at`, and `last_failed_at` only if each one is used distinctly.
+- Add `run_id` and `worker_id` only when run-level tracing or multi-worker semantics actually need them.
+- Prefer `last_error_message` over vague names such as `last_error` when the field stores normalized message text.
+
+---
+
+## Planned Schema Direction
+
+The following items are planned, but they should follow lifecycle review and active-stage cleanup.
+
+### Planned lifecycle-state cleanup
+
+- Clarify status values based on lifecycle semantics, not only queue semantics
+- Add only distinct audit fields
+- Revisit whether current table names still fit their purpose
+- Keep naming changes secondary to semantic clarity
 
 ### Planned raw-layer tables
 
@@ -153,17 +212,8 @@ The following items are intentionally planned and are expected to be introduced 
 
 Planned purpose:
 
-- store raw page snapshots/metadata for reproducibility and parser debugging
-- support replay/reprocessing workflows
-
-### Planned queue enhancements
-
-Potential future additions (not current standard):
-
-- statuses like `processing`/`completed`
-- lock fields (`locked_at`, `locked_by`)
-- retry scheduling (`available_at`)
-- safe claiming semantics (`FOR UPDATE SKIP LOCKED`)
+- store raw page snapshots or metadata for reproducibility and parser debugging
+- support replay or reprocessing workflows when that need becomes concrete
 
 ### Planned transform layer
 
@@ -173,11 +223,12 @@ Planned dbt model families:
 - intermediate (`int_*`)
 - marts (`fact_*`, `dim_*`)
 
-See `docs/dbt_models.md` for detailed dbt planning.
+See `docs/dbt_models.md` for later-phase dbt planning.
 
 ---
 
 ## Notes
 
-- Do not assume planned tables/fields exist until they are added to `schema.sql`.
-- For implementation work, align code and docs to the current section above.
+- Do not assume planned tables or fields exist until they are added to `schema.sql`.
+- Treat current table names and future semantic roles separately.
+- For implementation work, align code and docs to the current section above first.

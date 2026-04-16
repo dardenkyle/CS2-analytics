@@ -1,58 +1,74 @@
 # Backlog
 
-This backlog tracks planned work after current pipeline hardening.
+This document tracks the recommended implementation order for the next architecture cleanup phases.
 
 ---
 
-## Current Phase: Pipeline Hardening
+## Current Position
 
-Goal:
-Maintain reliability while preserving clean stage boundaries and queue-driven processing.
+The active codebase already has useful stage boundaries and controller retry hardening, but the next work should not jump directly to dbt or Airflow.
 
-### Completed or largely complete
+Current priorities:
 
-- [x] Controllers orchestrate results/match/map stages
-- [x] Scrapers fetch content; parsers extract structured data
-- [x] Queue-based handoff between stages
-- [x] Retry/backoff and scraper session recovery in controllers
-- [x] Map parser hidden-vs-visible metric regression fix + tests
-- [x] Storage ownership centralized for match/player writes
-- [x] Controller/parser/scraper responsibilities aligned for active match/map flow
-- [x] Decide failure policy when retries are exhausted (results fails run; match/map fail item and continue)
-- [x] Standardize scraper/parser/storage error handling so controllers own retry and terminal queue outcomes
-- [x] Improve observability around retry exhaustion and run-level outcomes
-- [x] Add targeted tests for controller retry and recovery behavior
-- [x] Clean up scraper/parser helper methods to clarify responsibilities, naming, and public vs private method boundaries
-- [x] Centralize shared controller retry/session-recovery logic to reduce duplication across stages
-- [x] Add field-specific parser extraction errors for required match/map fields
-- [x] Clean up parser/scraper class structure for readability without changing behavior
-
-### Future hardening backlog
-
-- [ ] Evaluate queue schema upgrades (`processing`, locks, `available_at`) when multi-worker support is needed
-- [ ] Add parser tests for malformed-but-partial HLTV markup
-- [ ] Define required vs optional fields for match/map parsing
-- [ ] Add idempotency tests for queue and storage writes
-- [ ] Standardize timezone-aware timestamps across parser/storage models
-- [ ] Add controller tests for queue/storage failure paths after parse success
-- [ ] Add structured run identifiers to controller logs for cross-stage tracing
-- [ ] Truncate and normalize stored error messages consistently across controllers
-- [ ] Add dead-letter/retry requeue policy for failed items
-- [ ] Validate follow-up queue payloads before enqueueing map/demo links
-- [ ] Add health-check coverage for scraper reset failure/fallback behavior
-- [ ] Add startup checks for required config/env vars before pipeline execution
-- [ ] Separate integration tests from unit tests for DB and scraper-dependent paths
-- [ ] Add protection against duplicate processing when the same item is queued twice
-- [ ] Audit and normalize naive `datetime.now()` usage outside the recent UTC fix
-- [ ] Add explicit controller summaries for zero-item runs
-- [ ] Document expected failure modes by stage
+- clarify match/map ingestion and discovery state semantics
+- decide whether the current `*_scrape_queue` names still fit their actual purpose
+- add distinct lifecycle and audit fields where they provide real value
+- move per-item stage workflow out of `MatchController` and `MapController`
 
 ---
 
-## Next Phase: Data Transformation (dbt)
+## Phase 1: Schema and Lifecycle Review
 
 Goal:
-Introduce transformation models after ingestion behavior is stable.
+Define the intended meaning of the current match and map discovery tables before changing code structure around them.
+
+### Planned work
+
+- [ ] Review the actual role of `match_scrape_queue` and `map_scrape_queue`
+- [ ] Decide whether those tables are still simple work queues or are now lifecycle/state tables
+- [ ] Document the intended status model and field semantics
+- [ ] Identify redundant versus meaningful timestamps
+- [ ] Define naming guidance for current-state versus future-state terminology
+- [ ] Keep `cs2_analytics/storage/schema.sql` as the source of truth during the review
+
+---
+
+## Phase 2: Match and Map State Table Updates
+
+Goal:
+Update the current discovery tables so they clearly support ingestion/lifecycle tracking.
+
+### Planned work
+
+- [ ] Add or revise distinct lifecycle fields such as `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `retry_count`, `failure_count`, `last_error_message`, `run_id`, `worker_id`, `inserted_at`, and `last_updated_at`
+- [ ] Keep only fields with distinct meanings and avoid redundant timestamps
+- [ ] Decide whether `match_scrape_queue` and `map_scrape_queue` should keep their current names or move toward names like `match_ingestion_state` and `map_ingestion_state`
+- [ ] Preserve idempotency and duplicate-discovery protection
+- [ ] Document success, retryable failure, terminal failure, and rediscovery semantics
+- [ ] Reserve multi-worker fields and lock semantics for cases where they are actually needed
+
+---
+
+## Phase 3: Match and Map Stage Service Refactor
+
+Goal:
+Thin the active controllers by separating batch concerns from per-item stage workflow.
+
+### Planned work
+
+- [ ] Introduce `MatchStageService`
+- [ ] Introduce `MapStageService`
+- [ ] Move per-item fetch -> parse -> persist -> state-transition logic into stage services
+- [ ] Keep controller ownership of batch coordination, retry policy, scraper reset/rotation, and summary logging
+- [ ] Keep scrapers fetch-only, parsers parse-only, and persistence centralized
+- [ ] Add or update tests around per-item stage outcomes and controller summaries
+
+---
+
+## Phase 4: dbt Transformation Layer
+
+Goal:
+Add dbt only after ingestion/state semantics and active stage boundaries are stable.
 
 ### Planned work
 
@@ -62,41 +78,38 @@ Introduce transformation models after ingestion behavior is stable.
 - [ ] Create marts (`fact_*`, `dim_*`)
 - [ ] Add dbt tests (`not_null`, `unique`, `relationships`)
 - [ ] Generate lineage/docs
+- [ ] Prefer dbt as the transformation layer, not as a replacement for ingestion logic
 
 ---
 
-## Next Phase: Orchestration (Airflow)
+## Phase 5: Airflow Orchestration
 
 Goal:
-Move from manual runs to scheduled, observable workflows.
+Introduce orchestration only after dbt exists and the stage boundaries are clean.
 
 ### Planned work
 
 - [ ] Choose orchestration strategy
 - [ ] Define jobs for results, match, and map stages
 - [ ] Add run scheduling, retries, and monitoring
+- [ ] Pass run-level identifiers through stage execution where useful
+- [ ] Keep orchestration concerns from leaking back into parser or storage responsibilities
 
 ---
 
-## Next Phase: API Expansion
+## Deferred Work
 
-Goal:
-Expose additional structured data via FastAPI.
+These items remain important, but they are not ahead of lifecycle semantics and controller cleanup.
 
-### Planned work
+### API Expansion
 
 - [ ] Add endpoints for matches and teams
 - [ ] Add pagination/filtering patterns
 - [ ] Evaluate querying transformed dbt models for read paths
 
----
+### Demo Pipeline
 
-## Next Phase: Demo Pipeline
-
-Status: blocked until hardening goals are met.
-
-### Planned work
-
-- [ ] Validate `demo_scrape_queue` operating model
+- [ ] Validate the long-term role of `demo_scrape_queue`
 - [ ] Implement downloader/parser pipeline with cleanup strategy
 - [ ] Persist structured demo outputs and error metadata
+- [ ] Revisit demo orchestration after the active match/map stages are cleaner
