@@ -208,8 +208,7 @@ This project is licensed under the **MIT License** – feel free to contribute a
 
 See `docs/` for:
 - architecture overview
-- pipeline design
-- current development focus
+- development roadmap
 
 These documents are used to improve development clarity and AI-assisted coding.
 
