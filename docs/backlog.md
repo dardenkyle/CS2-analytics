@@ -25,6 +25,7 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 - [x] Clean up scraper/parser helper methods to clarify responsibilities, naming, and public vs private method boundaries
 - [x] Centralize shared controller retry/session-recovery logic to reduce duplication across stages
 - [x] Add field-specific parser extraction errors for required match/map fields
+- [x] Clean up parser/scraper class structure for readability without changing behavior
 
 ### Future hardening backlog
 
@@ -44,7 +45,7 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 - [ ] Add protection against duplicate processing when the same item is queued twice
 - [ ] Audit and normalize naive `datetime.now()` usage outside the recent UTC fix
 - [ ] Add explicit controller summaries for zero-item runs
-- [ ] Document expected failure modes by stage in `docs/current_focus.md` or a dedicated hardening note
+- [ ] Document expected failure modes by stage
 
 ---
 
@@ -52,10 +53,6 @@ Maintain reliability while preserving clean stage boundaries and queue-driven pr
 
 Goal:
 Introduce transformation models after ingestion behavior is stable.
-
-### Before starting
-
-- [x] Clean up parser/scraper class structure for readability without changing behavior
 
 ### Planned work
 
@@ -68,7 +65,7 @@ Introduce transformation models after ingestion behavior is stable.
 
 ---
 
-## Next Phase: Orchestration
+## Next Phase: Orchestration (Airflow)
 
 Goal:
 Move from manual runs to scheduled, observable workflows.
