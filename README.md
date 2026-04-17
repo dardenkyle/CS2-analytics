@@ -2,7 +2,7 @@
 
 ## **Project Overview**
 
-This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape professional **match, game, and player data**, download demos, parse demo files, and analyze player performance. The goal is to help players **gain insights into maps, matchups, and player statistics** based on the analysis of real professional match data.
+This project is a **Counter-Strike 2 (CS2) analytics tool** focused on collecting professional **match, map, and player data** and turning it into reliable, queryable analytics data. The current development focus is the ingestion pipeline: discovery, match/map processing, relational storage, and clearer lifecycle/state semantics for discovered entities.
 
 ---
 
@@ -13,18 +13,13 @@ This project is a **Counter-Strike 2 (CS2) analytics tool** designed to scrape p
 - **Match Data:** Scrapes CS2 professional match results (teams, scores, events, etc.).
 - **Game Data:** Extracts detailed round-by-round statistics.
 - **Player Stats:** Collects individual player performance metrics (kills, deaths, assists, ADR, KAST, opening duels, multi-kills, clutches, round swing, etc.).
-- **Reliability Hardening:** Uses retry/backoff and browser session recovery for resilient scraping runs.
+- **Ingestion Hardening:** Uses retry/backoff, browser session recovery, and PostgreSQL-backed lifecycle tracking for resilient scraping runs.
 
-### **Demo File Download & Parsing (Under Development)**
+### **Deferred / Later-Phase Work**
 
-- Automatically **downloads demos** of matches for deeper analysis.
-- Parses **demo files** to extract movement, grenade usage, and combat engagements.
-
-### **Player Analytics & Insights (Not Yet Added)**
-
-- **Combines scraped match/map/player stats with parsed demo data** for in-depth analysis.
-- Helps players understand **map control, team strategies, and player efficiency.**
-- Generates **matchup insights** to improve player knowledge of competitive playstyles.
+- **Demo Processing:** Demo download and parsing remain deferred until the active match/map ingestion stages have cleaner lifecycle semantics and thinner controllers.
+- **dbt Transformation Layer:** dbt will be added after ingestion/state semantics are stable.
+- **Airflow Orchestration:** Airflow comes after dbt and after stage boundaries are cleaner.
 
 ---
 
@@ -124,10 +119,10 @@ python -m cs2_analytics.storage.initialize_db
 python main.py
 ```
 
-### **6. Generate Player Analytics**
+### **6. Run the API**
 
 ```sh
-python -m cs2_analytics.services.player_analytics
+python run_api.py
 ```
 
 ### **7. Run Tests**
@@ -142,7 +137,7 @@ Run the map parser hidden-vs-visible regression test directly:
 pytest tests/parsers/test_map_parser_regression.py -v
 ```
 
-Note: Demo scraping/parsing is still in progress and is intentionally excluded from standard test runs.
+Note: Demo processing is still deferred and is intentionally excluded from standard test runs.
 
 ---
 
@@ -153,6 +148,13 @@ Note: Demo scraping/parsing is still in progress and is intentionally excluded f
 ```sh
 python main.py
 ```
+
+Current focus:
+
+- results discovery
+- match and map processing
+- relational persistence
+- lifecycle/state cleanup for discovered entities
 
 ### **API Mode (FastAPI)**
 
@@ -208,10 +210,17 @@ This project is licensed under the **MIT License** – feel free to contribute a
 
 See `docs/` for:
 - architecture overview
-- pipeline design
-- current development focus
+- development roadmap
 
-These documents are used to improve development clarity and AI-assisted coding.
+Current architecture direction:
+
+- the main cleanup target is `MatchController` and `MapController`, not `main.py`
+- `match_scrape_queue` and `map_scrape_queue` are evolving toward ingestion/discovery lifecycle tables
+- the next refactor introduces thinner controllers plus `MatchStageService` and `MapStageService`
+- dbt comes after ingestion/state semantics are stable
+- Airflow comes after dbt and clean stage boundaries
+
+These documents are used to keep development planning and implementation direction aligned.
 
 ## **Contact & Support**
 
