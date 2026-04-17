@@ -46,7 +46,12 @@ Primary responsibility:
 
 - fetch results pages
 - discover match identifiers and URLs
-- create or refresh lifecycle rows for discovered matches
+- create match lifecycle rows for newly discovered matches
+
+Current implementation note:
+
+- `ResultsScraper` still performs discovery-time insertion into `match_scrape_queue`
+- refresh-style lifecycle updates are part of the intended future-state design, not the current implementation
 
 This stage should not parse match detail pages or write match records directly.
 

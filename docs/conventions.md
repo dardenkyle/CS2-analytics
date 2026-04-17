@@ -5,7 +5,13 @@
 - Fetch remote content only
 - No parsing
 - No domain-table writes
-- No lifecycle-state transitions
+- Match/map scrapers should not own lifecycle-state transitions
+
+Current implementation note:
+
+- `ResultsScraper` still performs discovery-time queue insertion into `match_scrape_queue`
+- that behavior reflects the current codebase, not the long-term target boundary
+- over time, discovery-state mutation should move out of `ResultsScraper` and into a cleaner stage-oriented boundary
 
 ## Parsers
 
