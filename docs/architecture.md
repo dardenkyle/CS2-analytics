@@ -17,7 +17,9 @@ The current code still uses PostgreSQL tables named `match_scrape_queue` and `ma
 
 Current code path:
 
-results discovery -> `match_scrape_queue` row creation/update -> match stage processing -> `map_scrape_queue` row creation/update -> map stage processing -> relational storage -> API/data consumers
+results discovery -> `match_scrape_queue` row creation -> match stage processing -> `map_scrape_queue` row creation -> map stage processing -> relational storage -> API/data consumers
+
+In the current implementation, discovery inserts newly found rows but does not yet refresh existing rows with lifecycle signals such as `last_seen_at`.
 
 Demo processing is intentionally staged for later and remains decoupled from the active match/map flow.
 
