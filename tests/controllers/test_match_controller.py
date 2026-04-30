@@ -8,6 +8,7 @@ class _FakeMatchQueue:
     def __init__(self) -> None:
         self.failed: list[tuple[str, str]] = []
         self.parsed: list[str] = []
+        self.processing: list[str] = []
 
     def fetch(self, limit: int = 25) -> list[tuple[str, str]]:
         return [("match-1", "https://www.hltv.org/matches/1/test")]
@@ -17,6 +18,9 @@ class _FakeMatchQueue:
 
     def mark_as_parsed(self, item_id: str) -> None:
         self.parsed.append(item_id)
+
+    def mark_as_processing(self, item_id: str) -> None:
+        self.processing.append(item_id)
 
 
 class _FakeFollowupQueue:
@@ -81,9 +85,9 @@ def _build_match_controller(
 ) -> match_module.MatchController:
     monkeypatch.setattr(match_module, "MatchScraper", scraper_cls)
     monkeypatch.setattr(match_module, "MatchParser", parser_cls)
-    monkeypatch.setattr(match_module, "MatchScrapeQueue", _FakeMatchQueue)
-    monkeypatch.setattr(match_module, "MapScrapeQueue", _FakeFollowupQueue)
-    monkeypatch.setattr(match_module, "DemoScrapeQueue", _FakeFollowupQueue)
+    monkeypatch.setattr(match_module, "MatchIngestionState", _FakeMatchQueue)
+    monkeypatch.setattr(match_module, "MapIngestionState", _FakeFollowupQueue)
+    monkeypatch.setattr(match_module, "DemoIngestionState", _FakeFollowupQueue)
     monkeypatch.setattr(match_module, "store_matches", lambda matches: None)
     monkeypatch.setattr(match_module.time, "sleep", lambda *_args, **_kwargs: None)
     return match_module.MatchController()
@@ -116,6 +120,7 @@ def test_match_controller_marks_non_retryable_parse_error_failed_immediately(
         ("match-1", "Missing team names on match page.")
     ]
     assert controller.match_queue.parsed == []
+    assert controller.match_queue.processing == ["match-1"]
     assert len(exception_calls) == 1
     assert reset_calls == []
 
@@ -214,6 +219,7 @@ def test_match_controller_continues_after_item_failure(
         ("match-1", "Missing team names on match page.")
     ]
     assert controller.match_queue.parsed == ["match-2"]
+    assert controller.match_queue.processing == ["match-1", "match-2"]
     assert len(stored_matches) == 1
     assert any(
         call_args[0]

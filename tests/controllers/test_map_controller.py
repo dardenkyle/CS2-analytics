@@ -8,6 +8,7 @@ class _FakeMapQueue:
     def __init__(self) -> None:
         self.failed: list[tuple[str, str]] = []
         self.parsed: list[str] = []
+        self.processing: list[str] = []
 
     def fetch(self, limit: int = 25) -> list[tuple[str, str]]:
         return [
@@ -20,6 +21,9 @@ class _FakeMapQueue:
 
     def mark_as_parsed(self, item_id: str) -> None:
         self.parsed.append(item_id)
+
+    def mark_as_processing(self, item_id: str) -> None:
+        self.processing.append(item_id)
 
 
 class _SuccessfulScraper:
@@ -69,7 +73,7 @@ def _build_map_controller(
 ) -> map_module.MapController:
     monkeypatch.setattr(map_module, "MapScraper", scraper_cls)
     monkeypatch.setattr(map_module, "MapParser", parser_cls)
-    monkeypatch.setattr(map_module, "MapScrapeQueue", _FakeMapQueue)
+    monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapQueue)
     monkeypatch.setattr(
         map_module,
         "store_players",
@@ -86,7 +90,7 @@ def test_map_controller_continues_after_item_failure(
     info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     monkeypatch.setattr(map_module, "MapScraper", _SuccessfulScraper)
     monkeypatch.setattr(map_module, "MapParser", _FailOnceThenSucceedParser)
-    monkeypatch.setattr(map_module, "MapScrapeQueue", _FakeMapQueue)
+    monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapQueue)
     monkeypatch.setattr(
         map_module,
         "store_players",
@@ -104,6 +108,7 @@ def test_map_controller_continues_after_item_failure(
 
     assert controller.queue.failed == [("map-1", "No player kills logged.")]
     assert controller.queue.parsed == ["map-2"]
+    assert controller.queue.processing == ["map-1", "map-2"]
     assert len(stored_players) == 1
     assert any(
         call_args[0]

@@ -13,6 +13,7 @@ from cs2_analytics.ingestion_state import (
 from cs2_analytics.ingestion_state import (
     MatchIngestionState as PackageMatchIngestionState,
 )
+from cs2_analytics.ingestion_state import base_ingestion_state as base_state_module
 from cs2_analytics.queues import (
     DemoIngestionState,
     MapIngestionState,
@@ -31,6 +32,31 @@ class _FailingQueueDb:
         yield
 
 
+class _RecordingCursor:
+    def __init__(self) -> None:
+        self.execute_query: str | None = None
+        self.execute_values: tuple[object, ...] | None = None
+        self.executemany_query: str | None = None
+        self.executemany_values: list[tuple[object, ...]] | None = None
+
+    def execute(self, query: str, values: tuple[object, ...]) -> None:
+        self.execute_query = query
+        self.execute_values = values
+
+    def executemany(self, query: str, values: list[tuple[object, ...]]) -> None:
+        self.executemany_query = query
+        self.executemany_values = values
+
+
+class _RecordingQueueDb:
+    def __init__(self, cursor: _RecordingCursor) -> None:
+        self.cursor = cursor
+
+    @contextmanager
+    def get_cursor(self):
+        yield self.cursor
+
+
 def test_match_queue_wraps_db_failures_in_typed_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -41,7 +67,7 @@ def test_match_queue_wraps_db_failures_in_typed_exception(
         queue.queue_many([("1", "https://www.hltv.org/matches/1/test")])
 
 
-def test_ingestion_state_classes_keep_existing_queue_behavior() -> None:
+def test_ingestion_state_classes_use_ingestion_state_tables() -> None:
     assert "MatchIngestionState" in queues.__all__
     assert "MapIngestionState" in queues.__all__
     assert "DemoIngestionState" in queues.__all__
@@ -53,17 +79,67 @@ def test_ingestion_state_classes_keep_existing_queue_behavior() -> None:
     map_state = MapIngestionState()
     demo_state = DemoIngestionState()
 
-    assert isinstance(match_state, MatchScrapeQueue)
-    assert match_state.table_name == "match_scrape_queue"
+    assert match_state.table_name == "match_ingestion_state"
     assert match_state.id_field == "match_id"
     assert match_state.url_field == "match_url"
 
-    assert isinstance(map_state, MapScrapeQueue)
-    assert map_state.table_name == "map_scrape_queue"
+    assert map_state.table_name == "map_ingestion_state"
     assert map_state.id_field == "map_id"
     assert map_state.url_field == "map_url"
 
-    assert isinstance(demo_state, DemoScrapeQueue)
-    assert demo_state.table_name == "demo_scrape_queue"
+    assert demo_state.table_name == "demo_ingestion_state"
     assert demo_state.id_field == "demo_id"
     assert demo_state.url_field == "demo_url"
+
+
+def test_scrape_queue_classes_keep_existing_queue_tables() -> None:
+    match_queue = MatchScrapeQueue()
+    map_queue = MapScrapeQueue()
+    demo_queue = DemoScrapeQueue()
+
+    assert match_queue.table_name == "match_scrape_queue"
+    assert map_queue.table_name == "map_scrape_queue"
+    assert demo_queue.table_name == "demo_scrape_queue"
+
+
+def test_match_ingestion_state_refreshes_existing_rows_on_rediscovery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
+    state = MatchIngestionState()
+
+    state.queue("1", "https://www.hltv.org/matches/1/test", source="results")
+
+    assert cursor.execute_query is not None
+    assert "match_ingestion_state" in cursor.execute_query
+    assert "'pending'" in cursor.execute_query
+    assert "first_seen_at" in cursor.execute_query
+    assert "last_seen_at" in cursor.execute_query
+    assert "ON CONFLICT (match_id) DO UPDATE" in cursor.execute_query
+    assert "last_seen_at = EXCLUDED.last_seen_at" in cursor.execute_query
+    assert cursor.execute_values is not None
+    assert cursor.execute_values[:4] == (
+        "1",
+        "https://www.hltv.org/matches/1/test",
+        "results",
+        0,
+    )
+
+
+def test_match_ingestion_state_marks_failures_with_lifecycle_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
+    state = MatchIngestionState()
+
+    state.mark_as_failed("1", "boom")
+
+    assert cursor.execute_query is not None
+    assert "status = 'failed'" in cursor.execute_query
+    assert "last_failed_at" in cursor.execute_query
+    assert "last_error_message" in cursor.execute_query
+    assert "failure_count = COALESCE(failure_count, 0) + 1" in cursor.execute_query
+    assert cursor.execute_values is not None
+    assert cursor.execute_values[2:] == ("boom", "1")
