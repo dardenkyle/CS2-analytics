@@ -1,9 +1,15 @@
 -- Drop existing tables in correct dependency order
 DROP TABLE IF EXISTS demo_files CASCADE;
 
+DROP TABLE IF EXISTS demo_ingestion_state CASCADE;
+
 DROP TABLE IF EXISTS demo_scrape_queue CASCADE;
 
+DROP TABLE IF EXISTS map_ingestion_state CASCADE;
+
 DROP TABLE IF EXISTS map_scrape_queue CASCADE;
+
+DROP TABLE IF EXISTS match_ingestion_state CASCADE;
 
 DROP TABLE IF EXISTS match_scrape_queue CASCADE;
 
@@ -164,45 +170,63 @@ CREATE TABLE player_transfers (
         transfer_date DATE NOT NULL
 );
 
--- ✅ Match Scrape Queue Table
--- This table is used to track the scraping status of matches.
-CREATE TABLE match_scrape_queue (
+-- Match Ingestion State Table
+-- Tracks discovery and processing lifecycle for matches.
+CREATE TABLE match_ingestion_state (
     match_id INT PRIMARY KEY,
     match_url TEXT NOT NULL,
-    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    retry_count INT NOT NULL DEFAULT 0,
-    last_error TEXT,
+    status TEXT CHECK (
+        status IN ('pending', 'processing', 'processed', 'failed', 'skipped')
+    ) NOT NULL DEFAULT 'pending',
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_attempted_at TIMESTAMP,
+    last_processed_at TIMESTAMP,
+    last_failed_at TIMESTAMP,
+    failure_count INT NOT NULL DEFAULT 0,
+    last_error_message TEXT,
+    source TEXT,
     priority INT DEFAULT 0,
-    source TEXT
+    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ✅ Map Scrape Queue Table
--- This table is used to track the scraping status of maps.
-CREATE TABLE map_scrape_queue (
+-- Map Ingestion State Table
+-- Tracks discovery and processing lifecycle for maps.
+CREATE TABLE map_ingestion_state (
     map_id TEXT PRIMARY KEY,
     map_url TEXT NOT NULL,
-    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    retry_count INT NOT NULL DEFAULT 0,
-    last_error TEXT,
+    status TEXT CHECK (
+        status IN ('pending', 'processing', 'processed', 'failed', 'skipped')
+    ) NOT NULL DEFAULT 'pending',
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_attempted_at TIMESTAMP,
+    last_processed_at TIMESTAMP,
+    last_failed_at TIMESTAMP,
+    failure_count INT NOT NULL DEFAULT 0,
+    last_error_message TEXT,
+    source TEXT,
     priority INT DEFAULT 0,
-    source TEXT
+    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ✅ Demo Scrape Queue Table
-CREATE TABLE demo_scrape_queue (
+-- Demo Ingestion State Table
+CREATE TABLE demo_ingestion_state (
     demo_id TEXT PRIMARY KEY,
     demo_url TEXT NOT NULL,
-    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    retry_count INT NOT NULL DEFAULT 0,
-    last_error TEXT,
+    status TEXT CHECK (
+        status IN ('pending', 'processing', 'processed', 'failed', 'skipped')
+    ) NOT NULL DEFAULT 'pending',
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_attempted_at TIMESTAMP,
+    last_processed_at TIMESTAMP,
+    last_failed_at TIMESTAMP,
+    failure_count INT NOT NULL DEFAULT 0,
+    last_error_message TEXT,
+    source TEXT,
     priority INT DEFAULT 0,
-    source TEXT
+    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- This table is used to track the status of demo files.
