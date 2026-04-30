@@ -1,8 +1,9 @@
 """
-Initializes scrape queue managers for matches, maps, and demos.
+Initializes scrape queue managers and ingestion-state compatibility exports.
 
 This allows direct imports like:
     from cs2_analytics.queues import match_queue, map_queue, demo_queue
+    from cs2_analytics.queues import MatchIngestionState
 """
 
 from cs2_analytics.queues.demo_ingestion_state import DemoIngestionState
