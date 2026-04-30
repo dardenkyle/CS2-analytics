@@ -2,13 +2,16 @@ from contextlib import contextmanager
 
 import pytest
 
+import cs2_analytics.queues as queues
 from cs2_analytics.exceptions import MatchQueueError
+from cs2_analytics.queues import (
+    DemoIngestionState,
+    MapIngestionState,
+    MatchIngestionState,
+)
 from cs2_analytics.queues import base_scrape_queue as base_queue_module
-from cs2_analytics.queues.demo_ingestion_state import DemoIngestionState
 from cs2_analytics.queues.demo_scrape_queue import DemoScrapeQueue
-from cs2_analytics.queues.map_ingestion_state import MapIngestionState
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
-from cs2_analytics.queues.match_ingestion_state import MatchIngestionState
 from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 
 
@@ -30,6 +33,10 @@ def test_match_queue_wraps_db_failures_in_typed_exception(
 
 
 def test_ingestion_state_classes_keep_existing_queue_behavior() -> None:
+    assert "MatchIngestionState" in queues.__all__
+    assert "MapIngestionState" in queues.__all__
+    assert "DemoIngestionState" in queues.__all__
+
     match_state = MatchIngestionState()
     map_state = MapIngestionState()
     demo_state = DemoIngestionState()
