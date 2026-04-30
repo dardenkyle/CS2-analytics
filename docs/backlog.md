@@ -40,12 +40,6 @@ Complete. The project will move from scrape queue terminology toward ingestion s
 Goal:
 Rename and update the current scrape queue tables so they clearly support ingestion/lifecycle tracking.
 
-### Suggested PR sequence:
-
-1. Compatibility: introduce ingestion-state schema/classes while keeping existing queue paths working.
-2. Migration: switch controllers, tests, and docs from scrape queue names to ingestion state names.
-3. Lifecycle behavior: implement new statuses, timestamps, failure counts, and rediscovery refreshes.
-
 ### Planned work
 
 - [ ] Update `cs2_analytics/storage/schema.sql` to match the Phase 1 ingestion state decisions
