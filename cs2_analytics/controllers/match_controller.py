@@ -8,10 +8,12 @@ from cs2_analytics.controllers.retry_utils import (
     mark_item_failed,
     reset_scraper,
 )
+from cs2_analytics.ingestion_state import (
+    DemoIngestionState,
+    MapIngestionState,
+    MatchIngestionState,
+)
 from cs2_analytics.parsers.match_parser import MatchParser
-from cs2_analytics.queues.demo_scrape_queue import DemoScrapeQueue
-from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
-from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 from cs2_analytics.scrapers.match_scraper import MatchScraper
 from cs2_analytics.storage.match_storage import store_matches
 from cs2_analytics.utils.log_manager import get_logger
@@ -25,9 +27,9 @@ class MatchController:
     def __init__(self) -> None:
         self.scraper = MatchScraper()
         self.parser = MatchParser()
-        self.match_queue = MatchScrapeQueue()
-        self.map_queue = MapScrapeQueue()
-        self.demo_queue = DemoScrapeQueue()
+        self.match_queue = MatchIngestionState()
+        self.map_queue = MapIngestionState()
+        self.demo_queue = DemoIngestionState()
 
     def run(self, batch_size: int = 25) -> None:
         """Runs the match stage for a batch of queued match URLs."""
@@ -56,6 +58,7 @@ class MatchController:
                     scraper = self._reset_scraper(scraper)
                     processed_since_reset = 0
 
+                self.match_queue.mark_as_processing(match_id)
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:

@@ -8,8 +8,8 @@ from cs2_analytics.controllers.retry_utils import (
     mark_item_failed,
     reset_scraper,
 )
+from cs2_analytics.ingestion_state import MapIngestionState
 from cs2_analytics.parsers.map_parser import MapParser
-from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 from cs2_analytics.scrapers.map_scraper import MapScraper
 from cs2_analytics.storage.player_storage import store_players
 from cs2_analytics.utils.log_manager import get_logger
@@ -23,7 +23,7 @@ class MapController:
     def __init__(self) -> None:
         self.scraper = MapScraper()
         self.parser = MapParser()
-        self.queue = MapScrapeQueue()
+        self.queue = MapIngestionState()
 
     def run(self, batch_size: int = 25) -> None:
         logger.info("Running MapController with batch size: %d", batch_size)
@@ -50,6 +50,7 @@ class MapController:
                     scraper = self._reset_scraper(scraper)
                     processed_since_reset = 0
 
+                self.queue.mark_as_processing(map_id)
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
