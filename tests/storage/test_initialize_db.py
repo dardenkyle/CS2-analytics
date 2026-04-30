@@ -51,6 +51,13 @@ def _fake_schema_file(*_args, **_kwargs) -> io.StringIO:
     return io.StringIO("SELECT 1;")
 
 
+def _table_definition(schema_sql: str, table_name: str) -> str:
+    start_marker = f"CREATE TABLE {table_name} ("
+    start_index = schema_sql.index(start_marker)
+    end_index = schema_sql.index("\n);", start_index)
+    return schema_sql[start_index:end_index]
+
+
 def test_initialize_database_executes_schema_with_context_managers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -115,7 +122,7 @@ def test_schema_defines_ingestion_state_tables() -> None:
     ):
         assert f"CREATE TABLE {old_table_name}" not in schema_sql
 
-    for column_name in (
+    required_columns = (
         "status",
         "first_seen_at",
         "last_seen_at",
@@ -127,12 +134,23 @@ def test_schema_defines_ingestion_state_tables() -> None:
         "source",
         "priority",
         "last_updated_at",
-    ):
-        assert column_name in schema_sql
+    )
+    required_status_values = (
+        "'pending'",
+        "'processing'",
+        "'processed'",
+        "'failed'",
+        "'skipped'",
+    )
 
-    assert "'pending'" in schema_sql
-    assert "'processing'" in schema_sql
-    assert "'processed'" in schema_sql
-    assert "'failed'" in schema_sql
-    assert "'skipped'" in schema_sql
-    assert "retry_count" not in schema_sql
+    for table_name in (
+        "match_ingestion_state",
+        "map_ingestion_state",
+        "demo_ingestion_state",
+    ):
+        table_sql = _table_definition(schema_sql, table_name)
+        for column_name in required_columns:
+            assert column_name in table_sql
+        for status_value in required_status_values:
+            assert status_value in table_sql
+        assert "retry_count" not in table_sql
