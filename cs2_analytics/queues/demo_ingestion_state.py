@@ -1,7 +1,5 @@
-"""Compatibility name for demo ingestion state management."""
+"""Backward-compatible import for demo ingestion state."""
 
-from cs2_analytics.queues.demo_scrape_queue import DemoScrapeQueue
+from cs2_analytics.ingestion_state.demo_ingestion_state import DemoIngestionState
 
-
-class DemoIngestionState(DemoScrapeQueue):
-    """Alias class for the current demo scrape queue implementation."""
+__all__ = ["DemoIngestionState"]
