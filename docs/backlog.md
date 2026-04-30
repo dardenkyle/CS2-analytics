@@ -24,28 +24,31 @@ Define the intended meaning of the current match and map discovery tables before
 
 ### Planned work
 
-- [ ] Review the actual role of `match_scrape_queue` and `map_scrape_queue`
-- [ ] Decide whether those tables are still simple work queues or are now lifecycle/state tables
-- [ ] Document the intended status model and field semantics
-- [ ] Identify redundant versus meaningful timestamps
-- [ ] Define naming guidance for current-state versus future-state terminology
-- [ ] Keep `cs2_analytics/storage/schema.sql` as the source of truth during the review
+- [x] Review the actual role of `match_scrape_queue` and `map_scrape_queue`
+- [x] Decide whether those tables are still simple work queues or are now lifecycle/state tables
+- [x] Document the intended status model and field semantics
+- [x] Identify redundant versus meaningful timestamps
+- [x] Define naming guidance for current-state versus future-state terminology
+- [x] Keep `cs2_analytics/storage/schema.sql` as the source of truth during the review
 
 ---
 
-## Phase 2: Match and Map State Table Updates
+## Phase 2: Ingestion State Table Updates
 
 Goal:
-Update the current discovery tables so they clearly support ingestion/lifecycle tracking.
+Rename and update the current scrape queue tables so they clearly support ingestion/lifecycle tracking.
 
 ### Planned work
 
-- [ ] Add or revise distinct lifecycle fields such as `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `retry_count`, `failure_count`, `last_error_message`, `run_id`, `worker_id`, `inserted_at`, and `last_updated_at`
-- [ ] Keep only fields with distinct meanings and avoid redundant timestamps
-- [ ] Decide whether `match_scrape_queue` and `map_scrape_queue` should keep their current names or move toward names like `match_ingestion_state` and `map_ingestion_state`
-- [ ] Preserve idempotency and duplicate-discovery protection
-- [ ] Document success, retryable failure, terminal failure, and rediscovery semantics
-- [ ] Reserve multi-worker fields and lock semantics for cases where they are actually needed
+- [ ] Update `cs2_analytics/storage/schema.sql` to match the Phase 1 ingestion state decisions
+- [ ] Rename `match_scrape_queue`, `map_scrape_queue`, and `demo_scrape_queue` to `match_ingestion_state`, `map_ingestion_state`, and `demo_ingestion_state`
+- [ ] Update lifecycle fields to the agreed Phase 1 shape: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, and `last_updated_at`
+- [ ] Remove or avoid redundant fields such as `inserted_at`, `last_inserted_at`, unused `retry_count`, `run_id`, and `worker_id`
+- [ ] Update status values from `queued`, `parsed`, `failed` to `pending`, `processing`, `processed`, `failed`, and `skipped`
+- [ ] Preserve idempotency by keeping source IDs as primary keys and refreshing existing rows on rediscovery
+- [ ] Update Python queue/state classes, controllers, and tests to use the new table names and status values
+- [ ] Keep demo behavior minimal while aligning its table name and schema with ingestion state naming
+- [ ] Document success, retryable failure, terminal failure, skipped, and rediscovery semantics
 
 ---
 
