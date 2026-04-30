@@ -115,12 +115,12 @@ def test_schema_defines_ingestion_state_tables() -> None:
     ):
         assert f"CREATE TABLE {table_name}" in schema_sql
 
-    for old_table_name in (
+    for compatibility_table_name in (
         "match_scrape_queue",
         "map_scrape_queue",
         "demo_scrape_queue",
     ):
-        assert f"CREATE TABLE {old_table_name}" not in schema_sql
+        assert f"CREATE TABLE {compatibility_table_name}" in schema_sql
 
     required_columns = (
         "status",
