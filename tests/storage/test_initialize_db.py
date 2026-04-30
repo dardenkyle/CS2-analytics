@@ -1,10 +1,13 @@
-import io
 import builtins
+import io
+from pathlib import Path
 
 import pytest
 
 from cs2_analytics.exceptions import DatabaseOperationError
 from cs2_analytics.storage import initialize_db as initialize_db_module
+
+SCHEMA_PATH = Path(__file__).parents[2] / "cs2_analytics" / "storage" / "schema.sql"
 
 
 class _RecordingCursor:
@@ -44,6 +47,10 @@ class _RecordingConnection:
         return self.cursor_obj
 
 
+def _fake_schema_file(*_args, **_kwargs) -> io.StringIO:
+    return io.StringIO("SELECT 1;")
+
+
 def test_initialize_database_executes_schema_with_context_managers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -55,7 +62,7 @@ def test_initialize_database_executes_schema_with_context_managers(
     monkeypatch.setattr(
         builtins,
         "open",
-        lambda *args, **kwargs: io.StringIO("SELECT 1;"),
+        _fake_schema_file,
     )
 
     initialize_db_module.initialize_database()
@@ -78,7 +85,7 @@ def test_initialize_database_wraps_schema_failures_in_typed_error(
     monkeypatch.setattr(
         builtins,
         "open",
-        lambda *args, **kwargs: io.StringIO("SELECT 1;"),
+        _fake_schema_file,
     )
 
     with pytest.raises(
@@ -89,3 +96,43 @@ def test_initialize_database_wraps_schema_failures_in_typed_error(
     assert isinstance(exc_info.value.__cause__, RuntimeError)
     assert connection.exited is True
     assert cursor.exited is True
+
+
+def test_schema_defines_ingestion_state_tables() -> None:
+    schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
+
+    for table_name in (
+        "match_ingestion_state",
+        "map_ingestion_state",
+        "demo_ingestion_state",
+    ):
+        assert f"CREATE TABLE {table_name}" in schema_sql
+
+    for old_table_name in (
+        "match_scrape_queue",
+        "map_scrape_queue",
+        "demo_scrape_queue",
+    ):
+        assert f"CREATE TABLE {old_table_name}" not in schema_sql
+
+    for column_name in (
+        "status",
+        "first_seen_at",
+        "last_seen_at",
+        "last_attempted_at",
+        "last_processed_at",
+        "last_failed_at",
+        "failure_count",
+        "last_error_message",
+        "source",
+        "priority",
+        "last_updated_at",
+    ):
+        assert column_name in schema_sql
+
+    assert "'pending'" in schema_sql
+    assert "'processing'" in schema_sql
+    assert "'processed'" in schema_sql
+    assert "'failed'" in schema_sql
+    assert "'skipped'" in schema_sql
+    assert "retry_count" not in schema_sql
