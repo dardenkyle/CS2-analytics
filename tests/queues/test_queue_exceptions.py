@@ -4,6 +4,15 @@ import pytest
 
 import cs2_analytics.queues as queues
 from cs2_analytics.exceptions import MatchQueueError
+from cs2_analytics.ingestion_state import (
+    DemoIngestionState as PackageDemoIngestionState,
+)
+from cs2_analytics.ingestion_state import (
+    MapIngestionState as PackageMapIngestionState,
+)
+from cs2_analytics.ingestion_state import (
+    MatchIngestionState as PackageMatchIngestionState,
+)
 from cs2_analytics.queues import (
     DemoIngestionState,
     MapIngestionState,
@@ -36,6 +45,9 @@ def test_ingestion_state_classes_keep_existing_queue_behavior() -> None:
     assert "MatchIngestionState" in queues.__all__
     assert "MapIngestionState" in queues.__all__
     assert "DemoIngestionState" in queues.__all__
+    assert MatchIngestionState is PackageMatchIngestionState
+    assert MapIngestionState is PackageMapIngestionState
+    assert DemoIngestionState is PackageDemoIngestionState
 
     match_state = MatchIngestionState()
     map_state = MapIngestionState()
