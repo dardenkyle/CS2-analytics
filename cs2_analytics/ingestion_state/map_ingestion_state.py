@@ -1,7 +1,7 @@
-"""Compatibility name for map ingestion state management."""
+"""Map ingestion state manager."""
 
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 
 
 class MapIngestionState(MapScrapeQueue):
-    """Alias class for the current map scrape queue implementation."""
+    """Primary ingestion-state alias for current map queue behavior."""
