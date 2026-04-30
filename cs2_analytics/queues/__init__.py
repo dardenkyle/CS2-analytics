@@ -15,9 +15,9 @@ from cs2_analytics.queues.demo_scrape_queue import DemoScrapeQueue
 from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
 from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 
-match_queue = MatchScrapeQueue()
-map_queue = MapScrapeQueue()
-demo_queue = DemoScrapeQueue()
+match_queue = MatchIngestionState()
+map_queue = MapIngestionState()
+demo_queue = DemoIngestionState()
 
 __all__ = [
     "DemoIngestionState",
