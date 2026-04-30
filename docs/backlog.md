@@ -52,6 +52,17 @@ Rename and update the current scrape queue tables so they clearly support ingest
 - [ ] Keep demo behavior minimal while aligning its table name and schema with ingestion state naming
 - [ ] Document success, retryable failure, terminal failure, skipped, and rediscovery semantics
 
+### Suggested PR sequence
+
+1. Compatibility:
+   Add `MatchIngestionState`, `MapIngestionState`, and `DemoIngestionState` while keeping the existing `queues/` package, scrape queue classes, table names, statuses, and behavior working.
+2. Schema:
+   Update `cs2_analytics/storage/schema.sql` to create the `*_ingestion_state` tables with the agreed Phase 1 fields and status values.
+3. Migration/package rename:
+   Move ingestion state modules out of `cs2_analytics/queues/` into a better-suited package such as `cs2_analytics/ingestion_state/`, then update controllers, tests, and imports. Keep temporary `queues/` compatibility wrappers only if needed.
+4. Lifecycle behavior:
+   Implement rediscovery refreshes, processing transitions, lifecycle timestamps, failure counts, and skipped semantics.
+
 ---
 
 ## Phase 3: Match and Map Stage Service Refactor
