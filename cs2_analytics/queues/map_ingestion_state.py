@@ -1,7 +1,5 @@
-"""Compatibility name for map ingestion state management."""
+"""Backward-compatible import for map ingestion state."""
 
-from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
+from cs2_analytics.ingestion_state.map_ingestion_state import MapIngestionState
 
-
-class MapIngestionState(MapScrapeQueue):
-    """Alias class for the current map scrape queue implementation."""
+__all__ = ["MapIngestionState"]

@@ -1,7 +1,5 @@
-"""Compatibility name for match ingestion state management."""
+"""Backward-compatible import for match ingestion state."""
 
-from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
+from cs2_analytics.ingestion_state.match_ingestion_state import MatchIngestionState
 
-
-class MatchIngestionState(MatchScrapeQueue):
-    """Alias class for the current match scrape queue implementation."""
+__all__ = ["MatchIngestionState"]
