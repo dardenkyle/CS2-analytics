@@ -1,6 +1,6 @@
 # Ingestion Lifecycle Review
 
-Draft status: in progress
+Status: Phase 1 complete; implementation pending Phase 2
 
 This document captures the current Phase 1 decisions for moving scrape queue
 tables toward ingestion state tables. The implementation source of truth remains
@@ -111,7 +111,7 @@ row changes.
 - `last_updated_at`
   Most recent meaningful update to the ingestion state row.
 
-## Still To Decide
+## Implementation Decisions For Phase 2
 
 - whether the schema rename happens before or alongside field cleanup
 - how much compatibility to keep in Python class and module names during the
