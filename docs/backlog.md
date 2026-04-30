@@ -10,8 +10,7 @@ The active codebase already has useful stage boundaries and controller retry har
 
 Current priorities:
 
-- clarify match/map ingestion and discovery state semantics
-- decide whether the current `*_scrape_queue` names still fit their actual purpose
+- migrate `*_scrape_queue` naming to `*_ingestion_state`
 - add distinct lifecycle and audit fields where they provide real value
 - move per-item stage workflow out of `MatchController` and `MapController`
 
@@ -20,16 +19,19 @@ Current priorities:
 ## Phase 1: Schema and Lifecycle Review
 
 Goal:
-Define the intended meaning of the current match and map discovery tables before changing code structure around them.
+Define the intended meaning of the scrape queue tables before changing schema or code structure around them.
 
-### Planned work
+Status:
+Complete. The project will move from scrape queue terminology toward ingestion state tables. See `docs/ingestion_lifecycle.md`.
 
-- [x] Review the actual role of `match_scrape_queue` and `map_scrape_queue`
-- [x] Decide whether those tables are still simple work queues or are now lifecycle/state tables
-- [x] Document the intended status model and field semantics
-- [x] Identify redundant versus meaningful timestamps
-- [x] Define naming guidance for current-state versus future-state terminology
-- [x] Keep `cs2_analytics/storage/schema.sql` as the source of truth during the review
+### Completed work
+
+- [x] Reviewed the actual role of the scrape queue tables
+- [x] Decided they are lifecycle/state tables, not simple work queues
+- [x] Documented the intended status model and field semantics
+- [x] Identified redundant versus meaningful timestamps
+- [x] Defined naming guidance for current-state versus future-state terminology
+- [x] Kept `cs2_analytics/storage/schema.sql` as the source of truth during the review
 
 ---
 
@@ -112,7 +114,7 @@ These items remain important, but they are not ahead of lifecycle semantics and 
 
 ### Demo Pipeline
 
-- [ ] Validate the long-term role of `demo_scrape_queue`
+- [ ] Validate the long-term lifecycle semantics of `demo_ingestion_state`
 - [ ] Implement downloader/parser pipeline with cleanup strategy
 - [ ] Persist structured demo outputs and error metadata
 - [ ] Revisit demo orchestration after the active match/map stages are cleaner
