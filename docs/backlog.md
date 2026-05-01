@@ -10,9 +10,9 @@ The active codebase already has useful stage boundaries and controller retry har
 
 Current priorities:
 
-- migrate `*_scrape_queue` naming to `*_ingestion_state`
-- add distinct lifecycle and audit fields where they provide real value
 - move per-item stage workflow out of `MatchController` and `MapController`
+- keep controller concerns focused on batch coordination while stage services absorb per-item workflow
+- preserve the ingestion-state lifecycle model while thinning the active controllers
 
 ---
 
@@ -40,28 +40,31 @@ Complete. The project will move from scrape queue terminology toward ingestion s
 Goal:
 Rename and update the current scrape queue tables so they clearly support ingestion/lifecycle tracking.
 
-### Planned work
+Status:
+Complete. The active schema, controllers, and tests now use `*_ingestion_state` naming and lifecycle fields directly.
 
-- [ ] Update `cs2_analytics/storage/schema.sql` to match the Phase 1 ingestion state decisions
-- [ ] Rename `match_scrape_queue`, `map_scrape_queue`, and `demo_scrape_queue` to `match_ingestion_state`, `map_ingestion_state`, and `demo_ingestion_state`
-- [ ] Update lifecycle fields to the agreed Phase 1 shape: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, and `last_updated_at`
-- [ ] Remove or avoid redundant fields such as `inserted_at`, `last_inserted_at`, unused `retry_count`, `run_id`, and `worker_id`
-- [ ] Update status values from `queued`, `parsed`, `failed` to `pending`, `processing`, `processed`, `failed`, and `skipped`
-- [ ] Preserve idempotency by keeping source IDs as primary keys and refreshing existing rows on rediscovery
-- [ ] Update Python queue/state classes, controllers, and tests to use the new table names and status values
-- [ ] Keep demo behavior minimal while aligning its table name and schema with ingestion state naming
-- [ ] Document success, retryable failure, terminal failure, skipped, and rediscovery semantics
+### Completed work
 
-### Suggested PR sequence
+- [x] Update `cs2_analytics/storage/schema.sql` to match the Phase 1 ingestion state decisions
+- [x] Rename `match_scrape_queue`, `map_scrape_queue`, and `demo_scrape_queue` to `match_ingestion_state`, `map_ingestion_state`, and `demo_ingestion_state`
+- [x] Update lifecycle fields to the agreed Phase 1 shape: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, and `last_updated_at`
+- [x] Remove or avoid redundant fields such as `inserted_at`, `last_inserted_at`, unused `retry_count`, `run_id`, and `worker_id`
+- [x] Update status values from `queued`, `parsed`, `failed` to `pending`, `processing`, `processed`, `failed`, and `skipped`
+- [x] Preserve idempotency by keeping source IDs as primary keys and refreshing existing rows on rediscovery
+- [x] Update Python queue/state classes, controllers, and tests to use the new table names and status values
+- [x] Keep demo behavior minimal while aligning its table name and schema with ingestion state naming
+- [x] Document success, retryable failure, terminal failure, skipped, and rediscovery semantics
+
+### Completed PR sequence
 
 1. Compatibility:
-   Add `MatchIngestionState`, `MapIngestionState`, and `DemoIngestionState` while keeping the existing `queues/` package, scrape queue classes, table names, statuses, and behavior working.
+   Added `MatchIngestionState`, `MapIngestionState`, and `DemoIngestionState` while the `queues/` package re-exported the new managers.
 2. Schema:
-   Update `cs2_analytics/storage/schema.sql` to create the `*_ingestion_state` tables with the agreed Phase 1 fields and status values.
+   Updated `cs2_analytics/storage/schema.sql` to create only the `*_ingestion_state` tables with the agreed Phase 1 fields and status values.
 3. Migration/package rename:
-   Move ingestion state modules out of `cs2_analytics/queues/` into a better-suited package such as `cs2_analytics/ingestion_state/`, then update controllers, tests, and imports. Keep temporary `queues/` compatibility wrappers only if needed.
+   Moved ingestion-state modules into `cs2_analytics/ingestion_state/` and updated controllers/tests/imports to use the new naming.
 4. Lifecycle behavior:
-   Implement rediscovery refreshes, processing transitions, lifecycle timestamps, failure counts, and skipped semantics.
+   Implemented rediscovery refreshes, processing transitions, lifecycle timestamps, failure counts, and skipped semantics.
 
 ---
 

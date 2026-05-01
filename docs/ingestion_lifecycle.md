@@ -1,26 +1,26 @@
 # Ingestion Lifecycle Review
 
-Status: Phase 1 complete; implementation pending Phase 2
+Status: Phase 1 decisions implemented in Phase 2
 
-This document captures the current Phase 1 decisions for moving scrape queue
-tables toward ingestion state tables. The implementation source of truth remains
-`cs2_analytics/storage/schema.sql` until schema changes are made.
+This document captures the lifecycle semantics now implemented in the
+`*_ingestion_state` tables. The implementation source of truth remains
+`cs2_analytics/storage/schema.sql`.
 
 ## Decisions So Far
 
-The current match and map scrape queue tables are acting as more than temporary
+The current match and map ingestion-state tables are more than temporary
 work queues. They are durable records for discovered entities and their
 processing lifecycle.
 
 Agreed direction:
 
-- `match_scrape_queue` should move toward `match_ingestion_state`
-- `map_scrape_queue` should move toward `map_ingestion_state`
-- `demo_scrape_queue` should also move toward `demo_ingestion_state` for naming
-  consistency, even though the demo pipeline lifecycle is deferred
+- `match_ingestion_state` is the lifecycle table for discovered matches
+- `map_ingestion_state` is the lifecycle table for discovered maps
+- `demo_ingestion_state` keeps demo discovery aligned with the same lifecycle
+  naming, even though the demo pipeline lifecycle is still deferred
 
-The queue behavior should become a filtered view of ingestion state: rows that
-are ready for work are selected by status.
+Queue behavior is a filtered view of ingestion state: rows that are ready for
+work are selected by status.
 
 ## Table Names and Keys
 
@@ -111,8 +111,13 @@ row changes.
 - `last_updated_at`
   Most recent meaningful update to the ingestion state row.
 
-## Implementation Decisions For Phase 2
+## Implemented Phase 2 Behavior
 
-- whether the schema rename happens before or alongside field cleanup
-- how much compatibility to keep in Python class and module names during the
-  transition
+- the schema now creates only `match_ingestion_state`, `map_ingestion_state`,
+  and `demo_ingestion_state`
+- Python managers live under `cs2_analytics/ingestion_state/`, with the
+  `cs2_analytics/queues/` package retained only as a thin compatibility export
+- controllers mark rows as `processing`, `processed`, `failed`, or `skipped`
+  using the shared lifecycle helpers
+- rediscovery refreshes `last_seen_at`, keeps source IDs as primary keys, and
+  preserves `first_seen_at`

@@ -89,13 +89,13 @@ Grain: one row per player per map.
 
 ### Current ingestion and discovery tables
 
-The current code uses queue-oriented names:
+The current code uses ingestion-state names:
 
-- `match_scrape_queue`
-- `map_scrape_queue`
-- `demo_scrape_queue`
+- `match_ingestion_state`
+- `map_ingestion_state`
+- `demo_ingestion_state`
 
-For match and map processing, those tables are no longer best thought of as simple transient queues. They are increasingly acting as lifecycle/state tables for discovered entities.
+For match and map processing, those tables are lifecycle/state tables for discovered entities rather than simple transient queues.
 
 That means they should eventually describe:
 
@@ -106,24 +106,27 @@ That means they should eventually describe:
 - whether it succeeded or failed
 - what run or worker last touched it
 
-The existing code still uses the current table names, so this document uses those names when referring to the present implementation.
+#### `match_ingestion_state`
 
-#### `match_scrape_queue`
+- Current role in code: tracks discovered match lifecycle state
+- Primary key: `match_id`
+- URL field: `match_url`
+- Lifecycle fields: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, `last_updated_at`
 
-- Current role in code: tracks discovered match work items
-- Intended direction: lifecycle/state table for discovered matches
-- Future-state naming candidate: `match_ingestion_state`
+#### `map_ingestion_state`
 
-#### `map_scrape_queue`
+- Current role in code: tracks discovered map lifecycle state
+- Primary key: `map_id`
+- URL field: `map_url`
+- Lifecycle fields: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, `last_updated_at`
 
-- Current role in code: tracks discovered map work items
-- Intended direction: lifecycle/state table for discovered maps
-- Future-state naming candidate: `map_ingestion_state`
+#### `demo_ingestion_state`
 
-#### `demo_scrape_queue`
-
-- Current role in code: tracks demo work items
-- Notes: this table remains closer to a true work queue until the demo stage is designed more fully
+- Current role in code: tracks discovered demo lifecycle state
+- Primary key: `demo_id`
+- URL field: `demo_url`
+- Lifecycle fields: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, `last_updated_at`
+- Notes: demo processing remains deferred even though the lifecycle table naming is aligned
 
 ### Demo-processing support tables
 
@@ -169,27 +172,19 @@ Recommended field meanings:
   Most recent time processing completed successfully.
 - `last_failed_at`
   Most recent time processing ended in failure.
-- `retry_count`
-  Count of retry attempts for the current processing model.
 - `failure_count`
   Count of distinct failures over the lifetime of the row.
 - `last_error_message`
   Most recent normalized failure message.
-- `run_id`
-  Identifier for the pipeline run or orchestration run that last touched the row.
-- `worker_id`
-  Identifier for the worker or process that last touched the row when that distinction matters.
-- `inserted_at`
-  Row creation timestamp.
 - `last_updated_at`
   Most recent timestamp for any meaningful row update.
 
 Field selection guidance:
 
-- Prefer `inserted_at` over multiple variants of row-creation timestamps.
+- Use `first_seen_at` as the discovery timestamp and `last_seen_at` for rediscovery refreshes.
 - Prefer `last_updated_at` as the generic row-change timestamp.
-- Add `last_attempted_at`, `last_processed_at`, and `last_failed_at` only if each one is used distinctly.
-- Add `run_id` and `worker_id` only when run-level tracing or multi-worker semantics actually need them.
+- Keep `last_attempted_at`, `last_processed_at`, and `last_failed_at` distinct because each carries different lifecycle meaning.
+- Avoid `retry_count`, `run_id`, and `worker_id` until orchestration or multi-worker behavior actually requires them.
 - Prefer `last_error_message` over vague names such as `last_error` when the field stores normalized message text.
 
 ---

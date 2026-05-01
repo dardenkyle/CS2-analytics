@@ -4,7 +4,7 @@
 
 This project is moving from an older queue-oriented scraping design toward a cleaner ingestion-state-driven architecture.
 
-The current code still uses PostgreSQL tables named `match_scrape_queue` and `map_scrape_queue`, and the active controllers still own more per-item workflow than the desired design. This document describes the current direction without implying that all refactors have already happened.
+The schema now uses PostgreSQL ingestion-state tables directly, while the active controllers still own more per-item workflow than the desired design. This document describes the current direction and the next cleanup target.
 
 ## Current Architectural Focus
 
@@ -17,9 +17,9 @@ The current code still uses PostgreSQL tables named `match_scrape_queue` and `ma
 
 Current code path:
 
-results discovery -> `match_scrape_queue` row creation -> match stage processing -> `map_scrape_queue` row creation -> map stage processing -> relational storage -> API/data consumers
+results discovery -> `match_ingestion_state` refresh -> match stage processing -> `map_ingestion_state` refresh -> map stage processing -> relational storage -> API/data consumers
 
-In the current implementation, discovery inserts newly found rows but does not yet refresh existing rows with lifecycle signals such as `last_seen_at`.
+In the current implementation, discovery refreshes existing rows with lifecycle signals such as `last_seen_at` while preserving source IDs as primary keys.
 
 Demo processing is intentionally staged for later and remains decoupled from the active match/map flow.
 
@@ -27,7 +27,7 @@ Demo processing is intentionally staged for later and remains decoupled from the
 
 The architecture should be centered on explicit lifecycle/state tracking for discovered entities.
 
-For match and map discovery, the PostgreSQL tables currently named `match_scrape_queue` and `map_scrape_queue` are evolving away from simple transient work queues and toward source-of-truth lifecycle tables. Their future names may move closer to that purpose, such as `match_ingestion_state` and `map_ingestion_state`, but the current code still uses the existing names.
+For match and map discovery, the PostgreSQL tables `match_ingestion_state` and `map_ingestion_state` are source-of-truth lifecycle tables rather than simple transient work queues.
 
 The intended design is:
 
@@ -50,8 +50,8 @@ Primary responsibility:
 
 Current implementation note:
 
-- `ResultsScraper` still performs discovery-time insertion into `match_scrape_queue`
-- refresh-style lifecycle updates are part of the intended future-state design, not the current implementation
+- `ResultsScraper` currently performs discovery-time queueing into `match_ingestion_state`
+- dedicated stage services are still the next refactor, but rediscovery refreshes already happen in the current implementation
 
 This stage should not parse match detail pages or write match records directly.
 
@@ -133,7 +133,7 @@ Those services should own per-item stage workflow, including:
 
 ## Ingestion and Discovery State Tables
 
-For the active match and map stages, the PostgreSQL tables currently named `match_scrape_queue` and `map_scrape_queue` should be treated as lifecycle/state tables first and work queues second.
+For the active match and map stages, the PostgreSQL tables `match_ingestion_state` and `map_ingestion_state` should be treated as lifecycle/state tables first and work queues second.
 
 That means they should eventually describe:
 
@@ -173,7 +173,7 @@ The demo stage should stay deferred until:
 ## Recommended Implementation Sequence
 
 1. Review schema and lifecycle semantics for the current match/map discovery tables.
-2. Update the current `match_scrape_queue` and `map_scrape_queue` tables to reflect ingestion/discovery state more clearly.
+2. Keep the current `match_ingestion_state` and `map_ingestion_state` tables stable while stage responsibilities move into services.
 3. Refactor `MatchController` and `MapController` by introducing `MatchStageService` and `MapStageService`.
 4. Implement dbt models after ingestion/state semantics are stable.
 5. Implement Airflow after dbt exists and the stage boundaries are clean.
