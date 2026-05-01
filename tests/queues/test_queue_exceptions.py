@@ -2,8 +2,12 @@ from contextlib import contextmanager
 
 import pytest
 
-import cs2_analytics.queues as queues
 from cs2_analytics.exceptions import MatchQueueError
+from cs2_analytics.ingestion_state import (
+    DemoIngestionState,
+    MapIngestionState,
+    MatchIngestionState,
+)
 from cs2_analytics.ingestion_state import (
     DemoIngestionState as PackageDemoIngestionState,
 )
@@ -14,15 +18,6 @@ from cs2_analytics.ingestion_state import (
     MatchIngestionState as PackageMatchIngestionState,
 )
 from cs2_analytics.ingestion_state import base_ingestion_state as base_state_module
-from cs2_analytics.queues import (
-    DemoIngestionState,
-    MapIngestionState,
-    MatchIngestionState,
-)
-from cs2_analytics.queues import base_scrape_queue as base_queue_module
-from cs2_analytics.queues.demo_scrape_queue import DemoScrapeQueue
-from cs2_analytics.queues.map_scrape_queue import MapScrapeQueue
-from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
 
 
 class _FailingQueueDb:
@@ -60,17 +55,17 @@ class _RecordingQueueDb:
 def test_match_queue_wraps_db_failures_in_typed_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(base_queue_module, "db", _FailingQueueDb())
-    queue = MatchScrapeQueue()
+    monkeypatch.setattr(base_state_module, "db", _FailingQueueDb())
+    queue = MatchIngestionState()
 
-    with pytest.raises(MatchQueueError, match="Failed to queue items in match_scrape_queue."):
+    with pytest.raises(
+        MatchQueueError,
+        match="Failed to queue ingestion state items in match_ingestion_state.",
+    ):
         queue.queue_many([("1", "https://www.hltv.org/matches/1/test")])
 
 
 def test_ingestion_state_classes_use_ingestion_state_tables() -> None:
-    assert "MatchIngestionState" in queues.__all__
-    assert "MapIngestionState" in queues.__all__
-    assert "DemoIngestionState" in queues.__all__
     assert MatchIngestionState is PackageMatchIngestionState
     assert MapIngestionState is PackageMapIngestionState
     assert DemoIngestionState is PackageDemoIngestionState
@@ -90,16 +85,6 @@ def test_ingestion_state_classes_use_ingestion_state_tables() -> None:
     assert demo_state.table_name == "demo_ingestion_state"
     assert demo_state.id_field == "demo_id"
     assert demo_state.url_field == "demo_url"
-
-
-def test_scrape_queue_classes_keep_existing_queue_tables() -> None:
-    match_queue = MatchScrapeQueue()
-    map_queue = MapScrapeQueue()
-    demo_queue = DemoScrapeQueue()
-
-    assert match_queue.table_name == "match_scrape_queue"
-    assert map_queue.table_name == "map_scrape_queue"
-    assert demo_queue.table_name == "demo_scrape_queue"
 
 
 def test_match_ingestion_state_refreshes_existing_rows_on_rediscovery(

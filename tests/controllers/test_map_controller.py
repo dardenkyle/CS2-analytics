@@ -7,7 +7,7 @@ from cs2_analytics.exceptions import MapParseError, SessionScrapeError
 class _FakeMapQueue:
     def __init__(self) -> None:
         self.failed: list[tuple[str, str]] = []
-        self.parsed: list[str] = []
+        self.processed: list[str] = []
         self.processing: list[str] = []
 
     def fetch(self, limit: int = 25) -> list[tuple[str, str]]:
@@ -19,8 +19,8 @@ class _FakeMapQueue:
     def mark_as_failed(self, item_id: str, reason: str) -> None:
         self.failed.append((item_id, reason))
 
-    def mark_as_parsed(self, item_id: str) -> None:
-        self.parsed.append(item_id)
+    def mark_as_processed(self, item_id: str) -> None:
+        self.processed.append(item_id)
 
     def mark_as_processing(self, item_id: str) -> None:
         self.processing.append(item_id)
@@ -107,7 +107,7 @@ def test_map_controller_continues_after_item_failure(
     controller.run(batch_size=2)
 
     assert controller.queue.failed == [("map-1", "No player kills logged.")]
-    assert controller.queue.parsed == ["map-2"]
+    assert controller.queue.processed == ["map-2"]
     assert controller.queue.processing == ["map-1", "map-2"]
     assert len(stored_players) == 1
     assert any(
@@ -147,13 +147,15 @@ def test_map_controller_retries_retryable_error_before_succeeding(
     monkeypatch.setattr(
         controller.queue,
         "fetch",
-        lambda limit=25: [("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")],
+        lambda limit=25: [
+            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
+        ],
     )
 
     controller.run(batch_size=1)
 
     assert controller.queue.failed == []
-    assert controller.queue.parsed == ["map-1"]
+    assert controller.queue.processed == ["map-1"]
     assert len(stored_players) == 1
     assert len(reset_calls) == 1
     assert any(
@@ -199,15 +201,20 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
     monkeypatch.setattr(
         controller.queue,
         "fetch",
-        lambda limit=25: [("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")],
+        lambda limit=25: [
+            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
+        ],
     )
 
     controller.run(batch_size=1)
 
     assert controller.queue.failed == [
-        ("map-1", "Failed to fetch map stats page: https://www.hltv.org/stats/matches/mapstatsid/1/test")
+        (
+            "map-1",
+            "Failed to fetch map stats page: https://www.hltv.org/stats/matches/mapstatsid/1/test",
+        )
     ]
-    assert controller.queue.parsed == []
+    assert controller.queue.processed == []
     assert len(reset_calls) == 2
     assert error_calls == [
         (

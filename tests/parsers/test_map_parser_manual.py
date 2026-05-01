@@ -3,10 +3,12 @@
 This helper bypasses controllers intentionally and is only for manual debugging.
 """
 
+from cs2_analytics.ingestion_state import MapIngestionState
 from cs2_analytics.parsers.map_parser import MapParser
-from cs2_analytics.queues import map_queue
 from cs2_analytics.scrapers.map_scraper import MapScraper
 from cs2_analytics.storage.player_storage import store_players
+
+map_queue = MapIngestionState()
 
 
 def main():
@@ -26,7 +28,7 @@ def main():
             players = parser.parse_map(soup, map_url, map_id)
             if players:
                 store_players(players)
-                map_queue.mark_as_parsed(map_id)
+                map_queue.mark_as_processed(map_id)
                 print(f"Parsed {len(players)} players from {map_url}")
                 total_players.extend(players)
             else:

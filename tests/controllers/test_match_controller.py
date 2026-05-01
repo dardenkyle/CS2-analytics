@@ -7,7 +7,7 @@ from cs2_analytics.exceptions import MatchParseError, SessionScrapeError
 class _FakeMatchQueue:
     def __init__(self) -> None:
         self.failed: list[tuple[str, str]] = []
-        self.parsed: list[str] = []
+        self.processed: list[str] = []
         self.processing: list[str] = []
 
     def fetch(self, limit: int = 25) -> list[tuple[str, str]]:
@@ -16,8 +16,8 @@ class _FakeMatchQueue:
     def mark_as_failed(self, item_id: str, reason: str) -> None:
         self.failed.append((item_id, reason))
 
-    def mark_as_parsed(self, item_id: str) -> None:
-        self.parsed.append(item_id)
+    def mark_as_processed(self, item_id: str) -> None:
+        self.processed.append(item_id)
 
     def mark_as_processing(self, item_id: str) -> None:
         self.processing.append(item_id)
@@ -119,7 +119,7 @@ def test_match_controller_marks_non_retryable_parse_error_failed_immediately(
     assert controller.match_queue.failed == [
         ("match-1", "Missing team names on match page.")
     ]
-    assert controller.match_queue.parsed == []
+    assert controller.match_queue.processed == []
     assert controller.match_queue.processing == ["match-1"]
     assert len(exception_calls) == 1
     assert reset_calls == []
@@ -218,7 +218,7 @@ def test_match_controller_continues_after_item_failure(
     assert controller.match_queue.failed == [
         ("match-1", "Missing team names on match page.")
     ]
-    assert controller.match_queue.parsed == ["match-2"]
+    assert controller.match_queue.processed == ["match-2"]
     assert controller.match_queue.processing == ["match-1", "match-2"]
     assert len(stored_matches) == 1
     assert any(
@@ -265,13 +265,12 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
     controller.run(batch_size=1)
 
     assert controller.match_queue.failed == []
-    assert controller.match_queue.parsed == ["match-1"]
+    assert controller.match_queue.processed == ["match-1"]
     assert len(stored_matches) == 1
     assert len(reset_calls) == 2
     assert 8.0 in sleep_calls
     assert any(
-        call_args[0]
-        == "Applying cooldown after %d consecutive recoverable errors"
+        call_args[0] == "Applying cooldown after %d consecutive recoverable errors"
         and call_args[1:] == (2,)
         for call_args, _ in info_calls
     )
