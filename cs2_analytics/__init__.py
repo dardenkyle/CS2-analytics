@@ -11,6 +11,7 @@ Submodules:
 - parsers: HTML and demo file parsing into structured formats
 - controllers: Pipeline orchestration and ingestion-stage coordination
 - ingestion_state: Lifecycle tracking for discovered matches, maps, and demos
+- stage_services: Per-item ingestion workflow services
 - services: Business logic and analytical processing
 - storage: Database access layer
 - pipeline: Main orchestration logic
