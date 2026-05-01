@@ -3,21 +3,14 @@ from contextlib import contextmanager
 import pytest
 
 from cs2_analytics.exceptions import MatchQueueError
-from cs2_analytics.ingestion_state import (
-    DemoIngestionState,
-    MapIngestionState,
-    MatchIngestionState,
-)
-from cs2_analytics.ingestion_state import (
-    DemoIngestionState as PackageDemoIngestionState,
-)
-from cs2_analytics.ingestion_state import (
-    MapIngestionState as PackageMapIngestionState,
-)
-from cs2_analytics.ingestion_state import (
-    MatchIngestionState as PackageMatchIngestionState,
-)
+from cs2_analytics import ingestion_state as ingestion_state_package
+from cs2_analytics.ingestion_state import MatchIngestionState
 from cs2_analytics.ingestion_state import base_ingestion_state as base_state_module
+from cs2_analytics.ingestion_state.demo_ingestion_state import DemoIngestionState
+from cs2_analytics.ingestion_state.map_ingestion_state import MapIngestionState
+from cs2_analytics.ingestion_state.match_ingestion_state import (
+    MatchIngestionState as ConcreteMatchIngestionState,
+)
 
 
 class _FailingQueueDb:
@@ -66,11 +59,7 @@ def test_match_queue_wraps_db_failures_in_typed_exception(
 
 
 def test_ingestion_state_classes_use_ingestion_state_tables() -> None:
-    assert MatchIngestionState is PackageMatchIngestionState
-    assert MapIngestionState is PackageMapIngestionState
-    assert DemoIngestionState is PackageDemoIngestionState
-
-    match_state = MatchIngestionState()
+    match_state = ConcreteMatchIngestionState()
     map_state = MapIngestionState()
     demo_state = DemoIngestionState()
 
@@ -85,6 +74,17 @@ def test_ingestion_state_classes_use_ingestion_state_tables() -> None:
     assert demo_state.table_name == "demo_ingestion_state"
     assert demo_state.id_field == "demo_id"
     assert demo_state.url_field == "demo_url"
+
+
+def test_ingestion_state_package_re_exports_concrete_classes() -> None:
+    assert ingestion_state_package.MatchIngestionState is ConcreteMatchIngestionState
+    assert ingestion_state_package.MapIngestionState is MapIngestionState
+    assert ingestion_state_package.DemoIngestionState is DemoIngestionState
+    assert ingestion_state_package.__all__ == [
+        "DemoIngestionState",
+        "MapIngestionState",
+        "MatchIngestionState",
+    ]
 
 
 def test_match_ingestion_state_refreshes_existing_rows_on_rediscovery(
