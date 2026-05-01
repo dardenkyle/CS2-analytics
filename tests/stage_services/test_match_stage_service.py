@@ -75,7 +75,7 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
     processed = service.process_item("match-1", "https://www.hltv.org/matches/1/test")
 
     assert processed is True
-    assert match_state.processing == ["match-1"]
+    assert match_state.processing == []
     assert match_state.processed == ["match-1"]
     assert match_state.failed == []
     assert stored_matches == [[match]]
@@ -106,7 +106,7 @@ def test_match_stage_service_marks_failed_when_parser_returns_none() -> None:
     processed = service.process_item("match-1", "https://www.hltv.org/matches/1/test")
 
     assert processed is False
-    assert match_state.processing == ["match-1"]
+    assert match_state.processing == []
     assert match_state.processed == []
     assert match_state.failed == [("match-1", "Parsing returned None")]
     assert stored_matches == []

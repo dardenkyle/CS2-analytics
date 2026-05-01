@@ -41,7 +41,6 @@ class MatchStageService:
         Returns True when the match was stored successfully and False when
         parsing returned no match object.
         """
-        self.match_state.mark_as_processing(match_id)
         soup = self.scraper.fetch_soup(match_url)
         match, map_links, demo_links = self.parser.parse_match(soup, match_url)
 

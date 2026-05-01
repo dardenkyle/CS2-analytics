@@ -67,6 +67,7 @@ class MatchController:
                     scraper = self._reset_scraper(scraper)
                     processed_since_reset = 0
 
+                self.match_queue.mark_as_processing(match_id)
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
