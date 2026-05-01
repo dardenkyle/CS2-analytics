@@ -38,7 +38,7 @@ Complete. The project will move from scrape queue terminology toward ingestion s
 ## Phase 2: Ingestion State Table Updates
 
 Goal:
-Rename and update the current scrape queue tables so they clearly support ingestion/lifecycle tracking.
+Renamed and updated the former scrape queue tables so they clearly support ingestion/lifecycle tracking.
 
 Status:
 Complete. The active schema, controllers, and tests now use `*_ingestion_state` naming and lifecycle fields directly.
@@ -64,7 +64,7 @@ Complete. The active schema, controllers, and tests now use `*_ingestion_state` 
 3. Migration/package rename:
    Moved ingestion-state modules into `cs2_analytics/ingestion_state/` and updated controllers/tests/imports to use the new naming.
 4. Lifecycle behavior:
-   Implemented rediscovery refreshes, processing transitions, lifecycle timestamps, failure counts, and skipped semantics.
+   Implemented rediscovery refreshes, processing transitions, lifecycle timestamps, failure counts, and skipped semantics. Removed `queues/` and all functionality related to previous queue-based scraping.
 
 ---
 
@@ -77,7 +77,7 @@ Thin the active controllers by separating batch concerns from per-item stage wor
 
 - [ ] Introduce `MatchStageService`
 - [ ] Introduce `MapStageService`
-- [ ] Introduce `DemoStageService`
+- [ ] Introduce `DemoStageService` (even though demo service layer development is paused)
 - [ ] Move per-item fetch -> parse -> persist -> state-transition logic into stage services
 - [ ] Keep controller ownership of batch coordination, retry policy, scraper reset/rotation, and summary logging
 - [ ] Keep scrapers fetch-only, parsers parse-only, and persistence centralized
