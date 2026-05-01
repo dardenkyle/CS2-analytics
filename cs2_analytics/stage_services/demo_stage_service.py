@@ -22,7 +22,7 @@ class DemoStageService:
         self,
         scraper: DemoScraper,
         parser: DemoParser,
-        store_demo_file: Callable[..., None],
+        store_demo_file: Callable[[int, str, str | None, bool, bool, bool], None],
         demo_state: DemoIngestionState,
     ) -> None:
         self.scraper = scraper
