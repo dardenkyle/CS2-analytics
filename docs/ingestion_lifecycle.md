@@ -24,13 +24,13 @@ work are selected by status.
 
 ## Table Names and Keys
 
-Planned ingestion state table names:
+Implemented ingestion state table names:
 
 - `match_ingestion_state`
 - `map_ingestion_state`
 - `demo_ingestion_state`
 
-Each table should use the source entity ID as its primary key:
+Each table uses the source entity ID as its primary key:
 
 - `match_ingestion_state.match_id`
 - `map_ingestion_state.map_id`
@@ -40,7 +40,7 @@ These primary keys preserve duplicate-discovery protection. When the same
 entity is discovered again, the ingestion row should be refreshed instead of
 duplicated.
 
-Use table-specific URL fields for readability:
+The tables use table-specific URL fields for readability:
 
 - `match_url`
 - `map_url`
@@ -48,7 +48,7 @@ Use table-specific URL fields for readability:
 
 ## Status Values
 
-Use the same status model across match, map, and demo ingestion state:
+The same status model is used across match, map, and demo ingestion state:
 
 - `pending`: discovered and ready to be processed
 - `processing`: actively being worked on
@@ -62,7 +62,7 @@ successful stage includes fetch, parse, and persistence.
 
 ## Shared Fields
 
-Each ingestion state table should include:
+Each ingestion state table includes:
 
 - table-specific ID field: `match_id`, `map_id`, or `demo_id`
 - table-specific URL field: `match_url`, `map_url`, or `demo_url`

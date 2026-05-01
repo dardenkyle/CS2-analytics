@@ -25,7 +25,7 @@ Demo processing is intentionally staged for later and remains decoupled from the
 
 ## Architectural Direction
 
-The architecture should be centered on explicit lifecycle/state tracking for discovered entities.
+The architecture is centered on explicit lifecycle/state tracking for discovered entities.
 
 For match and map discovery, the PostgreSQL tables `match_ingestion_state` and `map_ingestion_state` are source-of-truth lifecycle tables rather than simple transient work queues.
 
@@ -46,11 +46,11 @@ Primary responsibility:
 
 - fetch results pages
 - discover match identifiers and URLs
-- create match lifecycle rows for newly discovered matches
+- create or refresh match lifecycle rows for discovered matches
 
 Current implementation note:
 
-- `ResultsScraper` currently performs discovery-time queueing into `match_ingestion_state`
+- `ResultsScraper` currently performs discovery-time lifecycle-row refreshes in `match_ingestion_state`
 - dedicated stage services are still the next refactor, but rediscovery refreshes already happen in the current implementation
 
 This stage should not parse match detail pages or write match records directly.
@@ -133,18 +133,16 @@ Those services should own per-item stage workflow, including:
 
 ## Ingestion and Discovery State Tables
 
-For the active match and map stages, the PostgreSQL tables `match_ingestion_state` and `map_ingestion_state` should be treated as lifecycle/state tables first and work queues second.
+For the active match and map stages, the PostgreSQL tables `match_ingestion_state` and `map_ingestion_state` are lifecycle/state tables first and work queues second.
 
-That means they should eventually describe:
+They now describe:
 
 - when an entity was first discovered
 - when it was last seen in discovery
 - whether it is ready for processing
 - whether processing was attempted
 - whether it succeeded or failed
-- what run or worker last touched it
-
-These tables are expected to gain clearer audit/lifecycle semantics before any dbt or Airflow rollout.
+- the latest failure or skipped reason, when applicable
 
 ## Deferred Demo Stage
 
@@ -172,11 +170,10 @@ The demo stage should stay deferred until:
 
 ## Recommended Implementation Sequence
 
-1. Review schema and lifecycle semantics for the current match/map discovery tables.
-2. Keep the current `match_ingestion_state` and `map_ingestion_state` tables stable while stage responsibilities move into services.
-3. Refactor `MatchController` and `MapController` by introducing `MatchStageService` and `MapStageService`.
-4. Implement dbt models after ingestion/state semantics are stable.
-5. Implement Airflow after dbt exists and the stage boundaries are clean.
+1. Keep the current `*_ingestion_state` tables stable while stage responsibilities move into services.
+2. Refactor `MatchController` and `MapController` by introducing `MatchStageService` and `MapStageService`.
+3. Implement dbt models after active stage boundaries are stable.
+4. Implement Airflow after dbt exists and the stage boundaries are clean.
 
 ## Rules
 

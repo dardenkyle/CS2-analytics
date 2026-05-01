@@ -3,12 +3,12 @@
 This document is split into two parts:
 
 - Current schema: what exists today in `cs2_analytics/storage/schema.sql`
-- Planned schema direction: candidates for lifecycle cleanup, dbt, and later orchestration
+- Planned schema direction: candidates for active-stage cleanup, dbt, and later orchestration
 
 Current intent:
 
 - `cs2_analytics/storage/schema.sql` remains the source of truth for the current implementation.
-- The next schema work should focus on lifecycle semantics for match and map discovery before dbt or Airflow is added.
+- The ingestion-state lifecycle schema is implemented. The next cleanup should keep those tables stable while active-stage responsibilities move into services.
 
 ---
 
@@ -97,14 +97,14 @@ The current code uses ingestion-state names:
 
 For match and map processing, those tables are lifecycle/state tables for discovered entities rather than simple transient queues.
 
-That means they should eventually describe:
+They describe:
 
 - when an entity was first discovered
 - when it was last seen in discovery
 - whether it is ready for processing
 - whether processing was attempted
 - whether it succeeded or failed
-- what run or worker last touched it
+- the latest failure or skipped reason, when applicable
 
 #### `match_ingestion_state`
 
@@ -191,14 +191,14 @@ Field selection guidance:
 
 ## Planned Schema Direction
 
-The following items are planned, but they should follow lifecycle review and active-stage cleanup.
+The following items are planned, but they should follow active-stage cleanup.
 
-### Planned lifecycle-state cleanup
+### Completed lifecycle-state cleanup
 
-- Clarify status values based on lifecycle semantics, not only queue semantics
-- Add only distinct audit fields
-- Revisit whether current table names still fit their purpose
-- Keep naming changes secondary to semantic clarity
+- Status values are based on lifecycle semantics: `pending`, `processing`, `processed`, `failed`, and `skipped`
+- Ingestion-state tables use distinct lifecycle fields such as `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, and `last_failed_at`
+- Current table names are `match_ingestion_state`, `map_ingestion_state`, and `demo_ingestion_state`
+- Redundant fields such as `retry_count`, `run_id`, and `worker_id` are intentionally absent from these lifecycle tables
 
 ### Planned raw-layer tables
 

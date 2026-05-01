@@ -9,8 +9,8 @@ Submodules:
 - config: Environment and settings management
 - scrapers: Web scraping using SeleniumBase
 - parsers: HTML and demo file parsing into structured formats
-- controllers: Pipeline orchestration and queue handling
-- queues: Task tracking for scraping stages
+- controllers: Pipeline orchestration and ingestion-stage coordination
+- ingestion_state: Lifecycle tracking for discovered matches, maps, and demos
 - services: Business logic and analytical processing
 - storage: Database access layer
 - pipeline: Main orchestration logic

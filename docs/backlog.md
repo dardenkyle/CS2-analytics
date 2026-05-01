@@ -58,7 +58,7 @@ Complete. The active schema, controllers, and tests now use `*_ingestion_state` 
 ### Completed PR sequence
 
 1. Compatibility:
-   Added `MatchIngestionState`, `MapIngestionState`, and `DemoIngestionState` while the `queues/` package re-exported the new managers.
+   Added `MatchIngestionState`, `MapIngestionState`, and `DemoIngestionState` as the new ingestion-state manager classes.
 2. Schema:
    Updated `cs2_analytics/storage/schema.sql` to create only the `*_ingestion_state` tables with the agreed Phase 1 fields and status values.
 3. Migration/package rename:
