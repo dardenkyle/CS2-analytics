@@ -102,7 +102,9 @@ class BaseIngestionState:
         """
 
         now = dt.datetime.now()
-        values = [(item_id, url, source, priority, now, now, now) for item_id, url in items]
+        values = [
+            (item_id, url, source, priority, now, now, now) for item_id, url in items
+        ]
 
         try:
             with db.get_cursor() as cur:
