@@ -115,8 +115,7 @@ row changes.
 
 - the schema now creates only `match_ingestion_state`, `map_ingestion_state`,
   and `demo_ingestion_state`
-- Python managers live under `cs2_analytics/ingestion_state/`, with the
-  `cs2_analytics/queues/` package retained only as a thin compatibility export
+- Python managers live under `cs2_analytics/ingestion_state/`.
 - controllers mark rows as `processing`, `processed`, `failed`, or `skipped`
   using the shared lifecycle helpers
 - rediscovery refreshes `last_seen_at`, keeps source IDs as primary keys, and
