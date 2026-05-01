@@ -32,7 +32,7 @@ class MatchController:
         self.demo_queue = DemoIngestionState()
 
     def run(self, batch_size: int = 25) -> None:
-        """Runs the match stage for a batch of queued match URLs."""
+        """Runs the match stage for a batch of pending match URLs."""
         logger.info("Running MatchController with batch size: %d", batch_size)
 
         queued = self.match_queue.fetch(limit=batch_size)
@@ -70,7 +70,7 @@ class MatchController:
                         if match:
                             store_matches([match])
                             self._queue_followups(map_links, demo_links)
-                            self.match_queue.mark_as_parsed(match_id)
+                            self.match_queue.mark_as_processed(match_id)
                             succeeded += 1
                             logger.info("Stored match: %s", match_id)
                         else:

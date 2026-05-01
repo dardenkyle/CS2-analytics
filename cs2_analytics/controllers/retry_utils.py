@@ -1,8 +1,8 @@
 """Shared retry and recovery helpers for controller orchestration."""
 
+import time
 from collections.abc import Callable
 from contextlib import suppress
-import time
 from typing import TypeVar
 
 from cs2_analytics.exceptions import RetryableScrapeError
@@ -79,6 +79,6 @@ def mark_item_failed(
     max_attempts: int,
     reason_limit: int = 500,
 ) -> None:
-    """Marks a queued item failed, then logs the terminal controller exception."""
+    """Marks an ingestion-state item failed, then logs the terminal controller exception."""
     queue.mark_as_failed(item_id, str(error)[:reason_limit])
     logger.exception(log_message, item_id, attempt, max_attempts, error)

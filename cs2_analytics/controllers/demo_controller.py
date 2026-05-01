@@ -27,7 +27,7 @@ class DemoController:
 
                 if demo_obj:
                     store_demo_file([demo_obj])
-                    self.queue.mark_as_parsed(demo_id)
+                    self.queue.mark_as_processed(demo_id)
                     logger.info("✅ Stored demo: %s", demo_id)
                 else:
                     self.queue.mark_as_failed(demo_id, "Parsing returned None")

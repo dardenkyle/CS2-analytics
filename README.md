@@ -209,13 +209,14 @@ This project is licensed under the **MIT License** – feel free to contribute a
 ## Developer Notes
 
 See `docs/` for:
+
 - architecture overview
 - development roadmap
 
 Current architecture direction:
 
 - the main cleanup target is `MatchController` and `MapController`, not `main.py`
-- `match_scrape_queue` and `map_scrape_queue` are evolving toward ingestion/discovery lifecycle tables
+- `match_ingestion_state` and `map_ingestion_state` are the active ingestion/discovery lifecycle tables
 - the next refactor introduces thinner controllers plus `MatchStageService` and `MapStageService`
 - dbt comes after ingestion/state semantics are stable
 - Airflow comes after dbt and clean stage boundaries

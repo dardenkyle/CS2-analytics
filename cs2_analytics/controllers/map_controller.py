@@ -59,7 +59,7 @@ class MapController:
 
                         if player_obj:
                             store_players(player_obj)
-                            self.queue.mark_as_parsed(map_id)
+                            self.queue.mark_as_processed(map_id)
                             succeeded += 1
                             logger.info("Stored map: %s", map_id)
                         else:

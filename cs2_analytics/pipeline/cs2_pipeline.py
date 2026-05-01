@@ -20,15 +20,15 @@ class CS2AnalyticsPipeline:
         self.logger.info("🔍 Scraping match results page...")
         self.results_controller.run()
 
-        # Step 2: Process matches from match_scrape_queue
+        # Step 2: Process pending matches from match_ingestion_state
         self.logger.info("🎯 Processing matches...")
         self.match_controller.run(batch_size=50)
 
-        # Step 3: Process maps from map_scrape_queue
+        # Step 3: Process pending maps from map_ingestion_state
         self.logger.info("🗺️ Processing maps...")
         self.map_controller.run(batch_size=50)
 
-        # # Step 4: Process demos from demo_scrape_queue
+        # # Step 4: Process pending demos from demo_ingestion_state
         # self.logger.info("📦 Processing demos...")
         # self.demo_controller.run(batch_size=10)
 
