@@ -17,11 +17,7 @@ if TYPE_CHECKING:
 
 
 class MatchStageService:
-    """Coordinates one match ingestion item.
-
-    Branch 1 defines the dependency boundary only. Controller wiring and
-    workflow migration happen in later Phase 3 branches.
-    """
+    """Coordinates one match ingestion item."""
 
     def __init__(
         self,
@@ -39,6 +35,32 @@ class MatchStageService:
         self.map_state = map_state
         self.demo_state = demo_state
 
-    def process_item(self, match_id: str, match_url: str) -> None:
-        """Process one match ingestion-state row."""
-        raise NotImplementedError
+    def process_item(self, match_id: str, match_url: str) -> bool:
+        """Process one match ingestion-state row.
+
+        Returns True when the match was stored successfully and False when
+        parsing returned no match object.
+        """
+        self.match_state.mark_as_processing(match_id)
+        soup = self.scraper.fetch_soup(match_url)
+        match, map_links, demo_links = self.parser.parse_match(soup, match_url)
+
+        if not match:
+            self.match_state.mark_as_failed(match_id, "Parsing returned None")
+            return False
+
+        self.store_matches([match])
+        self._queue_followups(map_links, demo_links)
+        self.match_state.mark_as_processed(match_id)
+        return True
+
+    def _queue_followups(
+        self,
+        map_links: list[tuple[str, str]],
+        demo_links: list[tuple[str, str]],
+    ) -> None:
+        """Queue map and demo links returned by the parser."""
+        for map_id, map_url in map_links:
+            self.map_state.queue(map_id, map_url, source="match_parser")
+        for demo_id, demo_url in demo_links:
+            self.demo_state.queue(demo_id, demo_url, source="match_parser")

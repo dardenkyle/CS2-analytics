@@ -208,7 +208,7 @@ def test_match_controller_continues_after_item_failure(
         ],
     )
     monkeypatch.setattr(
-        match_module,
+        controller.stage_service,
         "store_matches",
         lambda matches: stored_matches.append(matches),
     )
@@ -257,7 +257,7 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
         lambda scraper: reset_calls.append(scraper) or scraper,
     )
     monkeypatch.setattr(
-        match_module,
+        controller.stage_service,
         "store_matches",
         lambda matches: stored_matches.append(matches),
     )

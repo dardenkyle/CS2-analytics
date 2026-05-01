@@ -54,8 +54,6 @@ def test_match_stage_service_records_constructor_dependencies() -> None:
     assert service.match_state is match_state
     assert service.map_state is map_state
     assert service.demo_state is demo_state
-    with pytest.raises(NotImplementedError):
-        service.process_item("match-1", "https://www.hltv.org/matches/1/test")
 
 
 def test_map_stage_service_records_constructor_dependencies() -> None:
