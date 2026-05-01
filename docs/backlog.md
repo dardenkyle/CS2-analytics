@@ -116,7 +116,7 @@ a later branch proves they are necessary.
 
 Before merging each Phase 3 branch:
 
-- [ ] Run `.\.venv\Scripts\python.exe -m pytest`
+- [ ] Run `python -m pytest` from the venv
 - [ ] Smoke test `python main.py` when the local scraper/database environment is available
 - [ ] Confirm controllers still own batch concerns and services own only per-item workflow
 - [ ] Confirm no dbt, Airflow, or schema work slipped into the branch
