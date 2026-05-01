@@ -9,7 +9,7 @@
 
 Current implementation note:
 
-- `ResultsScraper` still performs discovery-time queue insertion into `match_scrape_queue`
+- `ResultsScraper` still performs discovery-time lifecycle-row refreshes in `match_ingestion_state`
 - that behavior reflects the current codebase, not the long-term target boundary
 - over time, discovery-state mutation should move out of `ResultsScraper` and into a cleaner stage-oriented boundary
 
@@ -58,7 +58,7 @@ The top-level pipeline is intentionally thin and is not the primary architectura
 ## Ingestion and Discovery State Tables
 
 - Stored in PostgreSQL
-- Current code uses names like `match_scrape_queue` and `map_scrape_queue`
+- Current code uses `match_ingestion_state`, `map_ingestion_state`, and `demo_ingestion_state`
 - Treat those tables as lifecycle/state tables for discovered entities, not only transient queues
 - Keep lifecycle fields distinct and avoid redundant timestamps
 - Raise typed state-table exceptions instead of logging terminal errors

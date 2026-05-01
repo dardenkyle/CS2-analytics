@@ -64,7 +64,9 @@ def test_initialize_database_executes_schema_with_context_managers(
     cursor = _RecordingCursor()
     connection = _RecordingConnection(cursor)
 
-    monkeypatch.setattr(initialize_db_module.psycopg2, "connect", lambda **_: connection)
+    monkeypatch.setattr(
+        initialize_db_module.psycopg2, "connect", lambda **_: connection
+    )
     monkeypatch.setattr(initialize_db_module.os.path, "dirname", lambda _: "fake_dir")
     monkeypatch.setattr(
         builtins,
@@ -87,7 +89,9 @@ def test_initialize_database_wraps_schema_failures_in_typed_error(
     cursor = _RecordingCursor(should_fail=True)
     connection = _RecordingConnection(cursor)
 
-    monkeypatch.setattr(initialize_db_module.psycopg2, "connect", lambda **_: connection)
+    monkeypatch.setattr(
+        initialize_db_module.psycopg2, "connect", lambda **_: connection
+    )
     monkeypatch.setattr(initialize_db_module.os.path, "dirname", lambda _: "fake_dir")
     monkeypatch.setattr(
         builtins,
@@ -115,12 +119,12 @@ def test_schema_defines_ingestion_state_tables() -> None:
     ):
         assert f"CREATE TABLE {table_name}" in schema_sql
 
-    for compatibility_table_name in (
+    for removed_table_name in (
         "match_scrape_queue",
         "map_scrape_queue",
         "demo_scrape_queue",
     ):
-        assert f"CREATE TABLE {compatibility_table_name}" in schema_sql
+        assert f"CREATE TABLE {removed_table_name}" not in schema_sql
 
     required_columns = (
         "status",

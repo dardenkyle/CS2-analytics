@@ -2,7 +2,7 @@
 
 ## **Project Overview**
 
-This project is a **Counter-Strike 2 (CS2) analytics tool** focused on collecting professional **match, map, and player data** and turning it into reliable, queryable analytics data. The current development focus is the ingestion pipeline: discovery, match/map processing, relational storage, and clearer lifecycle/state semantics for discovered entities.
+This project is a **Counter-Strike 2 (CS2) analytics tool** focused on collecting professional **match, map, and player data** and turning it into reliable, queryable analytics data. The current development focus is the ingestion pipeline: discovery, match/map processing, relational storage, and thinner controller boundaries around the active ingestion stages.
 
 ---
 
@@ -49,10 +49,10 @@ CS2-Analytics/
 ├── cs2_analytics/
 |   ├── config/
 |   ├── controllers/
+|   ├── ingestion_state/
 |   ├── models/
 |   ├── parsers/
 |   ├── pipeline/
-|   ├── queues/
 |   ├── scrapers/
 |   ├── services/
 |   ├── storage/
@@ -154,7 +154,7 @@ Current focus:
 - results discovery
 - match and map processing
 - relational persistence
-- lifecycle/state cleanup for discovered entities
+- stage-service extraction from active controllers
 
 ### **API Mode (FastAPI)**
 
@@ -209,14 +209,16 @@ This project is licensed under the **MIT License** – feel free to contribute a
 ## Developer Notes
 
 See `docs/` for:
+
 - architecture overview
 - development roadmap
 
 Current architecture direction:
 
 - the main cleanup target is `MatchController` and `MapController`, not `main.py`
-- `match_scrape_queue` and `map_scrape_queue` are evolving toward ingestion/discovery lifecycle tables
-- the next refactor introduces thinner controllers plus `MatchStageService` and `MapStageService`
+- `match_ingestion_state` and `map_ingestion_state` are the active ingestion/discovery lifecycle tables
+- Phase 2 ingestion-state migration is complete; the next refactor introduces thinner controllers plus `MatchStageService` and `MapStageService`
+- demo service-layer work remains lower priority even though `DemoStageService` is expected later
 - dbt comes after ingestion/state semantics are stable
 - Airflow comes after dbt and clean stage boundaries
 

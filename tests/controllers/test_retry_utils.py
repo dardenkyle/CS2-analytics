@@ -34,7 +34,7 @@ class _Scraper:
 
 class _FailingQueue:
     def mark_as_failed(self, item_id: str, reason: str) -> None:
-        raise MatchQueueError("Failed to mark item as failed in match_scrape_queue.")
+        raise MatchQueueError("Failed to mark item as failed in match_ingestion_state.")
 
 
 def test_reset_scraper_retries_until_health_check_passes(
@@ -89,7 +89,7 @@ def test_mark_item_failed_propagates_queue_errors(
     error = SessionScrapeError("Failed to fetch match page: https://www.hltv.org")
 
     with pytest.raises(
-        MatchQueueError, match="Failed to mark item as failed in match_scrape_queue."
+        MatchQueueError, match="Failed to mark item as failed in match_ingestion_state."
     ):
         retry_utils.mark_item_failed(
             _FailingQueue(),

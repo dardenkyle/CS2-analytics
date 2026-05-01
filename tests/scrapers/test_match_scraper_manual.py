@@ -3,10 +3,12 @@
 This helper bypasses controllers intentionally and is only for manual debugging.
 """
 
+from cs2_analytics.ingestion_state import MatchIngestionState
 from cs2_analytics.parsers.match_parser import MatchParser
-from cs2_analytics.queues import match_queue
 from cs2_analytics.scrapers.match_scraper import MatchScraper
 from cs2_analytics.storage.match_storage import store_matches
+
+match_queue = MatchIngestionState()
 
 
 def main():
@@ -30,7 +32,7 @@ def main():
             if match_obj:
                 parsed_matches.append(match_obj)
                 store_matches([match_obj])
-                match_queue.mark_as_parsed(match_id)
+                match_queue.mark_as_processed(match_id)
                 print(f"Stored match {match_id}")
             else:
                 match_queue.mark_as_failed(match_id, "Parser returned None")

@@ -10,7 +10,7 @@ from seleniumbase import Driver
 
 from cs2_analytics.config.config import END_DATE, HLTV_URL, MAX_MATCHES, START_DATE
 from cs2_analytics.exceptions import ResultsScrapeError, SessionScrapeError
-from cs2_analytics.queues.match_scrape_queue import MatchScrapeQueue
+from cs2_analytics.ingestion_state import MatchIngestionState
 from cs2_analytics.utils.log_manager import get_logger
 from cs2_analytics.utils.queue_helpers import chunk_and_queue
 
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 class ResultsScraper:
     """
-    Scrapes HLTV results and queues match links into match_scrape_queue.
+    Scrapes HLTV results and records match links in match_ingestion_state.
 
     Designed to be used as a context manager to ensure the browser is closed.
     """
@@ -28,7 +28,7 @@ class ResultsScraper:
         """Initializes the scraper with a SeleniumBase driver and config params."""
         self.driver = Driver(uc=True, headless=True)
         self.base_url = HLTV_URL
-        self.queue = MatchScrapeQueue()
+        self.queue = MatchIngestionState()
         self.source: str = "results_scraper"
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()

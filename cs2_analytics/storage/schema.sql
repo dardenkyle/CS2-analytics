@@ -3,15 +3,9 @@ DROP TABLE IF EXISTS demo_files CASCADE;
 
 DROP TABLE IF EXISTS demo_ingestion_state CASCADE;
 
-DROP TABLE IF EXISTS demo_scrape_queue CASCADE;
-
 DROP TABLE IF EXISTS map_ingestion_state CASCADE;
 
-DROP TABLE IF EXISTS map_scrape_queue CASCADE;
-
 DROP TABLE IF EXISTS match_ingestion_state CASCADE;
-
-DROP TABLE IF EXISTS match_scrape_queue CASCADE;
 
 DROP TABLE IF EXISTS player_metrics CASCADE;
 
@@ -227,48 +221,6 @@ CREATE TABLE demo_ingestion_state (
     source TEXT,
     priority INT DEFAULT 0,
     last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Match Scrape Queue Table
--- Kept temporarily for runtime compatibility until queue code migrates.
-CREATE TABLE match_scrape_queue (
-    match_id INT PRIMARY KEY,
-    match_url TEXT NOT NULL,
-    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    retry_count INT NOT NULL DEFAULT 0,
-    last_error TEXT,
-    priority INT DEFAULT 0,
-    source TEXT
-);
-
--- Map Scrape Queue Table
--- Kept temporarily for runtime compatibility until queue code migrates.
-CREATE TABLE map_scrape_queue (
-    map_id TEXT PRIMARY KEY,
-    map_url TEXT NOT NULL,
-    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    retry_count INT NOT NULL DEFAULT 0,
-    last_error TEXT,
-    priority INT DEFAULT 0,
-    source TEXT
-);
-
--- Demo Scrape Queue Table
--- Kept temporarily for runtime compatibility until queue code migrates.
-CREATE TABLE demo_scrape_queue (
-    demo_id TEXT PRIMARY KEY,
-    demo_url TEXT NOT NULL,
-    STATUS TEXT CHECK (STATUS IN ('queued', 'parsed', 'failed')) NOT NULL DEFAULT 'queued',
-    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    retry_count INT NOT NULL DEFAULT 0,
-    last_error TEXT,
-    priority INT DEFAULT 0,
-    source TEXT
 );
 
 -- This table is used to track the status of demo files.
