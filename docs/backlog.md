@@ -77,6 +77,7 @@ Thin the active controllers by separating batch concerns from per-item stage wor
 
 - [ ] Introduce `MatchStageService`
 - [ ] Introduce `MapStageService`
+- [ ] Introduce `DemoStageService`
 - [ ] Move per-item fetch -> parse -> persist -> state-transition logic into stage services
 - [ ] Keep controller ownership of batch coordination, retry policy, scraper reset/rotation, and summary logging
 - [ ] Keep scrapers fetch-only, parsers parse-only, and persistence centralized
