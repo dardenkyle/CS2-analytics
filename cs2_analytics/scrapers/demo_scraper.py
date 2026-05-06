@@ -10,12 +10,16 @@ import os
 import time
 import zipfile
 
-import rarfile
 from selenium.webdriver.chrome.options import Options
 from seleniumbase import Driver
 
 from cs2_analytics.exceptions import DemoScrapeError
 from cs2_analytics.utils.log_manager import get_logger
+
+try:
+    import rarfile
+except ImportError:  # pragma: no cover - exercised only without the demo extra.
+    rarfile = None
 
 logger = get_logger(__name__)
 
@@ -117,7 +121,7 @@ class DemoScraper:
                                 file.read()
                             )  # ✅ Store in memory
 
-            elif rarfile.is_rarfile(archive_buffer):
+            elif rarfile is not None and rarfile.is_rarfile(archive_buffer):
                 with rarfile.RarFile(archive_buffer) as archive:
                     for file_name in archive.namelist():
                         with archive.open(file_name) as file:
