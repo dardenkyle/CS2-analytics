@@ -23,28 +23,28 @@ logger = get_logger("match_controller")
 
 
 class MatchController:
-    """Orchestrates match scraping, parsing, queueing, and storage."""
+    """Coordinates match batches, retry policy, and scraper lifecycle."""
 
     def __init__(self) -> None:
         self.scraper = MatchScraper()
         self.parser = MatchParser()
-        self.match_queue = MatchIngestionState()
-        self.map_queue = MapIngestionState()
-        self.demo_queue = DemoIngestionState()
+        self.match_state = MatchIngestionState()
+        self.map_state = MapIngestionState()
+        self.demo_state = DemoIngestionState()
         self.stage_service = MatchStageService(
             parser=self.parser,
             store_matches=store_matches,
-            match_state=self.match_queue,
-            map_state=self.map_queue,
-            demo_state=self.demo_queue,
+            match_state=self.match_state,
+            map_state=self.map_state,
+            demo_state=self.demo_state,
         )
 
     def run(self, batch_size: int = 25) -> None:
         """Runs the match stage for a batch of pending match URLs."""
         logger.info("Running MatchController with batch size: %d", batch_size)
 
-        queued = self.match_queue.fetch(limit=batch_size)
-        logger.info("%d matches pulled from queue", len(queued))
+        selected = self.match_state.fetch(limit=batch_size)
+        logger.info("%d pending matches selected from ingestion state", len(selected))
 
         rotate_every = 8
         inter_match_delay_seconds = 1.1
@@ -57,7 +57,7 @@ class MatchController:
 
         scraper = self.scraper
         try:
-            for match_id, match_url in queued:
+            for match_id, match_url in selected:
                 if processed_since_reset >= rotate_every:
                     logger.info(
                         "Rotating scraper session after %d processed matches",
@@ -66,18 +66,23 @@ class MatchController:
                     scraper = self._reset_scraper(scraper)
                     processed_since_reset = 0
 
-                self.match_queue.mark_as_processing(match_id)
+                self.match_state.mark_as_processing(match_id)
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
-                        if self.stage_service.process_item(
+                        result = self.stage_service.process_item(
                             match_id, match_url, scraper=scraper
-                        ):
+                        )
+                        if result.succeeded:
                             succeeded += 1
                             logger.info("Stored match: %s", match_id)
                         else:
                             failed += 1
-                            logger.warning("Match %s returned no parsed data", match_id)
+                            logger.warning(
+                                "Match %s was not processed: %s",
+                                match_id,
+                                result.message,
+                            )
 
                         consecutive_recoverable_errors = 0
                         processed_since_reset += 1
@@ -122,7 +127,7 @@ class MatchController:
                                 max_attempts,
                             )
                         mark_item_failed(
-                            self.match_queue,
+                            self.match_state,
                             match_id,
                             e,
                             logger=logger,
@@ -140,8 +145,8 @@ class MatchController:
                 scraper.close()
 
         logger.info(
-            "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d",
-            len(queued),
+            "MatchController summary: selected=%d succeeded=%d failed=%d retries=%d",
+            len(selected),
             succeeded,
             failed,
             retries,
