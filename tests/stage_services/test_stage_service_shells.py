@@ -54,23 +54,18 @@ def test_match_stage_service_records_constructor_dependencies() -> None:
 
 
 def test_map_stage_service_records_constructor_dependencies() -> None:
-    scraper = object()
     parser = object()
     map_state = object()
 
     service = MapStageService(
-        scraper=scraper,
         parser=parser,
         store_players=_store_stub,
         map_state=map_state,
     )
 
-    assert service.scraper is scraper
     assert service.parser is parser
     assert service.store_players is _store_stub
     assert service.map_state is map_state
-    with pytest.raises(NotImplementedError):
-        service.process_item("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
 
 
 def test_demo_stage_service_records_constructor_dependencies() -> None:

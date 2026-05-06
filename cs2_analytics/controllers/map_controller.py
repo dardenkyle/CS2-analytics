@@ -11,6 +11,7 @@ from cs2_analytics.controllers.retry_utils import (
 from cs2_analytics.ingestion_state import MapIngestionState
 from cs2_analytics.parsers.map_parser import MapParser
 from cs2_analytics.scrapers.map_scraper import MapScraper
+from cs2_analytics.stage_services import MapStageService
 from cs2_analytics.storage.player_storage import store_players
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -24,6 +25,11 @@ class MapController:
         self.scraper = MapScraper()
         self.parser = MapParser()
         self.queue = MapIngestionState()
+        self.stage_service = MapStageService(
+            parser=self.parser,
+            store_players=store_players,
+            map_state=self.queue,
+        )
 
     def run(self, batch_size: int = 25) -> None:
         logger.info("Running MapController with batch size: %d", batch_size)
@@ -54,16 +60,12 @@ class MapController:
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
-                        soup = scraper.fetch_soup(map_url)
-                        player_obj = self.parser.parse_map(soup, map_url, map_id)
-
-                        if player_obj:
-                            store_players(player_obj)
-                            self.queue.mark_as_processed(map_id)
+                        if self.stage_service.process_item(
+                            map_id, map_url, scraper=scraper
+                        ):
                             succeeded += 1
                             logger.info("Stored map: %s", map_id)
                         else:
-                            self.queue.mark_as_failed(map_id, "Parsing returned None")
                             failed += 1
                             logger.warning("Map %s returned no parsed data", map_id)
 
