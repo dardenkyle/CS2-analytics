@@ -33,14 +33,12 @@ def test_stage_services_package_re_exports_concrete_classes() -> None:
 
 
 def test_match_stage_service_records_constructor_dependencies() -> None:
-    scraper = object()
     parser = object()
     match_state = object()
     map_state = object()
     demo_state = object()
 
     service = MatchStageService(
-        scraper=scraper,
         parser=parser,
         store_matches=_store_stub,
         match_state=match_state,
@@ -48,14 +46,11 @@ def test_match_stage_service_records_constructor_dependencies() -> None:
         demo_state=demo_state,
     )
 
-    assert service.scraper is scraper
     assert service.parser is parser
     assert service.store_matches is _store_stub
     assert service.match_state is match_state
     assert service.map_state is map_state
     assert service.demo_state is demo_state
-    with pytest.raises(NotImplementedError):
-        service.process_item("match-1", "https://www.hltv.org/matches/1/test")
 
 
 def test_map_stage_service_records_constructor_dependencies() -> None:

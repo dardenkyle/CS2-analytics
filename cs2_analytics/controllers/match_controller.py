@@ -15,6 +15,7 @@ from cs2_analytics.ingestion_state import (
 )
 from cs2_analytics.parsers.match_parser import MatchParser
 from cs2_analytics.scrapers.match_scraper import MatchScraper
+from cs2_analytics.stage_services import MatchStageService
 from cs2_analytics.storage.match_storage import store_matches
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -30,6 +31,13 @@ class MatchController:
         self.match_queue = MatchIngestionState()
         self.map_queue = MapIngestionState()
         self.demo_queue = DemoIngestionState()
+        self.stage_service = MatchStageService(
+            parser=self.parser,
+            store_matches=store_matches,
+            match_state=self.match_queue,
+            map_state=self.map_queue,
+            demo_state=self.demo_queue,
+        )
 
     def run(self, batch_size: int = 25) -> None:
         """Runs the match stage for a batch of pending match URLs."""
@@ -62,21 +70,12 @@ class MatchController:
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
-                        soup = scraper.fetch_soup(match_url)
-                        match, map_links, demo_links = self.parser.parse_match(
-                            soup, match_url
-                        )
-
-                        if match:
-                            store_matches([match])
-                            self._queue_followups(map_links, demo_links)
-                            self.match_queue.mark_as_processed(match_id)
+                        if self.stage_service.process_item(
+                            match_id, match_url, scraper=scraper
+                        ):
                             succeeded += 1
                             logger.info("Stored match: %s", match_id)
                         else:
-                            self.match_queue.mark_as_failed(
-                                match_id, "Parsing returned None"
-                            )
                             failed += 1
                             logger.warning("Match %s returned no parsed data", match_id)
 
@@ -151,7 +150,7 @@ class MatchController:
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
         """Returns True for transient scraper failures worth retrying."""
-        return is_retryable_scraper_error(error)
+        return bool(is_retryable_scraper_error(error))
 
     def _reset_scraper(self, scraper: MatchScraper) -> MatchScraper:
         """Closes and recreates the scraper so the next attempt gets a fresh session."""
@@ -185,13 +184,3 @@ class MatchController:
             logger.warning("Scraper session health check failed: %s", e)
             return False
 
-    def _queue_followups(
-        self,
-        map_links: list[tuple[str, str]],
-        demo_links: list[tuple[str, str]],
-    ) -> None:
-        """Queues map and demo links returned by the parser."""
-        for map_id, map_url in map_links:
-            self.map_queue.queue(map_id, map_url, source="match_parser")
-        for demo_id, demo_url in demo_links:
-            self.demo_queue.queue(demo_id, demo_url, source="match_parser")
