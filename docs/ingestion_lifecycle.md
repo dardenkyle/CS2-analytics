@@ -111,12 +111,14 @@ row changes.
 - `last_updated_at`
   Most recent meaningful update to the ingestion state row.
 
-## Implemented Phase 2 Behavior
+## Implemented Behavior
 
 - the schema now creates only `match_ingestion_state`, `map_ingestion_state`,
   and `demo_ingestion_state`
 - Python managers live under `cs2_analytics/ingestion_state/`.
-- controllers mark rows as `processing`, `processed`, `failed`, or `skipped`
-  using the shared lifecycle helpers
+- controllers mark rows as `processing` when a batch attempt begins
+- stage services mark normal per-item outcomes as `processed`, `failed`, or
+  `skipped` using the shared lifecycle helpers
+- controllers mark terminal exception failures when retry policy is exhausted
 - rediscovery refreshes `last_seen_at`, keeps source IDs as primary keys, and
   preserves `first_seen_at`

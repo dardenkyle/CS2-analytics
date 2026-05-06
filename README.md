@@ -1,163 +1,107 @@
-# **Counter-Strike 2 Pro Match Analytics Tool**
+# Counter-Strike 2 Pro Match Analytics Tool
 
-## **Project Overview**
+## Project Overview
 
-This project is a **Counter-Strike 2 (CS2) analytics tool** focused on collecting professional **match, map, and player data** and turning it into reliable, queryable analytics data. The current development focus is the ingestion pipeline: discovery, match/map processing, relational storage, and thinner controller boundaries around the active ingestion stages.
+This project is a Counter-Strike 2 analytics tool focused on collecting professional match, map, and player data and turning it into reliable, queryable analytics data.
 
----
+The current ingestion architecture uses PostgreSQL-backed ingestion-state tables, thin controllers for batch orchestration, and stage services for per-item match/map/demo workflow boundaries.
 
-## **Features**
+## Features
 
-### **Data Scraping**
+### Data Ingestion
 
-- **Match Data:** Scrapes CS2 professional match results (teams, scores, events, etc.).
-- **Game Data:** Extracts detailed round-by-round statistics.
-- **Player Stats:** Collects individual player performance metrics (kills, deaths, assists, ADR, KAST, opening duels, multi-kills, clutches, round swing, etc.).
-- **Ingestion Hardening:** Uses retry/backoff, browser session recovery, and PostgreSQL-backed lifecycle tracking for resilient scraping runs.
+- Results discovery refreshes match ingestion-state rows.
+- Match processing collects match metadata and discovers downstream map/demo links.
+- Map processing collects player performance metrics such as kills, deaths, assists, ADR, KAST, opening duels, multi-kills, clutches, and round swing.
+- Ingestion hardening uses retry/backoff, browser session recovery, and lifecycle tracking for resilient scraping runs.
 
-### **Deferred / Later-Phase Work**
+### Deferred / Later-Phase Work
 
-- **Demo Processing:** Demo download and parsing remain deferred until the active match/map ingestion stages have cleaner lifecycle semantics and thinner controllers.
-- **dbt Transformation Layer:** dbt will be added after ingestion/state semantics are stable.
-- **Airflow Orchestration:** Airflow comes after dbt and after stage boundaries are cleaner.
+- Demo processing: demo download and parsing remain deferred, though `DemoStageService` preserves the stage boundary.
+- dbt transformation layer: dbt comes after ingestion/state semantics and active stage boundaries are stable.
+- Airflow orchestration: Airflow comes after dbt and clean stage boundaries.
 
----
+## Tech Stack
 
-## **Tech Stack**
+- Python 3.11+
+- SeleniumBase and BeautifulSoup for web scraping
+- PostgreSQL for structured data storage
+- Pandas and NumPy for analytics/data processing
+- FastAPI for API work
 
-- **Python 3.11+**
-- **Seleniumbase & BeautifulSoup** (for web scraping)
-- **PostgreSQL** (for structured data storage)
-- **Pandas & NumPy** (for analytics and data processing)
-- **Web scraping + demo parsing tools**
+## Project Structure
 
----
-
-## **Project Structure**
-
-```
+```text
 CS2-Analytics/
-├── main.py
-├── run_api.py
-├── README.md
-├── pyproject.toml
-├── api/
-|   ├── main.py
-|   ├── routes/
-|   ├── schemas/
-|   └── services/
-├── cs2_analytics/
-|   ├── config/
-|   ├── controllers/
-|   ├── ingestion_state/
-|   ├── models/
-|   ├── parsers/
-|   ├── pipeline/
-|   ├── scrapers/
-|   ├── stage_services/
-|   ├── services/
-|   ├── storage/
-|   └── utils/
-├── logs/
-|   └── app.log
-├── tests/
-|   ├── parsers/
-|   ├── scrapers/
-|   └── storage/
-├── demos/
-├── parsed_data/
-└── frontend/
+|-- main.py
+|-- run_api.py
+|-- README.md
+|-- pyproject.toml
+|-- api/
+|   |-- main.py
+|   |-- routes/
+|   |-- schemas/
+|   `-- services/
+|-- cs2_analytics/
+|   |-- config/
+|   |-- controllers/
+|   |-- ingestion_state/
+|   |-- models/
+|   |-- parsers/
+|   |-- pipeline/
+|   |-- scrapers/
+|   |-- stage_services/
+|   |-- services/
+|   |-- storage/
+|   `-- utils/
+|-- docs/
+|-- logs/
+|-- tests/
+|-- demos/
+|-- parsed_data/
+`-- frontend/
 ```
 
----
+## Installation & Setup
 
-## **Installation & Setup**
-
-### **1. Clone the Repository**
+### 1. Clone the Repository
 
 ```sh
 git clone https://github.com/dardenkyle/CS2-analytics.git
 cd CS2-Analytics
 ```
 
-### **2. Create a Virtual Environment**
+### 2. Create a Virtual Environment
 
 ```sh
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-### **3. Install Dependencies**
+### 3. Install Dependencies
 
 ```sh
 pip install -e .
-# Optional (recommended for local development)
 pip install -e ".[dev]"
 ```
 
-### **4. Set Up Database**
+### 4. Set Up Database
 
-Ensure you have **PostgreSQL installed** and update `cs2_analytics/config/config.py` with your database credentials.
-
-```python
-DB_NAME = "cs2_db"
-DB_USER = "your_user"
-DB_PASS = "your_password"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-```
+Ensure PostgreSQL is installed and configure database credentials through your local environment or `cs2_analytics/config/config.py`.
 
 Run:
 
 ```sh
-# Run this once to set up your database schema
 python -m cs2_analytics.storage.initialize_db
 ```
 
-### **5. Run the Scraper**
+### 5. Run the Pipeline
 
 ```sh
 python main.py
 ```
 
-### **6. Run the API**
-
-```sh
-python run_api.py
-```
-
-### **7. Run Tests**
-
-```sh
-pytest -q
-```
-
-Run the map parser hidden-vs-visible regression test directly:
-
-```sh
-pytest tests/parsers/test_map_parser_regression.py -v
-```
-
-Note: Demo processing is still deferred and is intentionally excluded from standard test runs.
-
----
-
-## **Quick Start Workflows**
-
-### **Pipeline Mode (Scrape + Processing)**
-
-```sh
-python main.py
-```
-
-Current focus:
-
-- results discovery
-- match and map processing
-- relational persistence
-- stage-service extraction from active controllers
-
-### **API Mode (FastAPI)**
+### 6. Run the API
 
 ```sh
 python run_api.py
@@ -165,71 +109,63 @@ python run_api.py
 
 Then open: `http://127.0.0.1:8000/docs`
 
----
+### 7. Run Tests
 
-## **Data Insights & Usage (planned)**
+```sh
+python -m pytest
+```
 
-### **Match & Player Stats**
+Note: Demo processing is still deferred and intentionally remains outside the active ingestion pipeline.
 
-- View **per-match player performance**.
-- Compare **teams' win rates on specific maps**.
-- Identify **key players in matchups**.
+## Architecture Notes
 
-### **Demo Analysis**
+Current stage boundaries:
 
-- **Heatmaps** of player movements.
-- **Grenade usage patterns** and efficiency.
-- **Kill zone maps** showing key engagements.
+- Controllers coordinate batches, retry policy, scraper reset/rotation, and summaries.
+- Stage services own per-item fetch, parse, persist, and lifecycle outcome work.
+- Scrapers fetch remote content only.
+- Parsers convert fetched content into structured outputs only.
+- Storage modules centralize relational writes.
+- Ingestion-state tables track lifecycle for discovered matches, maps, and demos.
 
-### **Future Improvements**
+Current active flow:
 
-- AI-based **predictive modeling** for player performance.
-- **Automated video highlight generation** from demos.
-- **Cloud database integration** for long-term data storage.
+```text
+results discovery
+-> match_ingestion_state refresh
+-> MatchController batch
+-> MatchStageService per-item workflow
+-> map/demo ingestion-state refresh
+-> MapController batch
+-> MapStageService per-item workflow
+-> relational storage
+```
 
----
+## Data Insights & Usage (planned)
 
-## **License**
-
-This project is licensed under the **MIT License** – feel free to contribute and modify!
-
----
-
-## **Contributing**
-
-### **Want to help improve this project?**
-
-1. **Fork the repository** on GitHub.
-2. **Create a feature branch** (`git checkout -b new-feature`).
-3. **Commit changes** (`git commit -m "Added new feature"`).
-4. **Push to GitHub** (`git push origin new-feature`).
-5. **Submit a Pull Request** – we review & merge!
-
----
+- View per-match player performance.
+- Compare teams' win rates on specific maps.
+- Identify key players in matchups.
+- Add transformed analytics models through dbt.
+- Expand API read paths over trusted transformed tables.
 
 ## Developer Notes
 
-See `docs/` for:
-
-- architecture overview
-- development roadmap
+See `docs/` for architecture and roadmap details.
 
 Current architecture direction:
 
-- the main cleanup target is `MatchController` and `MapController`, not `main.py`
-- `match_ingestion_state` and `map_ingestion_state` are the active ingestion/discovery lifecycle tables
-- Phase 2 ingestion-state migration is complete; the next refactor introduces thinner controllers plus `MatchStageService` and `MapStageService`
-- demo service-layer work remains lower priority even though `DemoStageService` is expected later
-- dbt comes after ingestion/state semantics are stable
-- Airflow comes after dbt and clean stage boundaries
+- Phase 2 ingestion-state migration is complete.
+- Phase 3 controller thinning is complete.
+- The next major architecture phase is dbt, not more controller refactoring.
+- Demo pipeline implementation remains deferred.
+- Airflow comes after dbt and clean transformation boundaries.
 
-These documents are used to keep development planning and implementation direction aligned.
+## License
 
-## **Contact & Support**
+This project is licensed under the MIT License.
 
-Have questions or want to contribute? Reach out!
+## Contact & Support
 
 - GitHub Issues: [CS2-analytics Issues](https://github.com/dardenkyle/CS2-analytics/issues)
 - Email: [dardenkyle@example.com](mailto:dardenkyle@example.com)
-
-**Happy Analyzing!**

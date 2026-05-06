@@ -2,16 +2,17 @@
 
 ## Overview
 
-This project is moving from an older queue-oriented scraping design toward a cleaner ingestion-state-driven architecture.
+This project has moved from an older queue-oriented scraping design toward a cleaner ingestion-state-driven architecture.
 
-The schema now uses PostgreSQL ingestion-state tables directly, while the active controllers still own more per-item workflow than the desired design. This document describes the current direction and the next cleanup target.
+The schema uses PostgreSQL ingestion-state tables directly, and the active match, map, and demo stages now separate batch orchestration from per-item workflow through stage services.
 
 ## Current Architectural Focus
 
-- `main.py` and the top-level pipeline are not the main architectural problem
-- the main cleanup target is `MatchController` and `MapController`
-- the priority is to clarify ingestion/discovery state semantics before adding dbt or Airflow
-- demo processing remains deferred until the match/map stages have cleaner boundaries
+- `main.py` and the top-level pipeline remain intentionally thin
+- `MatchController`, `MapController`, and `DemoController` own batch-level concerns
+- stage services own per-item fetch, parse, persist, and lifecycle outcome work
+- demo processing remains deferred even though it now has a placeholder stage service boundary
+- dbt and Airflow remain later phases
 
 ## Current Flow
 
@@ -51,7 +52,7 @@ Primary responsibility:
 Current implementation note:
 
 - `ResultsScraper` currently performs discovery-time lifecycle-row refreshes in `match_ingestion_state`
-- dedicated stage services are still the next refactor, but rediscovery refreshes already happen in the current implementation
+- rediscovery refreshes already happen in the current implementation
 
 This stage should not parse match detail pages or write match records directly.
 
@@ -60,20 +61,20 @@ This stage should not parse match detail pages or write match records directly.
 Primary responsibility:
 
 - select match lifecycle rows that are ready for processing
-- fetch match detail pages
-- parse match metadata and follow-up links
-- persist match records and discovered downstream references
-- update match lifecycle state and create or refresh map/demo follow-up state
+- delegate one-match workflow to `MatchStageService`
+- apply retry, reset, rotation, and summary policy at the batch level
+
+`MatchStageService` owns match detail fetch, parsing, match persistence, follow-up map/demo discovery refreshes, and normal lifecycle outcomes.
 
 ### Map Stage
 
 Primary responsibility:
 
 - select map lifecycle rows that are ready for processing
-- fetch map pages
-- parse map-level player statistics
-- persist parsed outputs through centralized storage modules
-- update map lifecycle state
+- delegate one-map workflow to `MapStageService`
+- apply retry, reset, rotation, and summary policy at the batch level
+
+`MapStageService` owns map fetch, parsing, player persistence, and normal lifecycle outcomes.
 
 This is still the last active stage in the current hardened pipeline.
 
@@ -97,19 +98,17 @@ Controllers should mainly handle:
 - run-level summary logging
 - stage-level failure policy
 
-Controllers should not remain the long-term home for per-item fetch -> parse -> persist -> state-transition logic.
+Controllers should not own per-item fetch -> parse -> persist -> state-transition logic.
 
 ### Stage Services
 
-The next refactor should introduce `MatchStageService` and `MapStageService`.
+Stage services own per-item stage workflow, including:
 
-Those services should own per-item stage workflow, including:
-
-- reading one lifecycle row
 - calling the scraper
 - calling the parser
 - calling storage/persistence modules
-- applying lifecycle updates for success, retryable failure, or terminal failure
+- applying normal lifecycle updates for processed, failed, or skipped outcomes
+- returning `StageItemResult` to controllers for summary counting
 
 ### Scrapers
 
@@ -151,7 +150,7 @@ Demo support exists in the codebase, but end-to-end demo processing is not part 
 Current reality:
 
 - demo URLs are discovered during match processing
-- demo-specific scraper, parser, storage, and queue components exist
+- demo-specific scraper, parser, storage, ingestion-state, and stage-service components exist
 - the production path still stops after the map stage
 
 Demo work stays separate because it introduces different operational concerns:
@@ -161,17 +160,15 @@ Demo work stays separate because it introduces different operational concerns:
 - event-level extraction with a larger output surface
 - cleanup requirements for local demo artifacts
 
-The demo stage should stay deferred until:
+The demo processing implementation should stay deferred until:
 
 - match/map lifecycle semantics are stable
-- controller responsibilities are reduced
-- stage services exist for active stages
 - downstream storage and transformation needs are clearer
 
 ## Recommended Implementation Sequence
 
-1. Keep the current `*_ingestion_state` tables stable while stage responsibilities move into services.
-2. Refactor `MatchController` and `MapController` by introducing `MatchStageService` and `MapStageService`.
+1. Keep the current `*_ingestion_state` tables stable.
+2. Keep controller/stage-service responsibilities clean as ingestion evolves.
 3. Implement dbt models after active stage boundaries are stable.
 4. Implement Airflow after dbt exists and the stage boundaries are clean.
 
