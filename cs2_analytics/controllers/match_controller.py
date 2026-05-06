@@ -32,7 +32,6 @@ class MatchController:
         self.map_queue = MapIngestionState()
         self.demo_queue = DemoIngestionState()
         self.stage_service = MatchStageService(
-            scraper=self.scraper,
             parser=self.parser,
             store_matches=store_matches,
             match_state=self.match_queue,
@@ -71,8 +70,9 @@ class MatchController:
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
-                        self.stage_service.scraper = scraper
-                        if self.stage_service.process_item(match_id, match_url):
+                        if self.stage_service.process_item(
+                            match_id, match_url, scraper=scraper
+                        ):
                             succeeded += 1
                             logger.info("Stored match: %s", match_id)
                         else:
@@ -150,7 +150,7 @@ class MatchController:
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
         """Returns True for transient scraper failures worth retrying."""
-        return is_retryable_scraper_error(error)
+        return bool(is_retryable_scraper_error(error))
 
     def _reset_scraper(self, scraper: MatchScraper) -> MatchScraper:
         """Closes and recreates the scraper so the next attempt gets a fresh session."""

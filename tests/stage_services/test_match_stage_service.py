@@ -23,7 +23,7 @@ class _FakeParser:
         self.calls: list[str] = []
 
     def parse_match(
-        self, soup: object, match_url: str
+        self, _soup: object, match_url: str
     ) -> tuple[object | None, list[tuple[str, str]], list[tuple[str, str]]]:
         self.calls.append(match_url)
         return self.match, self.map_links, self.demo_links
@@ -60,7 +60,6 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
     map_state = _FakeFollowupState()
     demo_state = _FakeFollowupState()
     service = MatchStageService(
-        scraper=_FakeScraper(),
         parser=_FakeParser(
             match=match,
             map_links=[("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")],
@@ -72,7 +71,9 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
         demo_state=demo_state,
     )
 
-    processed = service.process_item("match-1", "https://www.hltv.org/matches/1/test")
+    processed = service.process_item(
+        "match-1", "https://www.hltv.org/matches/1/test", scraper=_FakeScraper()
+    )
 
     assert processed is True
     assert match_state.processing == []
@@ -95,7 +96,6 @@ def test_match_stage_service_marks_failed_when_parser_returns_none() -> None:
     stored_matches: list[list[object]] = []
     match_state = _FakeMatchState()
     service = MatchStageService(
-        scraper=_FakeScraper(),
         parser=_FakeParser(match=None),
         store_matches=lambda matches: stored_matches.append(matches),
         match_state=match_state,
@@ -103,10 +103,29 @@ def test_match_stage_service_marks_failed_when_parser_returns_none() -> None:
         demo_state=_FakeFollowupState(),
     )
 
-    processed = service.process_item("match-1", "https://www.hltv.org/matches/1/test")
+    processed = service.process_item(
+        "match-1", "https://www.hltv.org/matches/1/test", scraper=_FakeScraper()
+    )
 
     assert processed is False
     assert match_state.processing == []
     assert match_state.processed == []
     assert match_state.failed == [("match-1", "Parsing returned None")]
     assert stored_matches == []
+
+
+def test_match_stage_service_processes_with_attempt_scraper() -> None:
+    attempt_scraper = _FakeScraper()
+    service = MatchStageService(
+        parser=_FakeParser(match=object()),
+        store_matches=lambda _matches: None,
+        match_state=_FakeMatchState(),
+        map_state=_FakeFollowupState(),
+        demo_state=_FakeFollowupState(),
+    )
+
+    service.process_item(
+        "match-1", "https://www.hltv.org/matches/1/test", scraper=attempt_scraper
+    )
+
+    assert attempt_scraper.urls == ["https://www.hltv.org/matches/1/test"]

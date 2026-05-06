@@ -21,27 +21,27 @@ class MatchStageService:
 
     def __init__(
         self,
-        scraper: MatchScraper,
         parser: MatchParser,
         store_matches: Callable[[list[Match]], None],
         match_state: MatchIngestionState,
         map_state: MapIngestionState,
         demo_state: DemoIngestionState,
     ) -> None:
-        self.scraper = scraper
         self.parser = parser
         self.store_matches = store_matches
         self.match_state = match_state
         self.map_state = map_state
         self.demo_state = demo_state
 
-    def process_item(self, match_id: str, match_url: str) -> bool:
+    def process_item(
+        self, match_id: str, match_url: str, *, scraper: MatchScraper
+    ) -> bool:
         """Process one match ingestion-state row.
 
         Returns True when the match was stored successfully and False when
         parsing returned no match object.
         """
-        soup = self.scraper.fetch_soup(match_url)
+        soup = scraper.fetch_soup(match_url)
         match, map_links, demo_links = self.parser.parse_match(soup, match_url)
 
         if not match:
