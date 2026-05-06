@@ -50,6 +50,17 @@ class _RetryThenSucceedScraper(_SuccessfulScraper):
         return object()
 
 
+class _TrackingStageService:
+    def __init__(self) -> None:
+        self.scrapers: list[object] = []
+
+    def process_item(self, map_id: str, map_url: str, *, scraper: object) -> bool:
+        self.scrapers.append(scraper)
+        if len(self.scrapers) == 1:
+            raise SessionScrapeError(f"Failed to fetch map stats page: {map_url}")
+        return True
+
+
 class _FailOnceThenSucceedParser:
     def __init__(self) -> None:
         self.calls = 0
@@ -130,7 +141,7 @@ def test_map_controller_retries_retryable_error_before_succeeding(
     )
     stored_players: list[list[object]] = []
     monkeypatch.setattr(
-        map_module,
+        controller.stage_service,
         "store_players",
         lambda players: stored_players.append(players),
     )
@@ -164,6 +175,38 @@ def test_map_controller_retries_retryable_error_before_succeeding(
         and call_args[1:] == (1, 1, 0, 1)
         for call_args, _ in info_calls
     )
+
+
+def test_map_controller_passes_reset_scraper_to_stage_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    controller = _build_map_controller(
+        monkeypatch,
+        _SuccessfulScraper,
+        _SuccessfulParser,
+    )
+    first_scraper = controller.scraper
+    reset_scraper = _SuccessfulScraper()
+    stage_service = _TrackingStageService()
+    monkeypatch.setattr(controller, "stage_service", stage_service)
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: reset_scraper,
+    )
+    monkeypatch.setattr(
+        controller.queue,
+        "fetch",
+        lambda limit=25: [
+            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
+        ],
+    )
+
+    controller.run(batch_size=1)
+
+    assert stage_service.scrapers == [first_scraper, reset_scraper]
+    assert controller.queue.failed == []
+    assert controller.queue.processed == []
 
 
 def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(

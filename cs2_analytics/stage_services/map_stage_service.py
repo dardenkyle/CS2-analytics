@@ -13,24 +13,31 @@ if TYPE_CHECKING:
 
 
 class MapStageService:
-    """Coordinates one map ingestion item.
-
-    Branch 1 defines the dependency boundary only. Controller wiring and
-    workflow migration happen in later Phase 3 branches.
-    """
+    """Coordinates one map ingestion item."""
 
     def __init__(
         self,
-        scraper: MapScraper,
         parser: MapParser,
         store_players: Callable[[list[Player]], None],
         map_state: MapIngestionState,
     ) -> None:
-        self.scraper = scraper
         self.parser = parser
         self.store_players = store_players
         self.map_state = map_state
 
-    def process_item(self, map_id: str, map_url: str) -> None:
-        """Process one map ingestion-state row."""
-        raise NotImplementedError
+    def process_item(self, map_id: str, map_url: str, *, scraper: MapScraper) -> bool:
+        """Process one map ingestion-state row.
+
+        Returns True when player stats were stored successfully and False when
+        parsing returned no player records.
+        """
+        soup = scraper.fetch_soup(map_url)
+        players = self.parser.parse_map(soup, map_url, map_id)
+
+        if not players:
+            self.map_state.mark_as_failed(map_id, "Parsing returned no player records")
+            return False
+
+        self.store_players(players)
+        self.map_state.mark_as_processed(map_id)
+        return True
