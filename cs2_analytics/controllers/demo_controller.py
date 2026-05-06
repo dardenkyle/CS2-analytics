@@ -38,7 +38,10 @@ class DemoController:
                     logger.info("✅ Stored demo: %s", demo_id)
                 else:
                     failed += 1
-                    logger.warning("❌ Demo %s returned None", demo_id)
+                    logger.info(
+                        "Demo %s was not stored by the demo stage service",
+                        demo_id,
+                    )
 
             except Exception as e:
                 failed += 1

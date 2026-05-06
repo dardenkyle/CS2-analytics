@@ -121,7 +121,13 @@ class DemoScraper:
                                 file.read()
                             )  # ✅ Store in memory
 
-            elif rarfile is not None and rarfile.is_rarfile(archive_buffer):
+            elif rarfile is None:
+                logger.warning(
+                    "RAR demo extraction requires the optional demo dependency: rarfile."
+                )
+                return None
+
+            elif rarfile.is_rarfile(archive_buffer):
                 with rarfile.RarFile(archive_buffer) as archive:
                     for file_name in archive.namelist():
                         with archive.open(file_name) as file:

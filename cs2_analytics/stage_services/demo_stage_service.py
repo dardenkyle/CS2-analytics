@@ -38,7 +38,7 @@ class DemoStageService:
         without expanding the non-operational demo pipeline in this branch.
         """
         _ = demo_url
-        self.demo_state.mark_as_failed(
+        self.demo_state.mark_as_skipped(
             demo_id,
             "Demo ingestion is deferred until the demo pipeline is operational",
         )
