@@ -11,6 +11,7 @@ class _FakeMatchQueue:
         self.processing: list[str] = []
 
     def fetch(self, limit: int = 25) -> list[tuple[str, str]]:
+        assert limit > 0
         return [("match-1", "https://www.hltv.org/matches/1/test")]
 
     def mark_as_failed(self, item_id: str, reason: str) -> None:
@@ -54,16 +55,21 @@ class _RetryTwiceThenSucceedScraper(_PassiveScraper):
 
 class _SuccessfulScraper(_PassiveScraper):
     def fetch_soup(self, url: str) -> object:
+        assert url
         return object()
 
 
 class _ParseFailureParser:
-    def parse_match(self, soup: object, match_url: str) -> tuple[object, list, list]:
+    def parse_match(
+        self, _soup: object, _match_url: str
+    ) -> tuple[object, list, list]:
         raise MatchParseError("Missing team names on match page.")
 
 
 class _SuccessfulParser:
-    def parse_match(self, soup: object, match_url: str) -> tuple[object, list, list]:
+    def parse_match(
+        self, _soup: object, _match_url: str
+    ) -> tuple[object, list, list]:
         return object(), [], []
 
 
@@ -71,7 +77,9 @@ class _FailOnceThenSucceedParser:
     def __init__(self) -> None:
         self.calls = 0
 
-    def parse_match(self, soup: object, match_url: str) -> tuple[object, list, list]:
+    def parse_match(
+        self, _soup: object, _match_url: str
+    ) -> tuple[object, list, list]:
         self.calls += 1
         if self.calls == 1:
             raise MatchParseError("Missing team names on match page.")
@@ -88,7 +96,7 @@ def _build_match_controller(
     monkeypatch.setattr(match_module, "MatchIngestionState", _FakeMatchQueue)
     monkeypatch.setattr(match_module, "MapIngestionState", _FakeFollowupQueue)
     monkeypatch.setattr(match_module, "DemoIngestionState", _FakeFollowupQueue)
-    monkeypatch.setattr(match_module, "store_matches", lambda matches: None)
+    monkeypatch.setattr(match_module, "store_matches", lambda _matches: None)
     monkeypatch.setattr(match_module.time, "sleep", lambda *_args, **_kwargs: None)
     return match_module.MatchController()
 
@@ -116,11 +124,11 @@ def test_match_controller_marks_non_retryable_parse_error_failed_immediately(
 
     controller.run(batch_size=1)
 
-    assert controller.match_queue.failed == [
+    assert controller.match_state.failed == [
         ("match-1", "Missing team names on match page.")
     ]
-    assert controller.match_queue.processed == []
-    assert controller.match_queue.processing == ["match-1"]
+    assert controller.match_state.processed == []
+    assert controller.match_state.processing == ["match-1"]
     assert len(exception_calls) == 1
     assert reset_calls == []
 
@@ -160,8 +168,8 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
 
     controller.run(batch_size=1)
 
-    assert len(controller.match_queue.failed) == 1
-    failed_id, reason = controller.match_queue.failed[0]
+    assert len(controller.match_state.failed) == 1
+    failed_id, reason = controller.match_state.failed[0]
     assert failed_id == "match-1"
     assert "Failed to fetch match page" in reason
     assert len(exception_calls) == 1
@@ -178,7 +186,7 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
     ]
     assert any(
         call_args[0]
-        == "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        == "MatchController summary: selected=%d succeeded=%d failed=%d retries=%d"
         and call_args[1:] == (1, 0, 1, 2)
         for call_args, _ in info_calls
     )
@@ -199,13 +207,18 @@ def test_match_controller_continues_after_item_failure(
         "info",
         lambda *args, **kwargs: info_calls.append((args, kwargs)),
     )
-    monkeypatch.setattr(
-        controller.match_queue,
-        "fetch",
-        lambda limit=25: [
+
+    def _fetch_two_matches(limit: int = 25) -> list[tuple[str, str]]:
+        assert limit == 2
+        return [
             ("match-1", "https://www.hltv.org/matches/1/test"),
             ("match-2", "https://www.hltv.org/matches/2/test"),
-        ],
+        ]
+
+    monkeypatch.setattr(
+        controller.match_state,
+        "fetch",
+        _fetch_two_matches,
     )
     monkeypatch.setattr(
         controller.stage_service,
@@ -215,15 +228,15 @@ def test_match_controller_continues_after_item_failure(
 
     controller.run(batch_size=2)
 
-    assert controller.match_queue.failed == [
+    assert controller.match_state.failed == [
         ("match-1", "Missing team names on match page.")
     ]
-    assert controller.match_queue.processed == ["match-2"]
-    assert controller.match_queue.processing == ["match-1", "match-2"]
+    assert controller.match_state.processed == ["match-2"]
+    assert controller.match_state.processing == ["match-1", "match-2"]
     assert len(stored_matches) == 1
     assert any(
         call_args[0]
-        == "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        == "MatchController summary: selected=%d succeeded=%d failed=%d retries=%d"
         and call_args[1:] == (2, 1, 1, 0)
         for call_args, _ in info_calls
     )
@@ -264,8 +277,8 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
 
     controller.run(batch_size=1)
 
-    assert controller.match_queue.failed == []
-    assert controller.match_queue.processed == ["match-1"]
+    assert controller.match_state.failed == []
+    assert controller.match_state.processed == ["match-1"]
     assert len(stored_matches) == 1
     assert len(reset_calls) == 2
     assert 8.0 in sleep_calls
@@ -276,7 +289,7 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
     )
     assert any(
         call_args[0]
-        == "MatchController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        == "MatchController summary: selected=%d succeeded=%d failed=%d retries=%d"
         and call_args[1:] == (1, 1, 0, 2)
         for call_args, _ in info_calls
     )

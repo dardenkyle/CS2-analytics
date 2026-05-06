@@ -2,6 +2,7 @@ import pytest
 
 from cs2_analytics.controllers import map_controller as map_module
 from cs2_analytics.exceptions import MapParseError, SessionScrapeError
+from cs2_analytics.stage_services import StageItemResult
 
 
 class _FakeMapQueue:
@@ -10,7 +11,7 @@ class _FakeMapQueue:
         self.processed: list[str] = []
         self.processing: list[str] = []
 
-    def fetch(self, limit: int = 25) -> list[tuple[str, str]]:
+    def fetch(self, _limit: int = 25) -> list[tuple[str, str]]:
         return [
             ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test"),
             ("map-2", "https://www.hltv.org/stats/matches/mapstatsid/2/test"),
@@ -27,7 +28,7 @@ class _FakeMapQueue:
 
 
 class _SuccessfulScraper:
-    def fetch_soup(self, url: str) -> object:
+    def fetch_soup(self, _url: str) -> object:
         return object()
 
     def close(self) -> None:
@@ -54,18 +55,22 @@ class _TrackingStageService:
     def __init__(self) -> None:
         self.scrapers: list[object] = []
 
-    def process_item(self, map_id: str, map_url: str, *, scraper: object) -> bool:
+    def process_item(
+        self, _map_id: str, map_url: str, *, scraper: object
+    ) -> StageItemResult:
         self.scrapers.append(scraper)
         if len(self.scrapers) == 1:
             raise SessionScrapeError(f"Failed to fetch map stats page: {map_url}")
-        return True
+        return StageItemResult.processed()
 
 
 class _FailOnceThenSucceedParser:
     def __init__(self) -> None:
         self.calls = 0
 
-    def parse_map(self, soup: object, map_url: str, map_id: str) -> list[object]:
+    def parse_map(
+        self, _soup: object, _map_url: str, _map_id: str
+    ) -> list[object]:
         self.calls += 1
         if self.calls == 1:
             raise MapParseError("No player kills logged.")
@@ -73,7 +78,9 @@ class _FailOnceThenSucceedParser:
 
 
 class _SuccessfulParser:
-    def parse_map(self, soup: object, map_url: str, map_id: str) -> list[object]:
+    def parse_map(
+        self, _soup: object, _map_url: str, _map_id: str
+    ) -> list[object]:
         return [object()]
 
 
@@ -88,7 +95,7 @@ def _build_map_controller(
     monkeypatch.setattr(
         map_module,
         "store_players",
-        lambda players: None,
+        lambda _players: None,
     )
     monkeypatch.setattr(map_module.time, "sleep", lambda *_args, **_kwargs: None)
     return map_module.MapController()
@@ -117,13 +124,13 @@ def test_map_controller_continues_after_item_failure(
     controller = map_module.MapController()
     controller.run(batch_size=2)
 
-    assert controller.queue.failed == [("map-1", "No player kills logged.")]
-    assert controller.queue.processed == ["map-2"]
-    assert controller.queue.processing == ["map-1", "map-2"]
+    assert controller.state.failed == [("map-1", "No player kills logged.")]
+    assert controller.state.processed == ["map-2"]
+    assert controller.state.processing == ["map-1", "map-2"]
     assert len(stored_players) == 1
     assert any(
         call_args[0]
-        == "MapController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        == "MapController summary: selected=%d succeeded=%d failed=%d retries=%d"
         and call_args[1:] == (2, 1, 1, 0)
         for call_args, _ in info_calls
     )
@@ -156,22 +163,22 @@ def test_map_controller_retries_retryable_error_before_succeeding(
         lambda scraper: reset_calls.append(scraper) or scraper,
     )
     monkeypatch.setattr(
-        controller.queue,
+        controller.state,
         "fetch",
-        lambda limit=25: [
+        lambda _limit=25: [
             ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
         ],
     )
 
     controller.run(batch_size=1)
 
-    assert controller.queue.failed == []
-    assert controller.queue.processed == ["map-1"]
+    assert controller.state.failed == []
+    assert controller.state.processed == ["map-1"]
     assert len(stored_players) == 1
     assert len(reset_calls) == 1
     assert any(
         call_args[0]
-        == "MapController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        == "MapController summary: selected=%d succeeded=%d failed=%d retries=%d"
         and call_args[1:] == (1, 1, 0, 1)
         for call_args, _ in info_calls
     )
@@ -192,12 +199,12 @@ def test_map_controller_passes_reset_scraper_to_stage_service(
     monkeypatch.setattr(
         controller,
         "_reset_scraper",
-        lambda scraper: reset_scraper,
+        lambda _scraper: reset_scraper,
     )
     monkeypatch.setattr(
-        controller.queue,
+        controller.state,
         "fetch",
-        lambda limit=25: [
+        lambda _limit=25: [
             ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
         ],
     )
@@ -205,8 +212,8 @@ def test_map_controller_passes_reset_scraper_to_stage_service(
     controller.run(batch_size=1)
 
     assert stage_service.scrapers == [first_scraper, reset_scraper]
-    assert controller.queue.failed == []
-    assert controller.queue.processed == []
+    assert controller.state.failed == []
+    assert controller.state.processed == []
 
 
 def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
@@ -242,22 +249,22 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
         lambda scraper: reset_calls.append(scraper) or scraper,
     )
     monkeypatch.setattr(
-        controller.queue,
+        controller.state,
         "fetch",
-        lambda limit=25: [
+        lambda _limit=25: [
             ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
         ],
     )
 
     controller.run(batch_size=1)
 
-    assert controller.queue.failed == [
+    assert controller.state.failed == [
         (
             "map-1",
             "Failed to fetch map stats page: https://www.hltv.org/stats/matches/mapstatsid/1/test",
         )
     ]
-    assert controller.queue.processed == []
+    assert controller.state.processed == []
     assert len(reset_calls) == 2
     assert error_calls == [
         (
@@ -272,7 +279,7 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
     assert len(exception_calls) == 1
     assert any(
         call_args[0]
-        == "MapController summary: queued=%d succeeded=%d failed=%d retries=%d"
+        == "MapController summary: selected=%d succeeded=%d failed=%d retries=%d"
         and call_args[1:] == (1, 0, 1, 2)
         for call_args, _ in info_calls
     )

@@ -47,13 +47,14 @@ def test_map_stage_service_processes_success() -> None:
         map_state=map_state,
     )
 
-    processed = service.process_item(
+    result = service.process_item(
         "map-1",
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
         scraper=_FakeScraper(),
     )
 
-    assert processed is True
+    assert result.succeeded is True
+    assert result.status == "processed"
     assert parser.calls == [
         ("https://www.hltv.org/stats/matches/mapstatsid/1/test", "map-1")
     ]
@@ -72,13 +73,15 @@ def test_map_stage_service_marks_failed_when_parser_returns_no_players() -> None
         map_state=map_state,
     )
 
-    processed = service.process_item(
+    result = service.process_item(
         "map-1",
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
         scraper=_FakeScraper(),
     )
 
-    assert processed is False
+    assert result.succeeded is False
+    assert result.status == "failed"
+    assert result.message == "Parsing returned no player records"
     assert map_state.processing == []
     assert map_state.processed == []
     assert map_state.failed == [("map-1", "Parsing returned no player records")]

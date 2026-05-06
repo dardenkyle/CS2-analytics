@@ -26,9 +26,11 @@ def test_demo_stage_service_marks_demo_ingestion_deferred() -> None:
         demo_state=demo_state,
     )
 
-    processed = service.process_item("demo-1", "https://www.hltv.org/download/demo/1")
+    result = service.process_item("demo-1", "https://www.hltv.org/download/demo/1")
 
-    assert processed is False
+    assert result.succeeded is False
+    assert result.status == "skipped"
+    assert result.message == "Demo ingestion is deferred until the demo pipeline is operational"
     assert demo_state.processed == []
     assert demo_state.failed == []
     assert demo_state.skipped == [

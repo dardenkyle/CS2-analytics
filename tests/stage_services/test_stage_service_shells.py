@@ -3,6 +3,7 @@ from cs2_analytics.stage_services import (
     DemoStageService,
     MapStageService,
     MatchStageService,
+    StageItemResult,
 )
 from cs2_analytics.stage_services.demo_stage_service import (
     DemoStageService as ConcreteDemoStageService,
@@ -12,6 +13,9 @@ from cs2_analytics.stage_services.map_stage_service import (
 )
 from cs2_analytics.stage_services.match_stage_service import (
     MatchStageService as ConcreteMatchStageService,
+)
+from cs2_analytics.stage_services.stage_result import (
+    StageItemResult as ConcreteStageItemResult,
 )
 
 
@@ -23,11 +27,27 @@ def test_stage_services_package_re_exports_concrete_classes() -> None:
     assert stage_services_package.MatchStageService is ConcreteMatchStageService
     assert stage_services_package.MapStageService is ConcreteMapStageService
     assert stage_services_package.DemoStageService is ConcreteDemoStageService
+    assert stage_services_package.StageItemResult is ConcreteStageItemResult
     assert stage_services_package.__all__ == [
         "DemoStageService",
         "MapStageService",
         "MatchStageService",
+        "StageItemResult",
     ]
+
+
+def test_stage_item_result_exposes_named_outcomes() -> None:
+    processed = StageItemResult.processed()
+    failed = StageItemResult.failed("parser returned nothing")
+    skipped = StageItemResult.skipped("deferred")
+
+    assert processed.status == "processed"
+    assert processed.succeeded is True
+    assert failed.status == "failed"
+    assert failed.message == "parser returned nothing"
+    assert failed.succeeded is False
+    assert skipped.status == "skipped"
+    assert skipped.message == "deferred"
 
 
 def test_match_stage_service_records_constructor_dependencies() -> None:

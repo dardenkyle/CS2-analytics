@@ -1,6 +1,7 @@
 import pytest
 
 from cs2_analytics.controllers import demo_controller as demo_module
+from cs2_analytics.stage_services import StageItemResult
 
 
 class _FakeDemoQueue:
@@ -38,11 +39,11 @@ class _TrackingStageService:
     def __init__(self, *_args, **_kwargs) -> None:
         self.calls: list[tuple[str, str]] = []
 
-    def process_item(self, demo_id: str, demo_url: str) -> bool:
+    def process_item(self, demo_id: str, demo_url: str) -> StageItemResult:
         self.calls.append((demo_id, demo_url))
         if demo_id == "demo-1":
             raise RuntimeError("demo parse exploded")
-        return True
+        return StageItemResult.processed()
 
 
 def test_demo_controller_delegates_per_item_work_and_continues(
@@ -73,12 +74,13 @@ def test_demo_controller_delegates_per_item_work_and_continues(
         ("demo-1", "https://www.hltv.org/download/demo/1"),
         ("demo-2", "https://www.hltv.org/download/demo/2"),
     ]
-    assert controller.queue.processing == ["demo-1", "demo-2"]
-    assert controller.queue.failed == [("demo-1", "demo parse exploded")]
-    assert controller.queue.processed == []
+    assert controller.state.processing == ["demo-1", "demo-2"]
+    assert controller.state.failed == [("demo-1", "demo parse exploded")]
+    assert controller.state.processed == []
     assert len(exception_calls) == 1
     assert any(
-        call_args[0] == "DemoController summary: queued=%d succeeded=%d failed=%d"
-        and call_args[1:] == (2, 1, 1)
+        call_args[0]
+        == "DemoController summary: selected=%d succeeded=%d failed=%d skipped=%d"
+        and call_args[1:] == (2, 1, 1, 0)
         for call_args, _ in info_calls
     )
