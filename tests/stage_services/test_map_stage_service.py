@@ -81,7 +81,7 @@ def test_map_stage_service_marks_failed_when_parser_returns_no_players() -> None
     assert processed is False
     assert map_state.processing == []
     assert map_state.processed == []
-    assert map_state.failed == [("map-1", "Parsing returned None")]
+    assert map_state.failed == [("map-1", "Parsing returned no player records")]
     assert stored_players == []
 
 

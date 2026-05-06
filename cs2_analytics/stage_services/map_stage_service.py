@@ -35,7 +35,7 @@ class MapStageService:
         players = self.parser.parse_map(soup, map_url, map_id)
 
         if not players:
-            self.map_state.mark_as_failed(map_id, "Parsing returned None")
+            self.map_state.mark_as_failed(map_id, "Parsing returned no player records")
             return False
 
         self.store_players(players)
