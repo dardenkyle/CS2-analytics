@@ -1,5 +1,3 @@
-import pytest
-
 from cs2_analytics import stage_services as stage_services_package
 from cs2_analytics.stage_services import (
     DemoStageService,
@@ -84,5 +82,4 @@ def test_demo_stage_service_records_constructor_dependencies() -> None:
     assert service.parser is parser
     assert service.store_demo_file is _store_stub
     assert service.demo_state is demo_state
-    with pytest.raises(NotImplementedError):
-        service.process_item("demo-1", "https://www.hltv.org/download/demo/test")
+
