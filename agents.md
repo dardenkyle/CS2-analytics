@@ -13,14 +13,14 @@ Guidance for coding agents working in this repository.
 
 ## Python Coding Standards
 
-- Use Python 3.13+ syntax.
+- Use Python 3.14+ syntax.
 - Use built-in generic type hints such as `list[str]`, `dict[str, int]`, and `str | None`.
 - Avoid importing from `typing` unless necessary.
-- Every Python file must include a module-level docstring.
-- Public classes, methods, and functions should include docstrings.
+- Add module-level docstrings to new Python modules when they clarify purpose.
+- Add docstrings to public classes/functions when behavior, inputs, side effects, or domain meaning are not obvious.
 - Use type hints consistently.
-- Use structured logging instead of `print`.
-- Avoid broad exception handling such as `except Exception`.
+- Use structured logging instead of `print`; prefer JSON for log files and human-readable output for console logs.
+- Avoid broad exception handling except at explicit retry, boundary, or terminal logging points.
 - Prefer specific exceptions and domain-specific custom exceptions.
 - Use OOP when it improves structure, clarity, or extensibility.
 - Keep modules small, focused, and testable.
@@ -30,7 +30,7 @@ Guidance for coding agents working in this repository.
 
 ## Project Shape
 
-- This is a Python 3.11+ Counter-Strike 2 analytics project.
+- This is a Python 3.14+ Counter-Strike 2 analytics project.
 - Ingestion currently uses PostgreSQL-backed lifecycle/state tables:
   `match_ingestion_state`, `map_ingestion_state`, and `demo_ingestion_state`.
 - The active production flow is results discovery, match processing, map
@@ -63,6 +63,7 @@ Guidance for coding agents working in this repository.
 - Preserve existing structure unless the task explicitly calls for a refactor.
 - Keep docs-only branches docs-only.
 - If a change appears to require a large rewrite, explain why before making it.
+- Do not run auto-formatters across the whole repo unless the task is specifically formatting-related.
 
 ## Testing And Verification
 

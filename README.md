@@ -23,7 +23,7 @@ The current ingestion architecture uses PostgreSQL-backed ingestion-state tables
 
 ## Tech Stack
 
-- Python 3.11+
+- Python 3.14+
 - SeleniumBase and BeautifulSoup for web scraping
 - PostgreSQL for structured data storage
 - Pandas and NumPy for analytics/data processing

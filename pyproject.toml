@@ -7,7 +7,7 @@ name = "cs2-analytics"
 version = "0.1.0"
 description = "Counter-Strike 2 Pro Match Analytics Tool - Scrape and analyze professional CS2 match data"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 license = {text = "MIT"}
 authors = [
     {name = "Kyle Darden", email = "dardenkyle@example.com"}
@@ -21,9 +21,7 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Games/Entertainment",
 ]
 
@@ -78,7 +76,7 @@ cs2_analytics = ["storage/schema.sql"]
 
 # MyPy Configuration
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -108,7 +106,7 @@ ignore_missing_imports = true
 # Ruff Configuration (Linting & Formatting)
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py314"
 exclude = [
     ".git",
     ".venv",
@@ -146,7 +144,7 @@ known-first-party = ["cs2_analytics", "api"]
 # Black Configuration (Code Formatter)
 [tool.black]
 line-length = 88
-target-version = ["py311"]
+target-version = ["py314"]
 extend-exclude = '''
 /(
   # Directories
