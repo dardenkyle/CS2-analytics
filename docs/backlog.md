@@ -127,6 +127,88 @@ Before merging each Phase 3 branch:
 
 ---
 
+## Phase 3.5: dbt Readiness
+
+Goal:
+Make ingestion outputs stable, relational, and idempotent before adding dbt.
+
+Status:
+Planned. This phase should close the remaining gap between the current
+ingestion-state pipeline and the relational source tables that dbt will model.
+
+### Planned work
+
+- [ ] Add match context to discovered map rows so each map can be tied back to
+      its parent match without parsing stringified link fields
+- [ ] Decide whether `map_order`, `map_name`, map scores, and map winner come
+      from match pages, map pages, or both
+- [ ] Ensure the map stage writes one row per played map to `maps`
+- [ ] Keep `players` at the grain of one row per player per map
+- [ ] Make `cs2_analytics/storage/map_storage.py` match the active
+      `cs2_analytics/storage/schema.sql`
+- [ ] Update `store_maps` to upsert all trusted map fields, or remove stale map
+      storage code if it no longer has a role
+- [ ] Update `store_matches` conflict behavior to refresh trusted parsed fields,
+      not only `last_updated_at`
+- [ ] Decide which player context fields should refresh on rerun, such as
+      `player_name`, `player_url`, `map_name`, `team_name`, and
+      `last_scraped_at`
+- [ ] Update `store_players` conflict behavior to refresh the agreed trusted
+      fields
+- [ ] Keep `matches.map_links` and `matches.demo_links` as trace/debug fields
+      only if useful; dbt should not parse Python-list strings
+- [ ] Add storage idempotency tests for match, map, and player upserts
+- [ ] Add relationship readiness tests proving `players.map_id` joins to
+      `maps.map_id` and `maps.match_id` joins to `matches.match_id`
+- [ ] Add a focused integration-style test for match discovery -> map discovery
+      -> map/player persistence
+- [ ] Separate destructive schema reset behavior from normal schema
+      initialization
+- [ ] Move `ALTER TABLE` and index mutation out of `Database.__init__` into an
+      explicit schema/setup path
+- [ ] Rename queue-era exception and test names where they affect active code
+      readability
+
+### Suggested branch sequence
+
+Keep each branch focused and reviewable. Phase 3.5 should produce stable
+relational ingestion outputs without starting dbt models yet.
+
+1. [ ] `phase3.5-map-discovery-context`
+   Add parent `match_id` context to discovered map ingestion rows and document
+   which map fields are known at match-discovery time.
+
+2. [ ] `phase3.5-map-storage-contract`
+   Align the `maps` schema, model, parser output, and `store_maps` behavior so
+   the map stage can persist one row per played map.
+
+3. [ ] `phase3.5-storage-upsert-idempotency`
+   Strengthen match, map, and player upserts so reruns refresh trusted fields
+   without duplicating rows or overwriting first-seen style timestamps.
+
+4. [ ] `phase3.5-relationship-readiness-tests`
+   Add focused tests that prove `players -> maps -> matches` joins work and
+   that dbt will not need to parse stringified link fields.
+
+5. [ ] `phase3.5-schema-initialization-cleanup`
+   Separate destructive schema reset behavior from normal initialization and
+   move runtime schema mutation out of `Database.__init__`.
+
+6. [ ] `phase3.5-ingestion-terminology-cleanup`
+   Rename queue-era exception and test names where they affect active
+   ingestion-state readability.
+
+### dbt entry criteria
+
+- [ ] `matches`, `maps`, and `players` have stable grains
+- [ ] Map-player-match relationships are queryable without parsing strings
+- [ ] Storage upserts are duplicate-safe and refresh trusted fields
+- [ ] Tests pass
+- [ ] dbt can start with clean staging models: `stg_matches`, `stg_maps`, and
+      `stg_players`
+
+---
+
 ## Phase 4: dbt Transformation Layer
 
 Goal:
