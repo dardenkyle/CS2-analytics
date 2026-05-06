@@ -11,6 +11,23 @@ Guidance for coding agents working in this repository.
 - Keep changes aligned with the current roadmap: Phase 3 is complete, dbt is
   next, demo expansion is deferred, and Airflow comes after dbt.
 
+## Python Coding Standards
+
+- Use Python 3.13+ syntax.
+- Use built-in generic type hints such as `list[str]`, `dict[str, int]`, and `str | None`.
+- Avoid importing from `typing` unless necessary.
+- Every Python file must include a module-level docstring.
+- Public classes, methods, and functions should include docstrings.
+- Use type hints consistently.
+- Use structured logging instead of `print`.
+- Avoid broad exception handling such as `except Exception`.
+- Prefer specific exceptions and domain-specific custom exceptions.
+- Use OOP when it improves structure, clarity, or extensibility.
+- Keep modules small, focused, and testable.
+- Preserve separation of concerns.
+- Avoid unnecessary imports, hardcoded values, and unrelated rewrites.
+- Prefer production-grade, maintainable solutions over shortcuts.
+
 ## Project Shape
 
 - This is a Python 3.11+ Counter-Strike 2 analytics project.
