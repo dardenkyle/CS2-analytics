@@ -19,23 +19,23 @@ logger = get_logger("map_controller")
 
 
 class MapController:
-    """Orchestrates map scraping, parsing, and player storage."""
+    """Coordinates map batches, retry policy, and scraper lifecycle."""
 
     def __init__(self) -> None:
         self.scraper = MapScraper()
         self.parser = MapParser()
-        self.queue = MapIngestionState()
+        self.state = MapIngestionState()
         self.stage_service = MapStageService(
             parser=self.parser,
             store_players=store_players,
-            map_state=self.queue,
+            map_state=self.state,
         )
 
     def run(self, batch_size: int = 25) -> None:
         logger.info("Running MapController with batch size: %d", batch_size)
 
-        queued = self.queue.fetch(batch_size)
-        logger.info("%d map URLs pulled from queue", len(queued))
+        selected = self.state.fetch(batch_size)
+        logger.info("%d pending maps selected from ingestion state", len(selected))
 
         rotate_every = 8
         inter_map_delay_seconds = 0.75
@@ -47,7 +47,7 @@ class MapController:
 
         scraper = self.scraper
         try:
-            for map_id, map_url in queued:
+            for map_id, map_url in selected:
                 if processed_since_reset >= rotate_every:
                     logger.info(
                         "Rotating map scraper session after %d processed maps",
@@ -56,18 +56,23 @@ class MapController:
                     scraper = self._reset_scraper(scraper)
                     processed_since_reset = 0
 
-                self.queue.mark_as_processing(map_id)
+                self.state.mark_as_processing(map_id)
                 max_attempts = 3
                 for attempt in range(1, max_attempts + 1):
                     try:
-                        if self.stage_service.process_item(
+                        result = self.stage_service.process_item(
                             map_id, map_url, scraper=scraper
-                        ):
+                        )
+                        if result.succeeded:
                             succeeded += 1
                             logger.info("Stored map: %s", map_id)
                         else:
                             failed += 1
-                            logger.warning("Map %s returned no parsed data", map_id)
+                            logger.warning(
+                                "Map %s was not processed: %s",
+                                map_id,
+                                result.message,
+                            )
 
                         processed_since_reset += 1
                         time.sleep(inter_map_delay_seconds)
@@ -102,7 +107,7 @@ class MapController:
                                 max_attempts,
                             )
                         mark_item_failed(
-                            self.queue,
+                            self.state,
                             map_id,
                             e,
                             logger=logger,
@@ -117,8 +122,8 @@ class MapController:
                 scraper.close()
 
         logger.info(
-            "MapController summary: queued=%d succeeded=%d failed=%d retries=%d",
-            len(queued),
+            "MapController summary: selected=%d succeeded=%d failed=%d retries=%d",
+            len(selected),
             succeeded,
             failed,
             retries,

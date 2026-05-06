@@ -25,13 +25,15 @@ Current implementation note:
 
 - Own per-item stage workflow
 - Call scrapers, parsers, and storage modules in order
-- Apply lifecycle updates for success, retryable failure, and terminal failure
+- Apply normal lifecycle updates for processed, failed, and skipped outcomes
+- Return `StageItemResult` so controllers can count outcomes explicitly
 - Keep stage-specific processing rules out of controllers
 
-Planned near-term services:
+Implemented services:
 
 - `MatchStageService`
 - `MapStageService`
+- `DemoStageService`
 
 ## Controllers
 
@@ -40,6 +42,8 @@ Planned near-term services:
 - Own scraper reset and rotation behavior
 - Own run-level summaries and terminal logging
 - Avoid owning detailed per-item fetch -> parse -> persist workflow
+- Mark items as `processing` at the attempt boundary
+- Mark terminal exception failures when retry policy is exhausted
 
 ## Pipelines
 

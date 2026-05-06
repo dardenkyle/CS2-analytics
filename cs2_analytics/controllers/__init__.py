@@ -1,14 +1,9 @@
 """
-The `controllers` package contains orchestration logic that coordinates
-scraping, parsing, and storage for each stage of the CS2 data pipeline.
+Controller orchestration for each stage of the CS2 data pipeline.
 
-Each controller:
-- Pulls ready items from its respective ingestion-state table
-- Uses a scraper to fetch HTML or raw content
-- Uses a parser to extract structured data
-- Stores the results and updates ingestion lifecycle state
-
-Controllers enable modular batch processing for automation or scheduled runs.
+Controllers own batch-level flow, retry policy, scraper reset/rotation, and
+summary logging. Per-item fetch, parse, persist, and lifecycle outcome work
+belongs in stage services.
 """
 
 from .map_controller import MapController

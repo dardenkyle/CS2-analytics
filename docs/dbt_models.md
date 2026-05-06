@@ -2,18 +2,21 @@
 
 This document describes the planned dbt model structure for the CS2 Analytics project.
 
-dbt is a later-phase transformation layer. It should be introduced only after match/map ingestion semantics are stable and the active stage boundaries are clearer.
+dbt is a later-phase transformation layer. It should be introduced only after match/map ingestion semantics are stable and the active stage boundaries are clear.
 
 At this stage, dbt is planned work, not an active part of the ingestion pipeline.
 
 Note:
 Planned raw snapshot tables (for example `raw_matches` and `raw_maps`) are expected to be introduced around dbt rollout time, not before.
 
-Near-term dependency order:
+Completed prerequisite order:
 
 1. review lifecycle semantics for the current match/map discovery tables
 2. update the current state tables and their audit fields
 3. thin `MatchController` and `MapController` by introducing stage services
+
+Next dependency:
+
 4. add dbt after the ingestion contract is stable
 
 ---
@@ -61,7 +64,7 @@ dbt is not responsible for:
 
 Those concerns belong elsewhere in the system.
 
-dbt should consume stable ingestion outputs, not compensate for unclear controller or lifecycle semantics.
+dbt should consume stable ingestion outputs, not compensate for ingestion-state or lifecycle problems.
 
 ---
 
@@ -699,14 +702,12 @@ dbt should be introduced only after lifecycle semantics and active-stage respons
 
 Recommended rollout order:
 
-1. complete lifecycle/state-table review and updates
-2. introduce `MatchStageService` and `MapStageService`
-3. add dbt project scaffolding
-4. create staging models for matches, maps, and players
-5. add basic tests
-6. create intermediate reusable joins
-7. create fact and dimension marts
-8. update API/data consumers to use trusted marts where appropriate
+1. add dbt project scaffolding
+2. create staging models for matches, maps, and players
+3. add basic tests
+4. create intermediate reusable joins
+5. create fact and dimension marts
+6. update API/data consumers to use trusted marts where appropriate
 
 ---
 

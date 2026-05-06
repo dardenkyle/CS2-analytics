@@ -73,15 +73,19 @@ Complete. The active schema, controllers, and tests now use `*_ingestion_state` 
 Goal:
 Thin the active controllers by separating batch concerns from per-item stage workflow.
 
+Status:
+Complete. Match, map, and demo controllers now delegate per-item workflow to stage services and consume an explicit per-item result contract for controller summaries.
+
 ### Planned work
 
-- [ ] Introduce `MatchStageService`
-- [ ] Introduce `MapStageService`
-- [ ] Introduce `DemoStageService` (even though demo service layer development is paused)
-- [ ] Move per-item fetch -> parse -> persist -> state-transition logic into stage services
-- [ ] Keep controller ownership of batch coordination, retry policy, scraper reset/rotation, and summary logging
-- [ ] Keep scrapers fetch-only, parsers parse-only, and persistence centralized
-- [ ] Add or update tests around per-item stage outcomes and controller summaries
+- [x] Introduce `MatchStageService`
+- [x] Introduce `MapStageService`
+- [x] Introduce `DemoStageService` (even though demo service layer development is paused)
+- [x] Move per-item fetch -> parse -> persist -> state-transition logic into stage services
+- [x] Keep controller ownership of batch coordination, retry policy, scraper reset/rotation, and summary logging
+- [x] Keep scrapers fetch-only, parsers parse-only, and persistence centralized
+- [x] Add or update tests around per-item stage outcomes and controller summaries
+- [x] Normalize stage service outcomes with an explicit result contract
 
 ### Suggested branch sequence
 
@@ -89,25 +93,25 @@ Keep each branch small enough to review independently, and keep the active
 pipeline runnable after every merge. Phase 3 should avoid schema changes unless
 a later branch proves they are necessary.
 
-1. `phase3-stage-service-shells`
+1. [x] `phase3-stage-service-shells`
    Add `cs2_analytics/stage_services/`, lightweight service classes, package
    exports, and import-level tests. Do not change controller behavior yet.
 
-2. `phase3-match-stage-service`
+2. [x] `phase3-match-stage-service`
    Move one-match fetch -> parse -> persist -> follow-up state refresh ->
    lifecycle update behavior into `MatchStageService`. Keep `MatchController`
    responsible for batch fetching, retry policy, scraper reset/rotation, and
    summary logging.
 
-3. `phase3-map-stage-service`
+3. [x] `phase3-map-stage-service`
    Move one-map fetch -> parse -> persist -> lifecycle update behavior into
    `MapStageService`. Preserve existing controller retry and summary behavior.
 
-4. `phase3-demo-stage-placeholder`
+4. [x] `phase3-demo-stage-placeholder`
    Add a minimal `DemoStageService` that reflects current demo behavior without
    expanding the deferred demo pipeline scope.
 
-5. `phase3-controller-thinning-cleanup`
+5. [x] `phase3-controller-thinning-cleanup`
    Remove controller helper code made obsolete by the services, normalize any
    service result contracts, and update docs to reflect the completed Phase 3
    boundary.
@@ -116,10 +120,10 @@ a later branch proves they are necessary.
 
 Before merging each Phase 3 branch:
 
-- [ ] Run `python -m pytest` from the venv
-- [ ] Smoke test `python main.py` when the local scraper/database environment is available
-- [ ] Confirm controllers still own batch concerns and services own only per-item workflow
-- [ ] Confirm no dbt, Airflow, or schema work slipped into the branch
+- [x] Run `python -m pytest` from the venv
+- [x] Smoke test `python main.py` when the local scraper/database environment is available
+- [x] Confirm controllers still own batch concerns and services own only per-item workflow
+- [x] Confirm no dbt, Airflow, or schema work slipped into the branch
 
 ---
 
