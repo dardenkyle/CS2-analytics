@@ -189,6 +189,7 @@ CREATE TABLE match_ingestion_state (
 CREATE TABLE map_ingestion_state (
     map_id TEXT PRIMARY KEY,
     map_url TEXT NOT NULL,
+    match_id INT REFERENCES matches(match_id) ON DELETE CASCADE,
     status TEXT CHECK (
         status IN ('pending', 'processing', 'processed', 'failed', 'skipped')
     ) NOT NULL DEFAULT 'pending',

@@ -28,7 +28,12 @@ class MapStageService:
         self.map_state = map_state
 
     def process_item(
-        self, map_id: str, map_url: str, *, scraper: MapScraper
+        self,
+        map_id: str,
+        map_url: str,
+        *,
+        scraper: MapScraper,
+        match_id: int | None = None,
     ) -> StageItemResult:
         """Process one map ingestion-state row.
 

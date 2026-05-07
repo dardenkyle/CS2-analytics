@@ -52,17 +52,23 @@ class MatchStageService:
             return StageItemResult.failed(message)
 
         self.store_matches([match])
-        self._queue_followups(map_links, demo_links)
+        self._queue_followups(match_id, map_links, demo_links)
         self.match_state.mark_as_processed(match_id)
         return StageItemResult.processed()
 
     def _queue_followups(
         self,
+        match_id: str,
         map_links: list[tuple[str, str]],
         demo_links: list[tuple[str, str]],
     ) -> None:
         """Queue map and demo links returned by the parser."""
         for map_id, map_url in map_links:
-            self.map_state.queue(map_id, map_url, source="match_parser")
+            self.map_state.queue(
+                map_id,
+                map_url,
+                source="match_parser",
+                match_id=match_id,
+            )
         for demo_id, demo_url in demo_links:
             self.demo_state.queue(demo_id, demo_url, source="match_parser")

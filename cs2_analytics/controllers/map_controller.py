@@ -34,7 +34,7 @@ class MapController:
     def run(self, batch_size: int = 25) -> None:
         logger.info("Running MapController with batch size: %d", batch_size)
 
-        selected = self.state.fetch(batch_size)
+        selected = self.state.fetch_with_match_context(batch_size)
         logger.info("%d pending maps selected from ingestion state", len(selected))
 
         rotate_every = 8
@@ -47,7 +47,7 @@ class MapController:
 
         scraper = self.scraper
         try:
-            for map_id, map_url in selected:
+            for map_id, map_url, match_id in selected:
                 if processed_since_reset >= rotate_every:
                     logger.info(
                         "Rotating map scraper session after %d processed maps",
@@ -61,7 +61,10 @@ class MapController:
                 for attempt in range(1, max_attempts + 1):
                     try:
                         result = self.stage_service.process_item(
-                            map_id, map_url, scraper=scraper
+                            map_id,
+                            map_url,
+                            scraper=scraper,
+                            match_id=match_id,
                         )
                         if result.succeeded:
                             succeeded += 1
