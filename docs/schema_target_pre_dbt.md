@@ -11,10 +11,17 @@ is implemented.
 
 These parsed source tables use the same audit fields:
 
-- `inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
-- `last_scraped_at TIMESTAMP`
-- `last_updated_at TIMESTAMP`
+- `inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP`
+- `last_scraped_at TIMESTAMPTZ`
+- `last_updated_at TIMESTAMPTZ`
 - `data_complete BOOLEAN NOT NULL DEFAULT FALSE`
+
+Audit timestamps should be stored as UTC-aware PostgreSQL `TIMESTAMPTZ` values.
+Application code should pass timezone-aware UTC datetimes, such as
+`datetime.now(UTC)` or `dt.datetime.now(dt.UTC)`, when setting these fields
+explicitly. Database defaults such as `CURRENT_TIMESTAMP` are acceptable because
+PostgreSQL stores `TIMESTAMPTZ` as an absolute point in time and presents it in
+the session timezone.
 
 Field meanings:
 
@@ -78,9 +85,9 @@ stage service or storage boundary.
 - date TIMESTAMP NOT NULL
 - map_links JSONB or TEXT -- trace/debug only, dbt ignores this
 - demo_links JSONB or TEXT -- trace/debug only, dbt ignores this
-- inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-- last_scraped_at TIMESTAMP
-- last_updated_at TIMESTAMP
+- inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+- last_scraped_at TIMESTAMPTZ
+- last_updated_at TIMESTAMPTZ
 - data_complete BOOLEAN NOT NULL DEFAULT FALSE
 
 ## maps
@@ -94,9 +101,9 @@ stage service or storage boundary.
 - team2_score INT NOT NULL CHECK (team2_score >= 0)
 - winner TEXT NOT NULL CHECK (winner IN ('team1', 'team2'))
 - date TIMESTAMP NOT NULL
-- inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-- last_scraped_at TIMESTAMP
-- last_updated_at TIMESTAMP
+- inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+- last_scraped_at TIMESTAMPTZ
+- last_updated_at TIMESTAMPTZ
 - data_complete BOOLEAN NOT NULL DEFAULT FALSE
 - UNIQUE (match_id, map_order)
 
@@ -125,9 +132,9 @@ stage service or storage boundary.
 - fk_diff INT
 - round_swing FLOAT
 - rating FLOAT
-- inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-- last_scraped_at TIMESTAMP
-- last_updated_at TIMESTAMP
+- inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+- last_scraped_at TIMESTAMPTZ
+- last_updated_at TIMESTAMPTZ
 - data_complete BOOLEAN NOT NULL DEFAULT FALSE
 - PRIMARY KEY (map_id, player_id)
 
