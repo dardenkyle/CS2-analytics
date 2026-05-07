@@ -136,6 +136,13 @@ Status:
 Planned. This phase should close the remaining gap between the current
 ingestion-state pipeline and the relational source tables that dbt will model.
 
+### Schema target reference
+
+`docs/schema_target_pre_dbt.md` captures the intended Phase 3.5 parsed-source
+schema target for `matches`, `maps`, and `players` before dbt work begins.
+Treat it as planning guidance until implemented; `cs2_analytics/storage/schema.sql`
+remains the active schema source of truth.
+
 ### Planned work
 
 - [ ] Add match context to discovered map rows so each map can be tied back to
