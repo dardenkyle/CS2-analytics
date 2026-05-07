@@ -42,6 +42,43 @@ The current implementation still uses `last_inserted_at` in storage models.
 Renaming it to `inserted_at` should be handled in the focused Phase 3.5 schema,
 model, storage, and test update that implements this target.
 
+## Follow-Up Link Convention
+
+`matches.map_links` and `matches.demo_links` are trace/debug fields for the
+links discovered while parsing a match page. They should use PostgreSQL `JSONB`,
+not stringified Python tuples or lists.
+
+Use an empty JSON array as the default:
+
+- `map_links JSONB NOT NULL DEFAULT '[]'::jsonb`
+- `demo_links JSONB NOT NULL DEFAULT '[]'::jsonb`
+
+The intended `map_links` shape is an array of objects:
+
+```json
+[
+  {
+    "map_id": 228300,
+    "map_url": "https://www.hltv.org/stats/matches/mapstatsid/228300/example"
+  }
+]
+```
+
+The intended `demo_links` shape is an array of objects:
+
+```json
+[
+  {
+    "demo_id": "123456",
+    "demo_url": "https://www.hltv.org/download/demo/123456/example"
+  }
+]
+```
+
+These fields preserve source traceability only. Relationship-ready dbt staging
+should use `maps.match_id`, `maps.map_id`, and normalized downstream tables
+instead of parsing `matches.map_links` or `matches.demo_links`.
+
 ## Data Completeness
 
 `data_complete` should be false until the row has passed explicit completeness
@@ -83,8 +120,8 @@ stage service or storage boundary.
 - match_type TEXT
 - forfeit BOOLEAN DEFAULT FALSE
 - date TIMESTAMP NOT NULL
-- map_links JSONB or TEXT -- trace/debug only, dbt ignores this
-- demo_links JSONB or TEXT -- trace/debug only, dbt ignores this
+- map_links JSONB NOT NULL DEFAULT '[]'::jsonb -- trace/debug only
+- demo_links JSONB NOT NULL DEFAULT '[]'::jsonb -- trace/debug only
 - inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 - last_scraped_at TIMESTAMPTZ
 - last_updated_at TIMESTAMPTZ
