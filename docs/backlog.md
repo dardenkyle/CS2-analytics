@@ -145,7 +145,7 @@ remains the active schema source of truth.
 
 ### Planned work
 
-- [ ] Add match context to discovered map rows so each map can be tied back to
+- [x] Add match context to discovered map rows so each map can be tied back to
       its parent match without parsing stringified link fields
 - [ ] Decide whether `map_order`, `map_name`, map scores, and map winner come
       from match pages, map pages, or both
@@ -181,9 +181,14 @@ remains the active schema source of truth.
 Keep each branch focused and reviewable. Phase 3.5 should produce stable
 relational ingestion outputs without starting dbt models yet.
 
-1. [ ] `phase3.5-map-discovery-context`
+1. [x] `phase3.5-map-discovery-context`
    Add parent `match_id` context to discovered map ingestion rows and document
    which map fields are known at match-discovery time.
+
+   Match-discovery now records `match_id`, `map_id`, and `map_url` in
+   `map_ingestion_state`. Richer map identity fields such as `map_order`,
+   `map_name`, map scores, and map winner still need a separate source-of-truth
+   decision before the map stage writes relational `maps` rows.
 
 2. [ ] `phase3.5-map-storage-contract`
    Align the `maps` schema, model, parser output, and `store_maps` behavior so
