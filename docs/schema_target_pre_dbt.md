@@ -79,6 +79,20 @@ These fields preserve source traceability only. Relationship-ready dbt staging
 should use `maps.match_id`, `maps.map_id`, and normalized downstream tables
 instead of parsing `matches.map_links` or `matches.demo_links`.
 
+## Winner Field Convention
+
+Winner fields should use explicit names and store team names, not match-slot
+labels or CT/T side labels.
+
+- `matches.match_winner` stores the winning team name and must equal either
+  `matches.team1` or `matches.team2`.
+- `maps.map_winner` stores the map-winning team name and must equal either the
+  parent match's `team1` or `team2`.
+
+Map winner validation should happen at the parser/storage boundary and in
+relationship-readiness tests because a PostgreSQL `CHECK` constraint on `maps`
+cannot compare `map_winner` against columns from the parent `matches` row.
+
 ## Data Completeness
 
 `data_complete` should be false until the row has passed explicit completeness
@@ -94,10 +108,10 @@ basic validity checks:
 
 - `matches`:
   - `match_id`, `match_url`, `team1`, `team2`, `score1`, `score2`,
-    `winner`, `date`, and `match_type`.
+    `match_winner`, `date`, and `match_type`.
 - `maps`:
   - `map_id`, `match_id`, `map_url`, `map_order`, `map_name`,
-    `team1_score`, `team2_score`, `winner`, and `date`.
+    `team1_score`, `team2_score`, `map_winner`, and `date`.
 - `players`:
   - `map_id`, `player_id`, `player_name`, `map_name`, `team_name`,
     `kills`, `deaths`, `assists`, `opening_kills`, `opening_deaths`, `adr`,
@@ -115,7 +129,7 @@ stage service or storage boundary.
 - team2 TEXT NOT NULL
 - score1 INT CHECK (score1 >= 0)
 - score2 INT CHECK (score2 >= 0)
-- winner TEXT NOT NULL CHECK (winner = team1 OR winner = team2)
+- match_winner TEXT NOT NULL CHECK (match_winner = team1 OR match_winner = team2)
 - event TEXT
 - match_type TEXT
 - forfeit BOOLEAN DEFAULT FALSE
@@ -136,7 +150,7 @@ stage service or storage boundary.
 - map_name TEXT NOT NULL
 - team1_score INT NOT NULL CHECK (team1_score >= 0)
 - team2_score INT NOT NULL CHECK (team2_score >= 0)
-- winner TEXT NOT NULL CHECK (winner IN ('team1', 'team2'))
+- map_winner TEXT NOT NULL
 - date TIMESTAMP NOT NULL
 - inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 - last_scraped_at TIMESTAMPTZ
