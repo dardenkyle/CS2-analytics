@@ -44,7 +44,7 @@ class MapIngestionState(BaseIngestionState):
         url: str,
         source: str = "unknown",
         priority: int = 0,
-        match_id: int | str | None = None,
+        match_id: int | None = None,
     ) -> None:
         """Add or refresh a map ingestion row with parent match context."""
         now = dt.datetime.now()

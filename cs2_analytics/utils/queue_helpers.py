@@ -4,7 +4,7 @@ from more_itertools import chunked
 
 
 def chunk_and_queue(
-    items: list[tuple[str, str]],
+    items: list[tuple[int | str, str]],
     queue_obj,
     chunk_size: int = 1000,
     source: str = "scraper",
@@ -14,7 +14,7 @@ def chunk_and_queue(
     Efficiently insert a large list of items into an ingestion-state table in chunks.
 
     Args:
-        items (List[Tuple[str, str]]): List of (id, url) tuples to insert.
+        items: List of (id, url) tuples to insert.
         queue_obj: Ingestion-state instance with a `queue_many()` method.
         chunk_size (int): Max number of rows per insert batch. Defaults to 1000.
         source (str): Source identifier string for logging/tracking. Defaults to "scraper".

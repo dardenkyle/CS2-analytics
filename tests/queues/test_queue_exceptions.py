@@ -142,7 +142,7 @@ def test_map_ingestion_state_queues_parent_match_context(
         "map-1",
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
         source="match_parser",
-        match_id="match-1",
+        match_id=1,
     )
 
     assert cursor.execute_query is not None
@@ -155,7 +155,7 @@ def test_map_ingestion_state_queues_parent_match_context(
     assert cursor.execute_values[:5] == (
         "map-1",
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
-        "match-1",
+        1,
         "match_parser",
         0,
     )

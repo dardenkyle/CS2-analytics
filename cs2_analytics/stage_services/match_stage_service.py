@@ -36,7 +36,7 @@ class MatchStageService:
         self.demo_state = demo_state
 
     def process_item(
-        self, match_id: str, match_url: str, *, scraper: MatchScraper
+        self, match_id: int, match_url: str, *, scraper: MatchScraper
     ) -> StageItemResult:
         """Process one match ingestion-state row.
 
@@ -58,7 +58,7 @@ class MatchStageService:
 
     def _queue_followups(
         self,
-        match_id: str,
+        match_id: int,
         map_links: list[tuple[str, str]],
         demo_links: list[tuple[str, str]],
     ) -> None:
