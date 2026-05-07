@@ -14,7 +14,7 @@ These parsed source tables use the same audit fields:
 - `inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
 - `last_scraped_at TIMESTAMP`
 - `last_updated_at TIMESTAMP`
-- `data_complete BOOLEAN`
+- `data_complete BOOLEAN NOT NULL DEFAULT FALSE`
 
 Field meanings:
 
@@ -34,6 +34,34 @@ belong in `*_ingestion_state`.
 The current implementation still uses `last_inserted_at` in storage models.
 Renaming it to `inserted_at` should be handled in the focused Phase 3.5 schema,
 model, storage, and test update that implements this target.
+
+## Data Completeness
+
+`data_complete` should be false until the row has passed explicit completeness
+checks. It should mean the row satisfies the required contract for its table
+grain and can be trusted by joins, dbt staging models, and read paths.
+
+It should not mean every optional field is present, and it should not duplicate
+ingestion success. Scrape/process success belongs in `*_ingestion_state`; row
+completeness belongs on the parsed source row.
+
+Set `data_complete = TRUE` only when these required fields are present and pass
+basic validity checks:
+
+- `matches`:
+  - `match_id`, `match_url`, `team1`, `team2`, `score1`, `score2`,
+    `winner`, `date`, and `match_type`.
+- `maps`:
+  - `map_id`, `match_id`, `map_url`, `map_order`, `map_name`,
+    `team1_score`, `team2_score`, `winner`, and `date`.
+- `players`:
+  - `map_id`, `player_id`, `player_name`, `map_name`, `team_name`,
+    `kills`, `deaths`, `assists`, `opening_kills`, `opening_deaths`, `adr`,
+    `kast`, and `rating`.
+
+Completeness checks should happen after parsing/normalization and before
+persistence, preferably in a small validation helper called by the relevant
+stage service or storage boundary.
 
 ## matches
 
