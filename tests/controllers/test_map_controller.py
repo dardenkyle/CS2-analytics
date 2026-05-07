@@ -11,10 +11,12 @@ class _FakeMapQueue:
         self.processed: list[str] = []
         self.processing: list[str] = []
 
-    def fetch(self, _limit: int = 25) -> list[tuple[str, str]]:
+    def fetch_with_match_context(
+        self, _limit: int = 25
+    ) -> list[tuple[str, str, int | None]]:
         return [
-            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test"),
-            ("map-2", "https://www.hltv.org/stats/matches/mapstatsid/2/test"),
+            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test", 101),
+            ("map-2", "https://www.hltv.org/stats/matches/mapstatsid/2/test", 102),
         ]
 
     def mark_as_failed(self, item_id: str, reason: str) -> None:
@@ -54,11 +56,18 @@ class _RetryThenSucceedScraper(_SuccessfulScraper):
 class _TrackingStageService:
     def __init__(self) -> None:
         self.scrapers: list[object] = []
+        self.match_ids: list[object | None] = []
 
     def process_item(
-        self, _map_id: str, map_url: str, *, scraper: object
+        self,
+        _map_id: str,
+        map_url: str,
+        *,
+        scraper: object,
+        match_id: object | None = None,
     ) -> StageItemResult:
         self.scrapers.append(scraper)
+        self.match_ids.append(match_id)
         if len(self.scrapers) == 1:
             raise SessionScrapeError(f"Failed to fetch map stats page: {map_url}")
         return StageItemResult.processed()
@@ -164,9 +173,9 @@ def test_map_controller_retries_retryable_error_before_succeeding(
     )
     monkeypatch.setattr(
         controller.state,
-        "fetch",
+        "fetch_with_match_context",
         lambda _limit=25: [
-            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
+            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
         ],
     )
 
@@ -203,15 +212,16 @@ def test_map_controller_passes_reset_scraper_to_stage_service(
     )
     monkeypatch.setattr(
         controller.state,
-        "fetch",
+        "fetch_with_match_context",
         lambda _limit=25: [
-            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
+            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
         ],
     )
 
     controller.run(batch_size=1)
 
     assert stage_service.scrapers == [first_scraper, reset_scraper]
+    assert stage_service.match_ids == [123, 123]
     assert controller.state.failed == []
     assert controller.state.processed == []
 
@@ -250,9 +260,9 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
     )
     monkeypatch.setattr(
         controller.state,
-        "fetch",
+        "fetch_with_match_context",
         lambda _limit=25: [
-            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")
+            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
         ],
     )
 

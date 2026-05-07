@@ -26,10 +26,16 @@ class _FakeMatchQueue:
 
 class _FakeFollowupQueue:
     def __init__(self) -> None:
-        self.queued: list[tuple[str, str, str]] = []
+        self.queued: list[tuple[str, str, str, object | None]] = []
 
-    def queue(self, item_id: str, url: str, source: str = "unknown") -> None:
-        self.queued.append((item_id, url, source))
+    def queue(
+        self,
+        item_id: str,
+        url: str,
+        source: str = "unknown",
+        match_id: object | None = None,
+    ) -> None:
+        self.queued.append((item_id, url, source, match_id))
 
 
 class _PassiveScraper:

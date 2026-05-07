@@ -19,7 +19,9 @@ def main():
         return
 
     with MapScraper() as scraper:
-        for map_id, map_url in queued_maps:
+        for queued_map in queued_maps:
+            map_id = queued_map[0]
+            map_url = queued_map[1]
             soup = scraper.fetch_soup(map_url)
             print(f"Scraped map {map_id} from {map_url}. Soup length: {len(soup.text)}")
 
