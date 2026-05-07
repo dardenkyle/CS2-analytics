@@ -53,7 +53,7 @@ model, storage, and test update that implements this target.
 - inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 - last_scraped_at TIMESTAMP
 - last_updated_at TIMESTAMP
-- data_complete BOOLEAN DEFAULT FALSE
+- data_complete BOOLEAN NOT NULL DEFAULT FALSE
 
 ## maps
 
@@ -69,7 +69,7 @@ model, storage, and test update that implements this target.
 - inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 - last_scraped_at TIMESTAMP
 - last_updated_at TIMESTAMP
-- data_complete BOOLEAN DEFAULT FALSE
+- data_complete BOOLEAN NOT NULL DEFAULT FALSE
 - UNIQUE (match_id, map_order)
 
 ## players
@@ -100,7 +100,7 @@ model, storage, and test update that implements this target.
 - inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 - last_scraped_at TIMESTAMP
 - last_updated_at TIMESTAMP
-- data_complete BOOLEAN DEFAULT FALSE
+- data_complete BOOLEAN NOT NULL DEFAULT FALSE
 - PRIMARY KEY (map_id, player_id)
 
 ## Deferred Schema Candidates
