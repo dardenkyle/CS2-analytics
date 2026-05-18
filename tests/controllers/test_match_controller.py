@@ -6,30 +6,36 @@ from cs2_analytics.exceptions import MatchParseError, SessionScrapeError
 
 class _FakeMatchQueue:
     def __init__(self) -> None:
-        self.failed: list[tuple[str, str]] = []
-        self.processed: list[str] = []
-        self.processing: list[str] = []
+        self.failed: list[tuple[int, str]] = []
+        self.processed: list[int] = []
+        self.processing: list[int] = []
 
-    def fetch(self, limit: int = 25) -> list[tuple[str, str]]:
+    def fetch(self, limit: int = 25) -> list[tuple[int, str]]:
         assert limit > 0
-        return [("match-1", "https://www.hltv.org/matches/1/test")]
+        return [(1, "https://www.hltv.org/matches/1/test")]
 
-    def mark_as_failed(self, item_id: str, reason: str) -> None:
+    def mark_as_failed(self, item_id: int, reason: str) -> None:
         self.failed.append((item_id, reason))
 
-    def mark_as_processed(self, item_id: str) -> None:
+    def mark_as_processed(self, item_id: int) -> None:
         self.processed.append(item_id)
 
-    def mark_as_processing(self, item_id: str) -> None:
+    def mark_as_processing(self, item_id: int) -> None:
         self.processing.append(item_id)
 
 
 class _FakeFollowupQueue:
     def __init__(self) -> None:
-        self.queued: list[tuple[str, str, str]] = []
+        self.queued: list[tuple[int | str, str, str, int | None]] = []
 
-    def queue(self, item_id: str, url: str, source: str = "unknown") -> None:
-        self.queued.append((item_id, url, source))
+    def queue(
+        self,
+        item_id: int | str,
+        url: str,
+        source: str = "unknown",
+        match_id: int | None = None,
+    ) -> None:
+        self.queued.append((item_id, url, source, match_id))
 
 
 class _PassiveScraper:
@@ -125,10 +131,10 @@ def test_match_controller_marks_non_retryable_parse_error_failed_immediately(
     controller.run(batch_size=1)
 
     assert controller.match_state.failed == [
-        ("match-1", "Missing team names on match page.")
+        (1, "Missing team names on match page.")
     ]
     assert controller.match_state.processed == []
-    assert controller.match_state.processing == ["match-1"]
+    assert controller.match_state.processing == [1]
     assert len(exception_calls) == 1
     assert reset_calls == []
 
@@ -170,7 +176,7 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
 
     assert len(controller.match_state.failed) == 1
     failed_id, reason = controller.match_state.failed[0]
-    assert failed_id == "match-1"
+    assert failed_id == 1
     assert "Failed to fetch match page" in reason
     assert len(exception_calls) == 1
     assert len(reset_calls) == 2
@@ -178,7 +184,7 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
         (
             (
                 "Exhausted retries for match %s after %d attempts; marking failed and continuing.",
-                "match-1",
+                1,
                 3,
             ),
             {},
@@ -208,11 +214,11 @@ def test_match_controller_continues_after_item_failure(
         lambda *args, **kwargs: info_calls.append((args, kwargs)),
     )
 
-    def _fetch_two_matches(limit: int = 25) -> list[tuple[str, str]]:
+    def _fetch_two_matches(limit: int = 25) -> list[tuple[int, str]]:
         assert limit == 2
         return [
-            ("match-1", "https://www.hltv.org/matches/1/test"),
-            ("match-2", "https://www.hltv.org/matches/2/test"),
+            (1, "https://www.hltv.org/matches/1/test"),
+            (2, "https://www.hltv.org/matches/2/test"),
         ]
 
     monkeypatch.setattr(
@@ -229,10 +235,10 @@ def test_match_controller_continues_after_item_failure(
     controller.run(batch_size=2)
 
     assert controller.match_state.failed == [
-        ("match-1", "Missing team names on match page.")
+        (1, "Missing team names on match page.")
     ]
-    assert controller.match_state.processed == ["match-2"]
-    assert controller.match_state.processing == ["match-1", "match-2"]
+    assert controller.match_state.processed == [2]
+    assert controller.match_state.processing == [1, 2]
     assert len(stored_matches) == 1
     assert any(
         call_args[0]
@@ -278,7 +284,7 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
     controller.run(batch_size=1)
 
     assert controller.match_state.failed == []
-    assert controller.match_state.processed == ["match-1"]
+    assert controller.match_state.processed == [1]
     assert len(stored_matches) == 1
     assert len(reset_calls) == 2
     assert 8.0 in sleep_calls

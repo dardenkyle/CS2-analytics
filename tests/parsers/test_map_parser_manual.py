@@ -23,7 +23,9 @@ def main():
     total_players = []
 
     with MapScraper() as scraper:
-        for map_id, map_url in queued_maps:
+        for queued_map in queued_maps:
+            map_id = queued_map[0]
+            map_url = queued_map[1]
             soup = scraper.fetch_soup(map_url)
             players = parser.parse_map(soup, map_url, map_id)
             if players:

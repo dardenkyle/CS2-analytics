@@ -55,7 +55,7 @@ def test_match_queue_wraps_db_failures_in_typed_exception(
         MatchQueueError,
         match="Failed to queue ingestion state items in match_ingestion_state.",
     ):
-        queue.queue_many([("1", "https://www.hltv.org/matches/1/test")])
+        queue.queue_many([(1, "https://www.hltv.org/matches/1/test")])
 
 
 def test_ingestion_state_classes_use_ingestion_state_tables() -> None:
@@ -94,7 +94,7 @@ def test_match_ingestion_state_refreshes_existing_rows_on_rediscovery(
     monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
     state = MatchIngestionState()
 
-    state.queue("1", "https://www.hltv.org/matches/1/test", source="results")
+    state.queue(1, "https://www.hltv.org/matches/1/test", source="results")
 
     assert cursor.execute_query is not None
     assert "match_ingestion_state" in cursor.execute_query
@@ -105,7 +105,7 @@ def test_match_ingestion_state_refreshes_existing_rows_on_rediscovery(
     assert "last_seen_at = EXCLUDED.last_seen_at" in cursor.execute_query
     assert cursor.execute_values is not None
     assert cursor.execute_values[:4] == (
-        "1",
+        1,
         "https://www.hltv.org/matches/1/test",
         "results",
         0,
@@ -119,7 +119,7 @@ def test_match_ingestion_state_marks_failures_with_lifecycle_fields(
     monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
     state = MatchIngestionState()
 
-    state.mark_as_failed("1", "boom")
+    state.mark_as_failed(1, "boom")
 
     assert cursor.execute_query is not None
     assert "status = 'failed'" in cursor.execute_query
@@ -127,4 +127,34 @@ def test_match_ingestion_state_marks_failures_with_lifecycle_fields(
     assert "last_error_message" in cursor.execute_query
     assert "failure_count = COALESCE(failure_count, 0) + 1" in cursor.execute_query
     assert cursor.execute_values is not None
-    assert cursor.execute_values[2:] == ("boom", "1")
+    assert cursor.execute_values[2:] == ("boom", 1)
+
+
+def test_map_ingestion_state_queues_parent_match_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
+    state = MapIngestionState()
+
+    state.queue(
+        1,
+        "https://www.hltv.org/stats/matches/mapstatsid/1/test",
+        source="match_parser",
+        match_id=1,
+    )
+
+    assert cursor.execute_query is not None
+    assert "map_ingestion_state" in cursor.execute_query
+    assert "match_id" in cursor.execute_query
+    assert "match_id = COALESCE(EXCLUDED.match_id, map_ingestion_state.match_id)" in (
+        cursor.execute_query
+    )
+    assert cursor.execute_values is not None
+    assert cursor.execute_values[:5] == (
+        1,
+        "https://www.hltv.org/stats/matches/mapstatsid/1/test",
+        1,
+        "match_parser",
+        0,
+    )

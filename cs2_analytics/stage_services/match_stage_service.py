@@ -36,7 +36,7 @@ class MatchStageService:
         self.demo_state = demo_state
 
     def process_item(
-        self, match_id: str, match_url: str, *, scraper: MatchScraper
+        self, match_id: int, match_url: str, *, scraper: MatchScraper
     ) -> StageItemResult:
         """Process one match ingestion-state row.
 
@@ -52,17 +52,23 @@ class MatchStageService:
             return StageItemResult.failed(message)
 
         self.store_matches([match])
-        self._queue_followups(map_links, demo_links)
+        self._queue_followups(match_id, map_links, demo_links)
         self.match_state.mark_as_processed(match_id)
         return StageItemResult.processed()
 
     def _queue_followups(
         self,
-        map_links: list[tuple[str, str]],
+        match_id: int,
+        map_links: list[tuple[int, str]],
         demo_links: list[tuple[str, str]],
     ) -> None:
         """Queue map and demo links returned by the parser."""
         for map_id, map_url in map_links:
-            self.map_state.queue(map_id, map_url, source="match_parser")
+            self.map_state.queue(
+                map_id,
+                map_url,
+                source="match_parser",
+                match_id=match_id,
+            )
         for demo_id, demo_url in demo_links:
             self.demo_state.queue(demo_id, demo_url, source="match_parser")

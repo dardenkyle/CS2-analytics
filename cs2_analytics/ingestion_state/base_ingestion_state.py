@@ -29,8 +29,9 @@ class BaseIngestionState:
         self.id_field = id_field
         self.url_field = url_field
         self.error_cls = error_cls
+        self.db = db
 
-    def fetch(self, limit: int = 25) -> list[tuple[str, str]]:
+    def fetch(self, limit: int = 25) -> list[tuple[int | str, str]]:
         """Fetches pending items from the ingestion state table."""
         query = f"""
         SELECT {self.id_field}, {self.url_field}
@@ -40,7 +41,7 @@ class BaseIngestionState:
         LIMIT %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (limit,))
                 return cur.fetchall()
         except Exception as e:
@@ -49,7 +50,7 @@ class BaseIngestionState:
             ) from e
 
     def queue(
-        self, id_value: str, url: str, source: str = "unknown", priority: int = 0
+        self, id_value: int | str, url: str, source: str = "unknown", priority: int = 0
     ) -> None:
         """Adds or refreshes a single ingestion state row."""
         now = dt.datetime.now()
@@ -70,7 +71,7 @@ class BaseIngestionState:
             last_updated_at = EXCLUDED.last_updated_at;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (id_value, url, source, priority, now, now, now))
         except Exception as e:
             raise self.error_cls(
@@ -78,7 +79,10 @@ class BaseIngestionState:
             ) from e
 
     def queue_many(
-        self, items: list[tuple[str, str]], source: str = "unknown", priority: int = 0
+        self,
+        items: list[tuple[int | str, str]],
+        source: str = "unknown",
+        priority: int = 0,
     ) -> None:
         """Adds or refreshes multiple ingestion state rows in batch."""
         if not items:
@@ -107,7 +111,7 @@ class BaseIngestionState:
         ]
 
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.executemany(query, values)
                 logger.info(
                     "Queued or refreshed %d items in %s", len(items), self.table_name
@@ -117,7 +121,7 @@ class BaseIngestionState:
                 f"Failed to queue ingestion state items in {self.table_name}."
             ) from e
 
-    def mark_as_processing(self, id_value: str) -> None:
+    def mark_as_processing(self, id_value: int | str) -> None:
         """Marks the item as actively being processed."""
         now = dt.datetime.now()
         query = f"""
@@ -126,18 +130,18 @@ class BaseIngestionState:
         WHERE {self.id_field} = %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (now, now, id_value))
         except Exception as e:
             raise self.error_cls(
                 f"Failed to mark item as processing in {self.table_name}."
             ) from e
 
-    def mark_as_parsed(self, id_value: str) -> None:
+    def mark_as_parsed(self, id_value: int | str) -> None:
         """Compatibility method that marks the item as processed."""
         self.mark_as_processed(id_value)
 
-    def mark_as_processed(self, id_value: str) -> None:
+    def mark_as_processed(self, id_value: int | str) -> None:
         """Marks the item as successfully processed."""
         now = dt.datetime.now()
         query = f"""
@@ -146,14 +150,14 @@ class BaseIngestionState:
         WHERE {self.id_field} = %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (now, now, id_value))
         except Exception as e:
             raise self.error_cls(
                 f"Failed to mark item as processed in {self.table_name}."
             ) from e
 
-    def mark_as_failed(self, id_value: str, reason: str = "unknown") -> None:
+    def mark_as_failed(self, id_value: int | str, reason: str = "unknown") -> None:
         """Marks the item as failed and stores the reason."""
         now = dt.datetime.now()
         query = f"""
@@ -166,14 +170,14 @@ class BaseIngestionState:
         WHERE {self.id_field} = %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (now, now, reason, id_value))
         except Exception as e:
             raise self.error_cls(
                 f"Failed to mark item as failed in {self.table_name}."
             ) from e
 
-    def mark_as_skipped(self, id_value: str, reason: str = "unknown") -> None:
+    def mark_as_skipped(self, id_value: int | str, reason: str = "unknown") -> None:
         """Marks the item as intentionally skipped."""
         now = dt.datetime.now()
         query = f"""
@@ -184,7 +188,7 @@ class BaseIngestionState:
         WHERE {self.id_field} = %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (now, reason, id_value))
         except Exception as e:
             raise self.error_cls(

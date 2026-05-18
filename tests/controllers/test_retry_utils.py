@@ -33,7 +33,7 @@ class _Scraper:
 
 
 class _FailingQueue:
-    def mark_as_failed(self, item_id: str, reason: str) -> None:
+    def mark_as_failed(self, item_id: int, reason: str) -> None:
         raise MatchQueueError("Failed to mark item as failed in match_ingestion_state.")
 
 
@@ -93,7 +93,7 @@ def test_mark_item_failed_propagates_queue_errors(
     ):
         retry_utils.mark_item_failed(
             _FailingQueue(),
-            "match-1",
+            1,
             error,
             logger=logger,
             log_message="Error processing match %s on attempt %d/%d: %s",
