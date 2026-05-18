@@ -14,7 +14,7 @@ class _FakeParser:
     def __init__(
         self,
         match: object | None,
-        map_links: list[tuple[str, str]] | None = None,
+        map_links: list[tuple[int, str]] | None = None,
         demo_links: list[tuple[str, str]] | None = None,
     ) -> None:
         self.match = match
@@ -24,7 +24,7 @@ class _FakeParser:
 
     def parse_match(
         self, _soup: object, match_url: str
-    ) -> tuple[object | None, list[tuple[str, str]], list[tuple[str, str]]]:
+    ) -> tuple[object | None, list[tuple[int, str]], list[tuple[str, str]]]:
         self.calls.append(match_url)
         return self.match, self.map_links, self.demo_links
 
@@ -47,11 +47,11 @@ class _FakeMatchState:
 
 class _FakeFollowupState:
     def __init__(self) -> None:
-        self.queued: list[tuple[str, str, str, int | None]] = []
+        self.queued: list[tuple[int | str, str, str, int | None]] = []
 
     def queue(
         self,
-        item_id: str,
+        item_id: int | str,
         url: str,
         source: str = "unknown",
         match_id: int | None = None,
@@ -68,7 +68,7 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
     service = MatchStageService(
         parser=_FakeParser(
             match=match,
-            map_links=[("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test")],
+            map_links=[(1, "https://www.hltv.org/stats/matches/mapstatsid/1/test")],
             demo_links=[("demo-1", "https://www.hltv.org/download/demo/test")],
         ),
         store_matches=lambda matches: stored_matches.append(matches),
@@ -89,7 +89,7 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
     assert stored_matches == [[match]]
     assert map_state.queued == [
         (
-            "map-1",
+            1,
             "https://www.hltv.org/stats/matches/mapstatsid/1/test",
             "match_parser",
             1,

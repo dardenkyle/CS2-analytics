@@ -29,7 +29,7 @@ class MapStageService:
 
     def process_item(
         self,
-        map_id: str,
+        map_id: int,
         map_url: str,
         *,
         scraper: MapScraper,

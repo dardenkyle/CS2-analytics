@@ -7,25 +7,25 @@ from cs2_analytics.stage_services import StageItemResult
 
 class _FakeMapQueue:
     def __init__(self) -> None:
-        self.failed: list[tuple[str, str]] = []
-        self.processed: list[str] = []
-        self.processing: list[str] = []
+        self.failed: list[tuple[int, str]] = []
+        self.processed: list[int] = []
+        self.processing: list[int] = []
 
     def fetch_with_match_context(
         self, _limit: int = 25
-    ) -> list[tuple[str, str, int | None]]:
+    ) -> list[tuple[int, str, int | None]]:
         return [
-            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test", 101),
-            ("map-2", "https://www.hltv.org/stats/matches/mapstatsid/2/test", 102),
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 101),
+            (2, "https://www.hltv.org/stats/matches/mapstatsid/2/test", 102),
         ]
 
-    def mark_as_failed(self, item_id: str, reason: str) -> None:
+    def mark_as_failed(self, item_id: int, reason: str) -> None:
         self.failed.append((item_id, reason))
 
-    def mark_as_processed(self, item_id: str) -> None:
+    def mark_as_processed(self, item_id: int) -> None:
         self.processed.append(item_id)
 
-    def mark_as_processing(self, item_id: str) -> None:
+    def mark_as_processing(self, item_id: int) -> None:
         self.processing.append(item_id)
 
 
@@ -56,15 +56,15 @@ class _RetryThenSucceedScraper(_SuccessfulScraper):
 class _TrackingStageService:
     def __init__(self) -> None:
         self.scrapers: list[object] = []
-        self.match_ids: list[object | None] = []
+        self.match_ids: list[int | None] = []
 
     def process_item(
         self,
-        _map_id: str,
+        _map_id: int,
         map_url: str,
         *,
         scraper: object,
-        match_id: object | None = None,
+        match_id: int | None = None,
     ) -> StageItemResult:
         self.scrapers.append(scraper)
         self.match_ids.append(match_id)
@@ -78,7 +78,7 @@ class _FailOnceThenSucceedParser:
         self.calls = 0
 
     def parse_map(
-        self, _soup: object, _map_url: str, _map_id: str
+        self, _soup: object, _map_url: str, _map_id: int
     ) -> list[object]:
         self.calls += 1
         if self.calls == 1:
@@ -88,7 +88,7 @@ class _FailOnceThenSucceedParser:
 
 class _SuccessfulParser:
     def parse_map(
-        self, _soup: object, _map_url: str, _map_id: str
+        self, _soup: object, _map_url: str, _map_id: int
     ) -> list[object]:
         return [object()]
 
@@ -133,9 +133,9 @@ def test_map_controller_continues_after_item_failure(
     controller = map_module.MapController()
     controller.run(batch_size=2)
 
-    assert controller.state.failed == [("map-1", "No player kills logged.")]
-    assert controller.state.processed == ["map-2"]
-    assert controller.state.processing == ["map-1", "map-2"]
+    assert controller.state.failed == [(1, "No player kills logged.")]
+    assert controller.state.processed == [2]
+    assert controller.state.processing == [1, 2]
     assert len(stored_players) == 1
     assert any(
         call_args[0]
@@ -175,14 +175,14 @@ def test_map_controller_retries_retryable_error_before_succeeding(
         controller.state,
         "fetch_with_match_context",
         lambda _limit=25: [
-            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
         ],
     )
 
     controller.run(batch_size=1)
 
     assert controller.state.failed == []
-    assert controller.state.processed == ["map-1"]
+    assert controller.state.processed == [1]
     assert len(stored_players) == 1
     assert len(reset_calls) == 1
     assert any(
@@ -214,7 +214,7 @@ def test_map_controller_passes_reset_scraper_to_stage_service(
         controller.state,
         "fetch_with_match_context",
         lambda _limit=25: [
-            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
         ],
     )
 
@@ -262,7 +262,7 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
         controller.state,
         "fetch_with_match_context",
         lambda _limit=25: [
-            ("map-1", "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
         ],
     )
 
@@ -270,7 +270,7 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
 
     assert controller.state.failed == [
         (
-            "map-1",
+            1,
             "Failed to fetch map stats page: https://www.hltv.org/stats/matches/mapstatsid/1/test",
         )
     ]
@@ -280,7 +280,7 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
         (
             (
                 "Exhausted retries for map %s after %d attempts; marking failed and continuing.",
-                "map-1",
+                1,
                 3,
             ),
             {},

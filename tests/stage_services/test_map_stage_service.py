@@ -13,26 +13,26 @@ class _FakeScraper:
 class _FakeParser:
     def __init__(self, players: list[object]) -> None:
         self.players = players
-        self.calls: list[tuple[str, str]] = []
+        self.calls: list[tuple[str, int]] = []
 
-    def parse_map(self, _soup: object, map_url: str, map_id: str) -> list[object]:
+    def parse_map(self, _soup: object, map_url: str, map_id: int) -> list[object]:
         self.calls.append((map_url, map_id))
         return self.players
 
 
 class _FakeMapState:
     def __init__(self) -> None:
-        self.processing: list[str] = []
-        self.processed: list[str] = []
-        self.failed: list[tuple[str, str]] = []
+        self.processing: list[int] = []
+        self.processed: list[int] = []
+        self.failed: list[tuple[int, str]] = []
 
-    def mark_as_processing(self, item_id: str) -> None:
+    def mark_as_processing(self, item_id: int) -> None:
         self.processing.append(item_id)
 
-    def mark_as_processed(self, item_id: str) -> None:
+    def mark_as_processed(self, item_id: int) -> None:
         self.processed.append(item_id)
 
-    def mark_as_failed(self, item_id: str, reason: str) -> None:
+    def mark_as_failed(self, item_id: int, reason: str) -> None:
         self.failed.append((item_id, reason))
 
 
@@ -48,7 +48,7 @@ def test_map_stage_service_processes_success() -> None:
     )
 
     result = service.process_item(
-        "map-1",
+        1,
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
         scraper=_FakeScraper(),
     )
@@ -56,10 +56,10 @@ def test_map_stage_service_processes_success() -> None:
     assert result.succeeded is True
     assert result.status == "processed"
     assert parser.calls == [
-        ("https://www.hltv.org/stats/matches/mapstatsid/1/test", "map-1")
+        ("https://www.hltv.org/stats/matches/mapstatsid/1/test", 1)
     ]
     assert map_state.processing == []
-    assert map_state.processed == ["map-1"]
+    assert map_state.processed == [1]
     assert map_state.failed == []
     assert stored_players == [players]
 
@@ -74,7 +74,7 @@ def test_map_stage_service_marks_failed_when_parser_returns_no_players() -> None
     )
 
     result = service.process_item(
-        "map-1",
+        1,
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
         scraper=_FakeScraper(),
     )
@@ -84,7 +84,7 @@ def test_map_stage_service_marks_failed_when_parser_returns_no_players() -> None
     assert result.message == "Parsing returned no player records"
     assert map_state.processing == []
     assert map_state.processed == []
-    assert map_state.failed == [("map-1", "Parsing returned no player records")]
+    assert map_state.failed == [(1, "Parsing returned no player records")]
     assert stored_players == []
 
 
@@ -97,7 +97,7 @@ def test_map_stage_service_processes_with_attempt_scraper() -> None:
     )
 
     service.process_item(
-        "map-1",
+        1,
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
         scraper=attempt_scraper,
     )

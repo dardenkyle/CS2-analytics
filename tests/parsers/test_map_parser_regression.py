@@ -69,7 +69,7 @@ def test_parse_map_prefers_visible_over_hidden_metric_cells() -> None:
     players = parser.parse_map(
         soup,
         map_url="https://www.hltv.org/stats/matches/mapstatsid/999999/test-vs-test",
-        map_id="999999",
+        map_id=999999,
     )
 
     assert len(players) == 1

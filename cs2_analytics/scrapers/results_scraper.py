@@ -127,7 +127,7 @@ class ResultsScraper:
 
         return matches, stop_scraping
 
-    def _extract_match_id(self, url: str) -> str:
+    def _extract_match_id(self, url: str) -> int | None:
         """
         Extracts numeric match ID from the match URL.
 
@@ -135,10 +135,10 @@ class ResultsScraper:
             url (str): HLTV match URL.
 
         Returns:
-            str: Match ID or "" if not found.
+            Match ID or None if not found.
         """
         match = re.search(r"/matches/(\d+)", url)
-        return match.group(1) if match else ""
+        return int(match.group(1)) if match else None
 
     def close(self) -> None:
         """Closes the SeleniumBase driver."""

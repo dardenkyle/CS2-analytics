@@ -107,7 +107,7 @@ def test_match_parser_returns_numeric_match_id() -> None:
 
     assert match.match_id == 123456
     assert isinstance(match.match_id, int)
-    assert map_links == [("2", "https://www.hltv.org/stats/matches/mapstatsid/2/test-map")]
+    assert map_links == [(2, "https://www.hltv.org/stats/matches/mapstatsid/2/test-map")]
     assert demo_links == []
 
 
@@ -173,7 +173,7 @@ def test_map_parser_raises_typed_error_for_missing_kills() -> None:
         parser.parse_map(
             soup,
             map_url="https://www.hltv.org/stats/matches/mapstatsid/2/test-map",
-            map_id="2",
+            map_id=2,
         )
 
 
@@ -375,7 +375,7 @@ def test_map_parser_raises_typed_error_for_missing_map_name() -> None:
         parser.parse_map(
             soup,
             map_url="https://www.hltv.org/stats/matches/mapstatsid/2/test-map",
-            map_id="2",
+            map_id=2,
         )
 
 
@@ -432,7 +432,7 @@ def test_map_parser_raises_typed_error_for_missing_player_name() -> None:
         parser.parse_map(
             soup,
             map_url="https://www.hltv.org/stats/matches/mapstatsid/2/test-map",
-            map_id="2",
+            map_id=2,
         )
 
 
@@ -487,5 +487,5 @@ def test_map_parser_raises_typed_error_for_missing_deaths() -> None:
         parser.parse_map(
             soup,
             map_url="https://www.hltv.org/stats/matches/mapstatsid/2/test-map",
-            map_id="2",
+            map_id=2,
         )

@@ -19,7 +19,7 @@ class MapIngestionState(BaseIngestionState):
 
     def fetch_with_match_context(
         self, limit: int = 25
-    ) -> list[tuple[str, str, int | None]]:
+    ) -> list[tuple[int, str, int | None]]:
         """Fetch pending map rows with parent match context when available."""
         query = """
         SELECT map_id, map_url, match_id
@@ -39,7 +39,7 @@ class MapIngestionState(BaseIngestionState):
 
     def queue(
         self,
-        id_value: str,
+        id_value: int,
         url: str,
         source: str = "unknown",
         priority: int = 0,

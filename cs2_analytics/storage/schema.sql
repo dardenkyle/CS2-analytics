@@ -187,7 +187,7 @@ CREATE TABLE match_ingestion_state (
 -- Map Ingestion State Table
 -- Tracks discovery and processing lifecycle for maps.
 CREATE TABLE map_ingestion_state (
-    map_id TEXT PRIMARY KEY,
+    map_id INT PRIMARY KEY,
     map_url TEXT NOT NULL,
     match_id INT REFERENCES matches(match_id) ON DELETE CASCADE,
     status TEXT CHECK (

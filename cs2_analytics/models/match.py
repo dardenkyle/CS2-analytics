@@ -3,6 +3,10 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+type MatchDictValue = (
+    int | str | bool | datetime | list[tuple[int, str]] | list[tuple[str, str]]
+)
+
 
 @dataclass
 class Match:
@@ -10,7 +14,7 @@ class Match:
 
     match_id: int
     match_url: str
-    map_links: list[tuple[str, str]]
+    map_links: list[tuple[int, str]]
     demo_links: list[tuple[str, str]]
     team1: str
     team2: str
@@ -26,7 +30,7 @@ class Match:
     last_updated_at: datetime
     data_complete: bool
 
-    def to_dict(self) -> dict[str, int | str | bool | datetime | list[tuple[str, str]]]:
+    def to_dict(self) -> dict[str, MatchDictValue]:
         """Converts match object to a dictionary."""
         return {
             "match_id": self.match_id,

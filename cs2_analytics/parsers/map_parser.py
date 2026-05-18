@@ -13,11 +13,11 @@ logger = get_logger(__name__)
 class MapParser:
     """Extracts player stats from a map stats page."""
 
-    def parse_map(self, soup, map_url: str, map_id: int | str) -> list[Player]:
+    def parse_map(self, soup, map_url: str, map_id: int) -> list[Player]:
         """Extracts player object from a map stats page."""
         logger.info("Parsing %s for player stats", map_url)
         try:
-            map_id_value = self._resolve_map_id(map_id, map_url)
+            map_id_value = self._resolve_map_id(map_id)
             map_name = self._extract_map_name(soup)
             players = self._extract_players_from_tables(
                 soup=soup,
@@ -34,12 +34,9 @@ class MapParser:
         logger.info("Extracted %s player stats from %s", len(players), map_url)
         return players
 
-    def _resolve_map_id(self, map_id: int | str, map_url: str) -> int:
+    def _resolve_map_id(self, map_id: int) -> int:
         """Resolves the numeric map identifier from the explicit id or URL."""
-        try:
-            return int(map_id)
-        except (TypeError, ValueError):
-            return self._extract_numeric_id(map_url)
+        return map_id
 
     def _iter_visible_stat_tables(self, soup):
         """Yields visible player stat tables from the map page."""

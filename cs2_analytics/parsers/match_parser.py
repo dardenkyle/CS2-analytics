@@ -15,7 +15,7 @@ class MatchParser:
 
     def parse_match(
         self, soup, match_url: str
-    ) -> tuple[Match, list[tuple[str, str]], list[tuple[str, str]]]:
+    ) -> tuple[Match, list[tuple[int, str]], list[tuple[str, str]]]:
         """Parses match metadata and returns match data with extracted follow-up links."""
         try:
             match_id = self._extract_match_id(match_url)
@@ -45,7 +45,7 @@ class MatchParser:
 
     def _extract_follow_up_links(
         self, soup
-    ) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    ) -> tuple[list[tuple[int, str]], list[tuple[str, str]]]:
         """Extracts map and demo follow-up links from the match page."""
         map_links = self._extract_map_stats_links(soup)
         demo_links = self._extract_demo_links(soup)
@@ -85,7 +85,7 @@ class MatchParser:
         *,
         match_id: int,
         match_url: str,
-        map_links: list[tuple[str, str]],
+        map_links: list[tuple[int, str]],
         demo_links: list[tuple[str, str]],
         team1: str,
         team2: str,
@@ -144,7 +144,7 @@ class MatchParser:
             raise MatchParseError("Invalid demo link markup on match page.") from e
         return demo_links
 
-    def _extract_map_stats_links(self, soup) -> list[tuple[str, str]]:
+    def _extract_map_stats_links(self, soup) -> list[tuple[int, str]]:
         """Extracts map stats links from buttons with class='results-stats'."""
         map_links = []
         try:
@@ -152,7 +152,7 @@ class MatchParser:
             for btn in stats_buttons:
                 if btn.has_attr("href"):
                     url = f"https://www.hltv.org{btn['href']}"
-                    map_id = self._extract_id(url)
+                    map_id = self._extract_numeric_id(url)
                     map_links.append((map_id, url))
             logger.info("Found %s map stats links.", len(map_links))
         except (AttributeError, IndexError) as e:
@@ -163,6 +163,13 @@ class MatchParser:
         """Extracts the first numeric ID from a URL."""
         match = re.search(r"(\d+)", url)
         return match.group(1) if match else url
+
+    def _extract_numeric_id(self, url: str) -> int:
+        """Extracts the first numeric ID from a URL."""
+        match = re.search(r"(\d+)", url)
+        if not match:
+            raise MatchParseError("Failed to extract numeric id from URL.")
+        return int(match.group(1))
 
     def _extract_scores(self, soup) -> tuple[int, int]:
         """Extracts both team scores from the match page."""

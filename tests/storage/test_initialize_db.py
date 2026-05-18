@@ -160,4 +160,5 @@ def test_schema_defines_ingestion_state_tables() -> None:
         assert "retry_count" not in table_sql
 
     map_table_sql = _table_definition(schema_sql, "map_ingestion_state")
+    assert "map_id INT PRIMARY KEY" in map_table_sql
     assert "match_id INT REFERENCES matches(match_id) ON DELETE CASCADE" in map_table_sql

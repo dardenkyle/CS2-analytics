@@ -26,11 +26,11 @@ class _FakeMatchQueue:
 
 class _FakeFollowupQueue:
     def __init__(self) -> None:
-        self.queued: list[tuple[str, str, str, int | None]] = []
+        self.queued: list[tuple[int | str, str, str, int | None]] = []
 
     def queue(
         self,
-        item_id: str,
+        item_id: int | str,
         url: str,
         source: str = "unknown",
         match_id: int | None = None,

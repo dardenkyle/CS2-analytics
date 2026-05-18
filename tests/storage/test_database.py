@@ -38,7 +38,7 @@ class TestDatabase(unittest.TestCase):
         test_match = Match(
             match_id=999999,
             match_url="https://www.hltv.org/matches/999999/test-match",
-            map_links=["https://www.hltv.org/matches/999999/test-map"],
+            map_links=[(999999, "https://www.hltv.org/matches/999999/test-map")],
             demo_links=[],
             team1="Test Team A",
             team2="Test Team B",

@@ -59,7 +59,7 @@ class MatchStageService:
     def _queue_followups(
         self,
         match_id: int,
-        map_links: list[tuple[str, str]],
+        map_links: list[tuple[int, str]],
         demo_links: list[tuple[str, str]],
     ) -> None:
         """Queue map and demo links returned by the parser."""
