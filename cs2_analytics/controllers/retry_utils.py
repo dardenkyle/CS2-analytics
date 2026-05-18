@@ -70,7 +70,7 @@ def reset_scraper(
 
 def mark_item_failed(
     queue,
-    item_id: str,
+    item_id: int | str,
     error: Exception,
     *,
     logger,
