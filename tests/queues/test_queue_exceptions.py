@@ -7,7 +7,6 @@ from cs2_analytics import ingestion_state as ingestion_state_package
 from cs2_analytics.ingestion_state import MatchIngestionState
 from cs2_analytics.ingestion_state import base_ingestion_state as base_state_module
 from cs2_analytics.ingestion_state.demo_ingestion_state import DemoIngestionState
-from cs2_analytics.ingestion_state import map_ingestion_state as map_state_module
 from cs2_analytics.ingestion_state.map_ingestion_state import MapIngestionState
 from cs2_analytics.ingestion_state.match_ingestion_state import (
     MatchIngestionState as ConcreteMatchIngestionState,
@@ -135,7 +134,7 @@ def test_map_ingestion_state_queues_parent_match_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(map_state_module, "db", _RecordingQueueDb(cursor))
+    monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
     state = MapIngestionState()
 
     state.queue(

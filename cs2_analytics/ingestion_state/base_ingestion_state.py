@@ -29,6 +29,7 @@ class BaseIngestionState:
         self.id_field = id_field
         self.url_field = url_field
         self.error_cls = error_cls
+        self.db = db
 
     def fetch(self, limit: int = 25) -> list[tuple[int | str, str]]:
         """Fetches pending items from the ingestion state table."""
@@ -40,7 +41,7 @@ class BaseIngestionState:
         LIMIT %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (limit,))
                 return cur.fetchall()
         except Exception as e:
@@ -70,7 +71,7 @@ class BaseIngestionState:
             last_updated_at = EXCLUDED.last_updated_at;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (id_value, url, source, priority, now, now, now))
         except Exception as e:
             raise self.error_cls(
@@ -110,7 +111,7 @@ class BaseIngestionState:
         ]
 
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.executemany(query, values)
                 logger.info(
                     "Queued or refreshed %d items in %s", len(items), self.table_name
@@ -129,7 +130,7 @@ class BaseIngestionState:
         WHERE {self.id_field} = %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (now, now, id_value))
         except Exception as e:
             raise self.error_cls(
@@ -149,7 +150,7 @@ class BaseIngestionState:
         WHERE {self.id_field} = %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (now, now, id_value))
         except Exception as e:
             raise self.error_cls(
@@ -169,7 +170,7 @@ class BaseIngestionState:
         WHERE {self.id_field} = %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (now, now, reason, id_value))
         except Exception as e:
             raise self.error_cls(
@@ -187,7 +188,7 @@ class BaseIngestionState:
         WHERE {self.id_field} = %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (now, reason, id_value))
         except Exception as e:
             raise self.error_cls(

@@ -4,7 +4,6 @@ import datetime as dt
 
 from cs2_analytics.exceptions import MapQueueError
 from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
-from cs2_analytics.storage.db_instance import db
 
 
 class MapIngestionState(BaseIngestionState):
@@ -30,7 +29,7 @@ class MapIngestionState(BaseIngestionState):
         LIMIT %s;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(query, (limit,))
                 return cur.fetchall()
         except Exception as e:
@@ -66,7 +65,7 @@ class MapIngestionState(BaseIngestionState):
             last_updated_at = EXCLUDED.last_updated_at;
         """
         try:
-            with db.get_cursor() as cur:
+            with self.db.get_cursor() as cur:
                 cur.execute(
                     query,
                     (id_value, url, match_id, source, priority, now, now, now),
