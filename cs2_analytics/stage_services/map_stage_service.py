@@ -33,9 +33,11 @@ class MapStageService:
         map_url: str,
         *,
         scraper: MapScraper,
-        match_id: int | None = None,
+        match_id: int | None = None,  # noqa: ARG002
     ) -> StageItemResult:
         """Process one map ingestion-state row.
+
+        The parent match id is carried for Phase 3.5 map persistence.
 
         Returns the explicit per-item outcome after the service updates
         ingestion state.
