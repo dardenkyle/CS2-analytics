@@ -92,8 +92,25 @@ Ensure PostgreSQL is installed and configure database credentials through your l
 Run:
 
 ```sh
-python -m cs2_analytics.storage.initialize_db
+python manage_db.py --init
 ```
+
+Running `python manage_db.py` with no flags also uses the safe init path.
+
+For first-time local setup when the configured PostgreSQL database does not
+exist yet:
+
+```sh
+python manage_db.py --create-database
+```
+
+To explicitly wipe application tables:
+
+```sh
+python manage_db.py --wipe
+```
+
+The wipe command asks for `y` confirmation before dropping tables.
 
 ### 5. Run the Pipeline
 
