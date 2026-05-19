@@ -188,3 +188,11 @@ def test_schema_defines_map_storage_contract() -> None:
 
     for column_sql in required_columns:
         assert column_sql in table_sql
+
+
+def test_schema_defines_player_map_relationship() -> None:
+    schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
+    table_sql = _table_definition(schema_sql, "players")
+
+    assert "map_id INT NOT NULL REFERENCES maps(map_id) ON DELETE CASCADE" in table_sql
+    assert "PRIMARY KEY (map_id, player_id)" in table_sql

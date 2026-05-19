@@ -101,7 +101,7 @@ CREATE TABLE maps (
 
 -- ✅ Players Table (Previously `players_stats`)
 CREATE TABLE players (
-    map_id INT,
+    map_id INT NOT NULL REFERENCES maps(map_id) ON DELETE CASCADE,
     player_id INT,
     player_name TEXT NOT NULL,
     player_url TEXT,
