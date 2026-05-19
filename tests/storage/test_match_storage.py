@@ -66,6 +66,7 @@ def _match() -> Match:
 
 
 def _conflict_update_clause(query: str) -> str:
+    assert "ON CONFLICT" in query, "Expected storage query to define an upsert conflict clause."
     return query.split("ON CONFLICT", maxsplit=1)[1]
 
 
@@ -107,4 +108,3 @@ def test_store_matches_refreshes_trusted_fields_on_conflict(
     assert conn.committed is True
     assert conn.rolled_back is False
     assert fake_db.released is True
-

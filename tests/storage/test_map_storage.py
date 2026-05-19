@@ -51,6 +51,11 @@ def _map() -> Map:
     )
 
 
+def _conflict_update_clause(query: str) -> str:
+    assert "ON CONFLICT" in query, "Expected storage query to define an upsert conflict clause."
+    return query.split("ON CONFLICT", maxsplit=1)[1]
+
+
 def test_store_maps_writes_active_map_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     cursor = _RecordingCursor()
     monkeypatch.setattr(map_storage_module, "db", _FakeDb(cursor))
@@ -77,7 +82,7 @@ def test_store_maps_refreshes_trusted_fields_without_replacing_inserted_at(
     map_storage_module.store_maps([_map()])
 
     query, _params = cursor.executed[0]
-    conflict_update = query.split("ON CONFLICT", maxsplit=1)[1]
+    conflict_update = _conflict_update_clause(query)
 
     for field_name in (
         "match_id",

@@ -61,6 +61,7 @@ def _player() -> Player:
 
 
 def _conflict_update_clause(query: str) -> str:
+    assert "ON CONFLICT" in query, "Expected storage query to define an upsert conflict clause."
     return query.split("ON CONFLICT", maxsplit=1)[1]
 
 
@@ -106,4 +107,3 @@ def test_store_players_refreshes_context_and_metrics_on_conflict(
     assert "last_inserted_at = EXCLUDED.last_inserted_at" not in conflict_update
     assert params["map_id"] == 100
     assert params["player_id"] == 200
-
