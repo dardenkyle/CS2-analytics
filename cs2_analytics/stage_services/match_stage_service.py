@@ -63,12 +63,13 @@ class MatchStageService:
         demo_links: list[tuple[str, str]],
     ) -> None:
         """Queue map and demo links returned by the parser."""
-        for map_id, map_url in map_links:
+        for map_order, (map_id, map_url) in enumerate(map_links, start=1):
             self.map_state.queue(
                 map_id,
                 map_url,
                 source="match_parser",
                 match_id=match_id,
+                map_order=map_order,
             )
         for demo_id, demo_url in demo_links:
             self.demo_state.queue(demo_id, demo_url, source="match_parser")

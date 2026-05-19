@@ -47,7 +47,7 @@ class _FakeMatchState:
 
 class _FakeFollowupState:
     def __init__(self) -> None:
-        self.queued: list[tuple[int | str, str, str, int | None]] = []
+        self.queued: list[tuple[int | str, str, str, int | None, int | None]] = []
 
     def queue(
         self,
@@ -55,8 +55,9 @@ class _FakeFollowupState:
         url: str,
         source: str = "unknown",
         match_id: int | None = None,
+        map_order: int | None = None,
     ) -> None:
-        self.queued.append((item_id, url, source, match_id))
+        self.queued.append((item_id, url, source, match_id, map_order))
 
 
 def test_match_stage_service_processes_success_and_queues_followups() -> None:
@@ -93,6 +94,7 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
             "https://www.hltv.org/stats/matches/mapstatsid/1/test",
             "match_parser",
             1,
+            1,
         )
     ]
     assert demo_state.queued == [
@@ -100,6 +102,7 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
             "demo-1",
             "https://www.hltv.org/download/demo/test",
             "match_parser",
+            None,
             None,
         )
     ]
