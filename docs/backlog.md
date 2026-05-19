@@ -169,10 +169,12 @@ remains the active schema source of truth.
       `maps.map_id` and `maps.match_id` joins to `matches.match_id`
 - [ ] Add a focused integration-style test for match discovery -> map discovery
       -> map/player persistence
-- [ ] Separate destructive schema reset behavior from normal schema
+- [x] Separate destructive schema reset behavior from normal schema
       initialization
-- [ ] Move `ALTER TABLE` and index mutation out of `Database.__init__` into an
+- [x] Move `ALTER TABLE` and index mutation out of `Database.__init__` into an
       explicit schema/setup path
+- [ ] Clean up import-time global database connection behavior so importing
+      storage modules does not require a live PostgreSQL database
 - [ ] Rename queue-era exception and test names where they affect active code
       readability
 
@@ -220,11 +222,16 @@ relational ingestion outputs without starting dbt models yet.
    Add focused tests that prove `players -> maps -> matches` joins work and
    that dbt will not need to parse stringified link fields.
 
-5. [ ] `phase3.5-schema-initialization-cleanup`
+5. [x] `phase3.5-schema-initialization-cleanup`
    Separate destructive schema reset behavior from normal initialization and
    move runtime schema mutation out of `Database.__init__`.
 
-6. [ ] `phase3.5-ingestion-terminology-cleanup`
+6. [ ] `phase3.5-database-access-cleanup`
+   Remove remaining import-time global database connection behavior, such as
+   module-level `db = Database()` access paths, and move toward lazy or
+   injectable database access where it improves tests and setup commands.
+
+7. [ ] `phase3.5-ingestion-terminology-cleanup`
    Rename queue-era exception and test names where they affect active
    ingestion-state readability.
 
@@ -233,7 +240,7 @@ relational ingestion outputs without starting dbt models yet.
 - [ ] `matches`, `maps`, and `players` have stable grains
 - [x] Map-player-match relationships are queryable without parsing strings
 - [x] Storage upserts are duplicate-safe and refresh trusted fields
-- [ ] Tests pass
+- [x] Tests pass
 - [ ] dbt can start with clean staging models: `stg_matches`, `stg_maps`, and
       `stg_players`
 
