@@ -51,6 +51,11 @@ def _map() -> Map:
     )
 
 
+def _conflict_update_clause(query: str) -> str:
+    assert "ON CONFLICT" in query, "Expected storage query to define an upsert conflict clause."
+    return query.split("ON CONFLICT", maxsplit=1)[1]
+
+
 def test_store_maps_writes_active_map_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     cursor = _RecordingCursor()
     monkeypatch.setattr(map_storage_module, "db", _FakeDb(cursor))
@@ -66,6 +71,35 @@ def test_store_maps_writes_active_map_contract(monkeypatch: pytest.MonkeyPatch) 
     assert params["match_id"] == 1001
     assert params["map_order"] == 1
     assert params["map_winner"] == "Liquid"
+
+
+def test_store_maps_refreshes_trusted_fields_without_replacing_inserted_at(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(map_storage_module, "db", _FakeDb(cursor))
+
+    map_storage_module.store_maps([_map()])
+
+    query, _params = cursor.executed[0]
+    conflict_update = _conflict_update_clause(query)
+
+    for field_name in (
+        "match_id",
+        "map_url",
+        "map_order",
+        "map_name",
+        "team1_score",
+        "team2_score",
+        "map_winner",
+        "date",
+        "last_scraped_at",
+        "last_updated_at",
+        "data_complete",
+    ):
+        assert f"{field_name} = EXCLUDED.{field_name}" in conflict_update
+
+    assert "inserted_at = EXCLUDED.inserted_at" not in conflict_update
 
 
 def test_store_maps_wraps_database_failures(monkeypatch: pytest.MonkeyPatch) -> None:

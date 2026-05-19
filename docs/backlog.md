@@ -150,21 +150,21 @@ remains the active schema source of truth.
 - [x] Decide whether `map_order`, `map_name`, map scores, and map winner come
       from match pages, map pages, or both
 - [x] Ensure the map stage writes one row per played map to `maps`
-- [ ] Keep `players` at the grain of one row per player per map
+- [x] Keep `players` at the grain of one row per player per map
 - [x] Make `cs2_analytics/storage/map_storage.py` match the active
       `cs2_analytics/storage/schema.sql`
 - [x] Update `store_maps` to upsert all trusted map fields, or remove stale map
       storage code if it no longer has a role
-- [ ] Update `store_matches` conflict behavior to refresh trusted parsed fields,
+- [x] Update `store_matches` conflict behavior to refresh trusted parsed fields,
       not only `last_updated_at`
-- [ ] Decide which player context fields should refresh on rerun, such as
+- [x] Decide which player context fields should refresh on rerun, such as
       `player_name`, `player_url`, `map_name`, `team_name`, and
       `last_scraped_at`
-- [ ] Update `store_players` conflict behavior to refresh the agreed trusted
+- [x] Update `store_players` conflict behavior to refresh the agreed trusted
       fields
-- [ ] Keep `matches.map_links` and `matches.demo_links` as trace/debug fields
+- [x] Keep `matches.map_links` and `matches.demo_links` as trace/debug fields
       only if useful; dbt should not parse Python-list strings
-- [ ] Add storage idempotency tests for match, map, and player upserts
+- [x] Add storage idempotency tests for match, map, and player upserts
 - [ ] Add relationship readiness tests proving `players.map_id` joins to
       `maps.map_id` and `maps.match_id` joins to `matches.match_id`
 - [ ] Add a focused integration-style test for match discovery -> map discovery
@@ -199,9 +199,22 @@ relational ingestion outputs without starting dbt models yet.
    active `maps` table includes map audit fields and `map_url`, and the map
    stage persists the map row before player rows.
 
-3. [ ] `phase3.5-storage-upsert-idempotency`
+3. [x] `phase3.5-storage-upsert-idempotency`
    Strengthen match, map, and player upserts so reruns refresh trusted fields
    without duplicating rows or overwriting first-seen style timestamps.
+
+   Match storage now refreshes trusted parsed match fields on conflict while
+   preserving `last_inserted_at`. Player storage refreshes the agreed context
+   fields, metrics, scrape/update timestamps, and completeness flag on conflict
+   while preserving `last_inserted_at`. Map storage already had the same update
+   shape, and storage tests now assert the idempotent upsert contracts for all
+   three parsed source tables.
+
+   Audit-field naming cleanup is intentionally deferred to a later focused
+   schema/model/storage branch. That branch should normalize parsed source
+   tables toward `inserted_at`, `last_scraped_at`, `updated_at`, and
+   `data_complete`, replacing current mixed names such as `last_inserted_at`
+   and `last_updated_at`.
 
 4. [ ] `phase3.5-relationship-readiness-tests`
    Add focused tests that prove `players -> maps -> matches` joins work and
@@ -219,7 +232,7 @@ relational ingestion outputs without starting dbt models yet.
 
 - [ ] `matches`, `maps`, and `players` have stable grains
 - [ ] Map-player-match relationships are queryable without parsing strings
-- [ ] Storage upserts are duplicate-safe and refresh trusted fields
+- [x] Storage upserts are duplicate-safe and refresh trusted fields
 - [ ] Tests pass
 - [ ] dbt can start with clean staging models: `stg_matches`, `stg_maps`, and
       `stg_players`

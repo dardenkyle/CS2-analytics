@@ -24,7 +24,21 @@ def store_matches(matches: list[Match]) -> None:
         %(last_inserted_at)s, %(last_scraped_at)s, %(last_updated_at)s, %(data_complete)s
     )
     ON CONFLICT (match_id) DO UPDATE SET
-        last_updated_at = EXCLUDED.last_updated_at;
+        match_url = EXCLUDED.match_url,
+        team1 = EXCLUDED.team1,
+        team2 = EXCLUDED.team2,
+        score1 = EXCLUDED.score1,
+        score2 = EXCLUDED.score2,
+        winner = EXCLUDED.winner,
+        event = EXCLUDED.event,
+        match_type = EXCLUDED.match_type,
+        forfeit = EXCLUDED.forfeit,
+        date = EXCLUDED.date,
+        map_links = EXCLUDED.map_links,
+        demo_links = EXCLUDED.demo_links,
+        last_scraped_at = EXCLUDED.last_scraped_at,
+        last_updated_at = EXCLUDED.last_updated_at,
+        data_complete = EXCLUDED.data_complete;
     """
 
     conn = db.get_connection()

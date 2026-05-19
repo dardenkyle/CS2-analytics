@@ -25,7 +25,11 @@ def store_players(players: list[Player]) -> None:
         %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(round_swing)s, %(rating)s,
         %(last_inserted_at)s, %(last_scraped_at)s, %(last_updated_at)s, %(data_complete)s
     )
-    ON CONFLICT (player_id, map_id) DO UPDATE SET
+    ON CONFLICT (map_id, player_id) DO UPDATE SET
+        player_name = EXCLUDED.player_name,
+        player_url = EXCLUDED.player_url,
+        map_name = EXCLUDED.map_name,
+        team_name = EXCLUDED.team_name,
         kills = EXCLUDED.kills,
         headshots = EXCLUDED.headshots,
         assists = EXCLUDED.assists,
@@ -42,6 +46,7 @@ def store_players(players: list[Player]) -> None:
         fk_diff = EXCLUDED.fk_diff,
         round_swing = EXCLUDED.round_swing,
         rating = EXCLUDED.rating,
+        last_scraped_at = EXCLUDED.last_scraped_at,
         last_updated_at = EXCLUDED.last_updated_at,
         data_complete = EXCLUDED.data_complete;
     """
