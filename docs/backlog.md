@@ -165,7 +165,7 @@ remains the active schema source of truth.
 - [x] Keep `matches.map_links` and `matches.demo_links` as trace/debug fields
       only if useful; dbt should not parse Python-list strings
 - [x] Add storage idempotency tests for match, map, and player upserts
-- [ ] Add relationship readiness tests proving `players.map_id` joins to
+- [x] Add relationship readiness tests proving `players.map_id` joins to
       `maps.map_id` and `maps.match_id` joins to `matches.match_id`
 - [ ] Add a focused integration-style test for match discovery -> map discovery
       -> map/player persistence
@@ -216,7 +216,7 @@ relational ingestion outputs without starting dbt models yet.
    `data_complete`, replacing current mixed names such as `last_inserted_at`
    and `last_updated_at`.
 
-4. [ ] `phase3.5-relationship-readiness-tests`
+4. [x] `phase3.5-relationship-readiness-tests`
    Add focused tests that prove `players -> maps -> matches` joins work and
    that dbt will not need to parse stringified link fields.
 
@@ -231,7 +231,7 @@ relational ingestion outputs without starting dbt models yet.
 ### dbt entry criteria
 
 - [ ] `matches`, `maps`, and `players` have stable grains
-- [ ] Map-player-match relationships are queryable without parsing strings
+- [x] Map-player-match relationships are queryable without parsing strings
 - [x] Storage upserts are duplicate-safe and refresh trusted fields
 - [ ] Tests pass
 - [ ] dbt can start with clean staging models: `stg_matches`, `stg_maps`, and

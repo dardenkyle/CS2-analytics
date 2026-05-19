@@ -2,9 +2,11 @@ import sys
 import unittest
 from datetime import UTC, datetime
 
+from cs2_analytics.models.map import Map
 from cs2_analytics.models.match import Match
 from cs2_analytics.models.player import Player
 from cs2_analytics.storage.database import Database
+from cs2_analytics.storage.map_storage import store_maps
 from cs2_analytics.storage.match_storage import store_matches
 from cs2_analytics.storage.player_storage import store_players
 
@@ -83,6 +85,40 @@ class TestDatabase(unittest.TestCase):
 
         now = datetime.now(UTC)
 
+        test_match = Match(
+            match_id=999998,
+            match_url="https://www.hltv.org/matches/999998/test-player-match",
+            map_links=[(999999, "https://www.hltv.org/matches/999998/test-map")],
+            demo_links=[],
+            team1="Test Team A",
+            team2="Test Team B",
+            score1=16,
+            score2=10,
+            winner="Test Team A",
+            event="Test Event",
+            match_type="BO1",
+            forfeit=False,
+            date="2025-03-15",
+            last_inserted_at=now,
+            last_scraped_at=now,
+            last_updated_at=now,
+            data_complete=True,
+        )
+        test_map = Map(
+            map_id=999999,
+            match_id=999998,
+            map_url="https://www.hltv.org/stats/matches/mapstatsid/999999/test-map",
+            map_name="de_dust2",
+            map_order=1,
+            team1_score=16,
+            team2_score=10,
+            map_winner="Test Team A",
+            date="2025-03-15",
+            inserted_at=now,
+            last_scraped_at=now,
+            last_updated_at=now,
+            data_complete=True,
+        )
         test_player = Player(
             map_id=999999,
             player_id=888888,
@@ -117,8 +153,10 @@ class TestDatabase(unittest.TestCase):
         print(f"🟡 Player object as dictionary: {test_player.to_dict()}")
         sys.stdout.flush()
 
-        print("🟡 Inserting test player into database...")
+        print("🟡 Inserting parent match, map, and test player into database...")
         sys.stdout.flush()
+        store_matches([test_match])
+        store_maps([test_map])
         store_players([test_player])
 
         print("🔍 Fetching player from database...")
