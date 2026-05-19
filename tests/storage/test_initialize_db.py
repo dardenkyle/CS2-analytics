@@ -162,3 +162,29 @@ def test_schema_defines_ingestion_state_tables() -> None:
     map_table_sql = _table_definition(schema_sql, "map_ingestion_state")
     assert "map_id INT PRIMARY KEY" in map_table_sql
     assert "match_id INT REFERENCES matches(match_id) ON DELETE CASCADE" in map_table_sql
+    assert "map_order INT CHECK" in map_table_sql
+
+
+def test_schema_defines_map_storage_contract() -> None:
+    schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
+    table_sql = _table_definition(schema_sql, "maps")
+
+    required_columns = (
+        "map_id INT PRIMARY KEY",
+        "match_id INT NOT NULL REFERENCES matches(match_id) ON DELETE CASCADE",
+        "map_url TEXT UNIQUE NOT NULL",
+        "map_order INT NOT NULL CHECK",
+        "map_name TEXT NOT NULL",
+        "team1_score INT NOT NULL CHECK (team1_score >= 0)",
+        "team2_score INT NOT NULL CHECK (team2_score >= 0)",
+        "map_winner TEXT NOT NULL",
+        "date TIMESTAMP NOT NULL",
+        "inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP",
+        "last_scraped_at TIMESTAMPTZ",
+        "last_updated_at TIMESTAMPTZ",
+        "data_complete BOOLEAN NOT NULL DEFAULT FALSE",
+        "UNIQUE (match_id, map_order)",
+    )
+
+    for column_sql in required_columns:
+        assert column_sql in table_sql
