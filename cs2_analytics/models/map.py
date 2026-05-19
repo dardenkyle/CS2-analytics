@@ -25,7 +25,7 @@ class Map:
     data_complete: bool
 
     def to_dict(self) -> dict[str, MapDictValue]:
-        """ "Converts the object to a dictionary for database insertion."""
+        """Converts the object to a dictionary for database insertion."""
         return {
             "map_id": self.map_id,
             "match_id": self.match_id,
