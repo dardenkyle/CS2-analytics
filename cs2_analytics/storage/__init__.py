@@ -1,16 +1,18 @@
 """
-The `storage` package provides a centralized interface for all database-related
-interactions including:
+The `storage` package provides database connection helpers and persistence modules.
 
-- Database connections and session management
-- Database connection helpers and persistence modules
-- Data models representing persistent entities
+The shared `db` instance is loaded lazily to avoid opening a PostgreSQL connection
+when importing setup-only modules such as `cs2_analytics.storage.initialize_db`.
 """
-
-from .db_instance import db
 
 __all__ = [
     "db",
-    "Match",
-    "Player",
 ]
+
+
+def __getattr__(name: str):
+    if name == "db":
+        from .db_instance import db
+
+        return db
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

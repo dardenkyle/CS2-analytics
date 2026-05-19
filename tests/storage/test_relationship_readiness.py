@@ -23,7 +23,7 @@ JOIN matches AS mt
 
 
 def _table_definition(schema_sql: str, table_name: str) -> str:
-    start_marker = f"CREATE TABLE {table_name} ("
+    start_marker = f"CREATE TABLE IF NOT EXISTS {table_name} ("
     start_index = schema_sql.index(start_marker)
     end_index = schema_sql.index("\n);", start_index)
     return schema_sql[start_index:end_index]
