@@ -77,11 +77,13 @@ def test_map_stage_service_records_constructor_dependencies() -> None:
 
     service = MapStageService(
         parser=parser,
+        store_maps=_store_stub,
         store_players=_store_stub,
         map_state=map_state,
     )
 
     assert service.parser is parser
+    assert service.store_maps is _store_stub
     assert service.store_players is _store_stub
     assert service.map_state is map_state
 

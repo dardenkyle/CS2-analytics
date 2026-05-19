@@ -19,10 +19,10 @@ class MapIngestionState(BaseIngestionState):
 
     def fetch_with_match_context(
         self, limit: int = 25
-    ) -> list[tuple[int, str, int | None]]:
-        """Fetch pending map rows with parent match context when available."""
+    ) -> list[tuple[int, str, int | None, int | None]]:
+        """Fetch pending map rows with parent match and map-order context."""
         query = """
-        SELECT map_id, map_url, match_id
+        SELECT map_id, map_url, match_id, map_order
         FROM map_ingestion_state
         WHERE status = 'pending'
         ORDER BY priority DESC, first_seen_at ASC
@@ -44,18 +44,20 @@ class MapIngestionState(BaseIngestionState):
         source: str = "unknown",
         priority: int = 0,
         match_id: int | None = None,
+        map_order: int | None = None,
     ) -> None:
         """Add or refresh a map ingestion row with parent match context."""
         now = dt.datetime.now()
         query = """
         INSERT INTO map_ingestion_state (
-            map_id, map_url, match_id, status, source, priority,
+            map_id, map_url, match_id, map_order, status, source, priority,
             first_seen_at, last_seen_at, last_updated_at
         )
-        VALUES (%s, %s, %s, 'pending', %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, 'pending', %s, %s, %s, %s, %s)
         ON CONFLICT (map_id) DO UPDATE
         SET map_url = EXCLUDED.map_url,
             match_id = COALESCE(EXCLUDED.match_id, map_ingestion_state.match_id),
+            map_order = COALESCE(EXCLUDED.map_order, map_ingestion_state.map_order),
             source = EXCLUDED.source,
             priority = GREATEST(
                 COALESCE(map_ingestion_state.priority, 0),
@@ -68,7 +70,17 @@ class MapIngestionState(BaseIngestionState):
             with self.db.get_cursor() as cur:
                 cur.execute(
                     query,
-                    (id_value, url, match_id, source, priority, now, now, now),
+                    (
+                        id_value,
+                        url,
+                        match_id,
+                        map_order,
+                        source,
+                        priority,
+                        now,
+                        now,
+                        now,
+                    ),
                 )
         except Exception as e:
             raise self.error_cls(

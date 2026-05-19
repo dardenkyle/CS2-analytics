@@ -147,13 +147,13 @@ remains the active schema source of truth.
 
 - [x] Add match context to discovered map rows so each map can be tied back to
       its parent match without parsing stringified link fields
-- [ ] Decide whether `map_order`, `map_name`, map scores, and map winner come
+- [x] Decide whether `map_order`, `map_name`, map scores, and map winner come
       from match pages, map pages, or both
-- [ ] Ensure the map stage writes one row per played map to `maps`
+- [x] Ensure the map stage writes one row per played map to `maps`
 - [ ] Keep `players` at the grain of one row per player per map
-- [ ] Make `cs2_analytics/storage/map_storage.py` match the active
+- [x] Make `cs2_analytics/storage/map_storage.py` match the active
       `cs2_analytics/storage/schema.sql`
-- [ ] Update `store_maps` to upsert all trusted map fields, or remove stale map
+- [x] Update `store_maps` to upsert all trusted map fields, or remove stale map
       storage code if it no longer has a role
 - [ ] Update `store_matches` conflict behavior to refresh trusted parsed fields,
       not only `last_updated_at`
@@ -190,9 +190,14 @@ relational ingestion outputs without starting dbt models yet.
    `map_name`, map scores, and map winner still need a separate source-of-truth
    decision before the map stage writes relational `maps` rows.
 
-2. [ ] `phase3.5-map-storage-contract`
+2. [x] `phase3.5-map-storage-contract`
    Align the `maps` schema, model, parser output, and `store_maps` behavior so
    the map stage can persist one row per played map.
+
+   Map storage now uses `map_order` from match discovery order and parses
+   `map_name`, map scores, map winner, and date from the map stats page. The
+   active `maps` table includes map audit fields and `map_url`, and the map
+   stage persists the map row before player rows.
 
 3. [ ] `phase3.5-storage-upsert-idempotency`
    Strengthen match, map, and player upserts so reruns refresh trusted fields

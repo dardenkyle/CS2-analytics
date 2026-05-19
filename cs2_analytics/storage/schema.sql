@@ -81,17 +81,22 @@ CREATE TABLE matches (
 -- ✅ Maps Table (Previously `maps_played`)
 CREATE TABLE maps (
     map_id INT PRIMARY KEY,
-    match_id INT REFERENCES matches(match_id) ON DELETE CASCADE,
-    map_order INT CHECK (
+    match_id INT NOT NULL REFERENCES matches(match_id) ON DELETE CASCADE,
+    map_url TEXT UNIQUE NOT NULL,
+    map_order INT NOT NULL CHECK (
         map_order BETWEEN 1
         AND 5
     ),
     map_name TEXT NOT NULL,
-    team1_score INT,
-    team2_score INT,
-    winner TEXT NOT NULL CHECK (winner IN ('team1', 'team2')),
+    team1_score INT NOT NULL CHECK (team1_score >= 0),
+    team2_score INT NOT NULL CHECK (team2_score >= 0),
+    map_winner TEXT NOT NULL,
     date TIMESTAMP NOT NULL,
-    data_complete BOOLEAN DEFAULT TRUE
+    inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_scraped_at TIMESTAMPTZ,
+    last_updated_at TIMESTAMPTZ,
+    data_complete BOOLEAN NOT NULL DEFAULT FALSE,
+    UNIQUE (match_id, map_order)
 );
 
 -- ✅ Players Table (Previously `players_stats`)
@@ -190,6 +195,10 @@ CREATE TABLE map_ingestion_state (
     map_id INT PRIMARY KEY,
     map_url TEXT NOT NULL,
     match_id INT REFERENCES matches(match_id) ON DELETE CASCADE,
+    map_order INT CHECK (
+        map_order BETWEEN 1
+        AND 5
+    ),
     status TEXT CHECK (
         status IN ('pending', 'processing', 'processed', 'failed', 'skipped')
     ) NOT NULL DEFAULT 'pending',

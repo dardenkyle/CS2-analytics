@@ -12,6 +12,7 @@ from cs2_analytics.ingestion_state import MapIngestionState
 from cs2_analytics.parsers.map_parser import MapParser
 from cs2_analytics.scrapers.map_scraper import MapScraper
 from cs2_analytics.stage_services import MapStageService
+from cs2_analytics.storage.map_storage import store_maps
 from cs2_analytics.storage.player_storage import store_players
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -27,6 +28,7 @@ class MapController:
         self.state = MapIngestionState()
         self.stage_service = MapStageService(
             parser=self.parser,
+            store_maps=store_maps,
             store_players=store_players,
             map_state=self.state,
         )
@@ -47,7 +49,7 @@ class MapController:
 
         scraper = self.scraper
         try:
-            for map_id, map_url, match_id in selected:
+            for map_id, map_url, match_id, map_order in selected:
                 if processed_since_reset >= rotate_every:
                     logger.info(
                         "Rotating map scraper session after %d processed maps",
@@ -65,6 +67,7 @@ class MapController:
                             map_url,
                             scraper=scraper,
                             match_id=match_id,
+                            map_order=map_order,
                         )
                         if result.succeeded:
                             succeeded += 1

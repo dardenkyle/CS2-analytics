@@ -2,8 +2,8 @@ from contextlib import contextmanager
 
 import pytest
 
-from cs2_analytics.exceptions import MatchQueueError
 from cs2_analytics import ingestion_state as ingestion_state_package
+from cs2_analytics.exceptions import MatchQueueError
 from cs2_analytics.ingestion_state import MatchIngestionState
 from cs2_analytics.ingestion_state import base_ingestion_state as base_state_module
 from cs2_analytics.ingestion_state.demo_ingestion_state import DemoIngestionState
@@ -142,18 +142,24 @@ def test_map_ingestion_state_queues_parent_match_context(
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
         source="match_parser",
         match_id=1,
+        map_order=1,
     )
 
     assert cursor.execute_query is not None
     assert "map_ingestion_state" in cursor.execute_query
     assert "match_id" in cursor.execute_query
+    assert "map_order" in cursor.execute_query
     assert "match_id = COALESCE(EXCLUDED.match_id, map_ingestion_state.match_id)" in (
         cursor.execute_query
     )
+    assert "map_order = COALESCE(EXCLUDED.map_order, map_ingestion_state.map_order)" in (
+        cursor.execute_query
+    )
     assert cursor.execute_values is not None
-    assert cursor.execute_values[:5] == (
+    assert cursor.execute_values[:6] == (
         1,
         "https://www.hltv.org/stats/matches/mapstatsid/1/test",
+        1,
         1,
         "match_parser",
         0,

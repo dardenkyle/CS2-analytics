@@ -69,6 +69,10 @@ class MatchStorageError(StorageError):
     """Raised when match records cannot be stored."""
 
 
+class MapStorageError(StorageError):
+    """Raised when map records cannot be stored."""
+
+
 class PlayerStorageError(StorageError):
     """Raised when player records cannot be stored."""
 

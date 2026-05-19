@@ -2,12 +2,22 @@
 
 import datetime as dt
 import re
+from dataclasses import dataclass
 
 from cs2_analytics.exceptions import MapParseError
+from cs2_analytics.models.map import Map
 from cs2_analytics.models.player import Player
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
+
+
+@dataclass(frozen=True)
+class ParsedMap:
+    """Map-level metadata and player rows parsed from one map stats page."""
+
+    map: Map
+    players: list[Player]
 
 
 class MapParser:
@@ -33,6 +43,45 @@ class MapParser:
 
         logger.info("Extracted %s player stats from %s", len(players), map_url)
         return players
+
+    def parse_map_details(
+        self,
+        soup,
+        map_url: str,
+        map_id: int,
+        *,
+        match_id: int | None,
+        map_order: int | None,
+    ) -> ParsedMap:
+        """Extracts map metadata and player objects from a map stats page."""
+        logger.info("Parsing %s for player stats", map_url)
+        try:
+            map_id_value = self._resolve_map_id(map_id)
+            map_name = self._extract_map_name(soup)
+            team_scores = self._extract_map_team_scores(soup)
+            players = self._extract_players_from_tables(
+                soup=soup,
+                map_url=map_url,
+                map_id_value=map_id_value,
+                map_name=map_name,
+            )
+            parsed_map = self._build_map(
+                soup=soup,
+                map_id_value=map_id_value,
+                map_url=map_url,
+                match_id=match_id,
+                map_order=map_order,
+                map_name=map_name,
+                team_scores=team_scores,
+            )
+
+        except MapParseError:
+            raise
+        except Exception as e:
+            raise MapParseError(f"Failed to parse map stats page: {map_url}") from e
+
+        logger.info("Extracted %s player stats from %s", len(players), map_url)
+        return ParsedMap(map=parsed_map, players=players)
 
     def _resolve_map_id(self, map_id: int) -> int:
         """Resolves the numeric map identifier from the explicit id or URL."""
@@ -140,6 +189,46 @@ class MapParser:
             map_name=map_name,
             team_name=team_name,
             stats=stats,
+        )
+
+    def _build_map(
+        self,
+        *,
+        soup,
+        map_id_value: int,
+        map_url: str,
+        match_id: int | None,
+        map_order: int | None,
+        map_name: str,
+        team_scores: tuple[tuple[str, int], tuple[str, int]],
+    ) -> Map:
+        """Builds one relational map row from parsed map-level metadata."""
+        if match_id is None:
+            raise MapParseError("Missing parent match id for map persistence.")
+
+        resolved_map_order = map_order or self._extract_map_order(
+            soup=soup,
+            map_url=map_url,
+            map_id_value=map_id_value,
+        )
+        (team1_name, team1_score), (team2_name, team2_score) = team_scores
+        map_winner = team1_name if team1_score > team2_score else team2_name
+        now = dt.datetime.now(dt.UTC)
+
+        return Map(
+            map_id=map_id_value,
+            match_id=match_id,
+            map_url=map_url,
+            map_name=map_name,
+            map_order=resolved_map_order,
+            team1_score=team1_score,
+            team2_score=team2_score,
+            map_winner=map_winner,
+            date=self._extract_map_date(soup),
+            inserted_at=now,
+            last_scraped_at=now,
+            last_updated_at=now,
+            data_complete=True,
         )
 
     def _extract_player_identity(self, cols) -> tuple[str, str, int]:
@@ -347,6 +436,96 @@ class MapParser:
                     return map_name
 
         raise MapParseError("Failed to extract map name from map stats page.")
+
+    def _extract_map_date(self, soup) -> str:
+        """Extracts the map date as a timestamp-compatible string."""
+        date_tag = soup.find("div", class_="date")
+        if date_tag and date_tag.has_attr("data-unix"):
+            try:
+                return dt.datetime.fromtimestamp(
+                    int(date_tag["data-unix"]) / 1000,
+                    tz=dt.UTC,
+                ).strftime("%Y-%m-%d %H:%M:%S")
+            except (TypeError, ValueError, OSError, OverflowError) as e:
+                raise MapParseError("Failed to extract map date from map stats page.") from e
+
+        page_text = soup.get_text(" ", strip=True)
+        date_match = re.search(
+            r"\b(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}:\d{2}))?\b",
+            page_text,
+        )
+        if date_match:
+            if date_match.group(2):
+                return f"{date_match.group(1)} {date_match.group(2)}:00"
+            return date_match.group(1)
+
+        raise MapParseError("Failed to extract map date from map stats page.")
+
+    def _extract_map_team_scores(self, soup) -> tuple[tuple[str, int], tuple[str, int]]:
+        """Extracts the two map teams and scores in page order."""
+        match_box = soup.find("div", class_="match-info-box")
+        if not match_box:
+            raise MapParseError("Failed to extract map scores from map stats page.")
+
+        team_names = self._extract_distinct_team_names(soup)
+        if len(team_names) < 2:
+            raise MapParseError("Failed to extract map teams from map stats page.")
+
+        tokens = [text.strip() for text in match_box.stripped_strings if text.strip()]
+        scores: list[tuple[str, int]] = []
+        for team_name in team_names[:2]:
+            score = self._find_score_after_team(tokens, team_name)
+            scores.append((team_name, score))
+
+        return scores[0], scores[1]
+
+    def _extract_distinct_team_names(self, soup) -> list[str]:
+        """Returns distinct team names from visible stat tables in page order."""
+        team_names: list[str] = []
+        for table in self._iter_visible_stat_tables(soup):
+            team_name = self._extract_team_name(table)
+            if team_name != "Unknown" and team_name not in team_names:
+                team_names.append(team_name)
+        return team_names
+
+    def _find_score_after_team(self, tokens: list[str], team_name: str) -> int:
+        """Finds the first standalone integer token after a team name token."""
+        try:
+            start_index = tokens.index(team_name)
+        except ValueError as e:
+            raise MapParseError("Failed to extract map scores from map stats page.") from e
+
+        for token in tokens[start_index + 1 :]:
+            if re.fullmatch(r"\d+", token):
+                return int(token)
+            if token in ("Breakdown", "Team rating 2.1", "First kills", "Clutches won"):
+                break
+
+        raise MapParseError("Failed to extract map scores from map stats page.")
+
+    def _extract_map_order(self, *, soup, map_url: str, map_id_value: int) -> int:
+        """Infers map order from mapstats links when discovery did not provide it."""
+        map_ids: list[int] = []
+        for link in soup.select('a[href*="/stats/matches/mapstatsid/"]'):
+            href = link.get("href", "")
+            map_id = self._extract_map_id_from_url(href)
+            if map_id is not None and map_id not in map_ids:
+                map_ids.append(map_id)
+
+        if map_id_value in map_ids:
+            return map_ids.index(map_id_value) + 1
+
+        map_id_from_url = self._extract_map_id_from_url(map_url)
+        if map_id_from_url and map_id_from_url in map_ids:
+            return map_ids.index(map_id_from_url) + 1
+
+        raise MapParseError("Failed to extract map order from map stats page.")
+
+    def _extract_map_id_from_url(self, url: str) -> int | None:
+        match = re.search(r"/mapstatsid/(\d+)", url)
+        if match:
+            return int(match.group(1))
+        return None
 
     def _build_column_map(self, table) -> dict[str, int]:
         """Builds a normalized header->index map from table headers."""

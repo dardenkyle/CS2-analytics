@@ -13,10 +13,10 @@ class _FakeMapQueue:
 
     def fetch_with_match_context(
         self, _limit: int = 25
-    ) -> list[tuple[int, str, int | None]]:
+    ) -> list[tuple[int, str, int | None, int | None]]:
         return [
-            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 101),
-            (2, "https://www.hltv.org/stats/matches/mapstatsid/2/test", 102),
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 101, 1),
+            (2, "https://www.hltv.org/stats/matches/mapstatsid/2/test", 102, 2),
         ]
 
     def mark_as_failed(self, item_id: int, reason: str) -> None:
@@ -57,6 +57,7 @@ class _TrackingStageService:
     def __init__(self) -> None:
         self.scrapers: list[object] = []
         self.match_ids: list[int | None] = []
+        self.map_orders: list[int | None] = []
 
     def process_item(
         self,
@@ -65,9 +66,11 @@ class _TrackingStageService:
         *,
         scraper: object,
         match_id: int | None = None,
+        map_order: int | None = None,
     ) -> StageItemResult:
         self.scrapers.append(scraper)
         self.match_ids.append(match_id)
+        self.map_orders.append(map_order)
         if len(self.scrapers) == 1:
             raise SessionScrapeError(f"Failed to fetch map stats page: {map_url}")
         return StageItemResult.processed()
@@ -77,20 +80,34 @@ class _FailOnceThenSucceedParser:
     def __init__(self) -> None:
         self.calls = 0
 
-    def parse_map(
-        self, _soup: object, _map_url: str, _map_id: int
-    ) -> list[object]:
+    def parse_map_details(
+        self,
+        _soup: object,
+        _map_url: str,
+        _map_id: int,
+        *,
+        match_id: int | None,
+        map_order: int | None,
+    ) -> object:
+        _ = (match_id, map_order)
         self.calls += 1
         if self.calls == 1:
             raise MapParseError("No player kills logged.")
-        return [object()]
+        return type("ParsedMap", (), {"map": object(), "players": [object()]})()
 
 
 class _SuccessfulParser:
-    def parse_map(
-        self, _soup: object, _map_url: str, _map_id: int
-    ) -> list[object]:
-        return [object()]
+    def parse_map_details(
+        self,
+        _soup: object,
+        _map_url: str,
+        _map_id: int,
+        *,
+        match_id: int | None,
+        map_order: int | None,
+    ) -> object:
+        _ = (match_id, map_order)
+        return type("ParsedMap", (), {"map": object(), "players": [object()]})()
 
 
 def _build_map_controller(
@@ -101,6 +118,11 @@ def _build_map_controller(
     monkeypatch.setattr(map_module, "MapScraper", scraper_cls)
     monkeypatch.setattr(map_module, "MapParser", parser_cls)
     monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapQueue)
+    monkeypatch.setattr(
+        map_module,
+        "store_maps",
+        lambda _maps: None,
+    )
     monkeypatch.setattr(
         map_module,
         "store_players",
@@ -114,10 +136,16 @@ def test_map_controller_continues_after_item_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stored_players: list[list[object]] = []
+    stored_maps: list[list[object]] = []
     info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     monkeypatch.setattr(map_module, "MapScraper", _SuccessfulScraper)
     monkeypatch.setattr(map_module, "MapParser", _FailOnceThenSucceedParser)
     monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapQueue)
+    monkeypatch.setattr(
+        map_module,
+        "store_maps",
+        lambda maps: stored_maps.append(maps),
+    )
     monkeypatch.setattr(
         map_module,
         "store_players",
@@ -136,6 +164,7 @@ def test_map_controller_continues_after_item_failure(
     assert controller.state.failed == [(1, "No player kills logged.")]
     assert controller.state.processed == [2]
     assert controller.state.processing == [1, 2]
+    assert len(stored_maps) == 1
     assert len(stored_players) == 1
     assert any(
         call_args[0]
@@ -156,6 +185,12 @@ def test_map_controller_retries_retryable_error_before_succeeding(
         _SuccessfulParser,
     )
     stored_players: list[list[object]] = []
+    stored_maps: list[list[object]] = []
+    monkeypatch.setattr(
+        controller.stage_service,
+        "store_maps",
+        lambda maps: stored_maps.append(maps),
+    )
     monkeypatch.setattr(
         controller.stage_service,
         "store_players",
@@ -175,7 +210,7 @@ def test_map_controller_retries_retryable_error_before_succeeding(
         controller.state,
         "fetch_with_match_context",
         lambda _limit=25: [
-            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123, 1)
         ],
     )
 
@@ -183,6 +218,7 @@ def test_map_controller_retries_retryable_error_before_succeeding(
 
     assert controller.state.failed == []
     assert controller.state.processed == [1]
+    assert len(stored_maps) == 1
     assert len(stored_players) == 1
     assert len(reset_calls) == 1
     assert any(
@@ -214,7 +250,7 @@ def test_map_controller_passes_reset_scraper_to_stage_service(
         controller.state,
         "fetch_with_match_context",
         lambda _limit=25: [
-            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123, 1)
         ],
     )
 
@@ -222,6 +258,7 @@ def test_map_controller_passes_reset_scraper_to_stage_service(
 
     assert stage_service.scrapers == [first_scraper, reset_scraper]
     assert stage_service.match_ids == [123, 123]
+    assert stage_service.map_orders == [1, 1]
     assert controller.state.failed == []
     assert controller.state.processed == []
 
@@ -262,7 +299,7 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
         controller.state,
         "fetch_with_match_context",
         lambda _limit=25: [
-            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123)
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123, 1)
         ],
     )
 
