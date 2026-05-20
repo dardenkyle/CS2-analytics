@@ -3,12 +3,15 @@
 This document is split into two parts:
 
 - Current schema: what exists today in `cs2_analytics/storage/schema.sql`
-- Planned schema direction: candidates for active-stage cleanup, dbt, and later orchestration
+- Planned schema direction: candidates for follow-up schema cleanup, dbt, and
+  later orchestration
 
 Current intent:
 
 - `cs2_analytics/storage/schema.sql` remains the source of truth for the current implementation.
-- The ingestion-state lifecycle schema is implemented. The next cleanup should keep those tables stable while active-stage responsibilities move into services.
+- The ingestion-state lifecycle schema is implemented.
+- Active match, map, and demo controllers delegate per-item workflow to stage
+  services; the next major architecture phase is dbt.
 
 ---
 
@@ -33,8 +36,11 @@ Treat this as the working contract for the current codebase.
 
 - `map_id` (PK)
 - `match_id` (FK -> `matches.match_id`)
-- `map_order`, `map_name`, `team1_score`, `team2_score`, `winner`, `date`
+- `map_url` (unique)
+- `map_order`, `map_name`, `team1_score`, `team2_score`, `map_winner`, `date`
+- `inserted_at`, `last_scraped_at`, `last_updated_at`
 - `data_complete`
+- Unique constraint: `match_id`, `map_order`
 
 #### `players`
 
@@ -118,6 +124,7 @@ They describe:
 - Current role in code: tracks discovered map lifecycle state
 - Primary key: `map_id`
 - URL field: `map_url`
+- Parent context fields: `match_id`, `map_order`
 - Lifecycle fields: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, `last_updated_at`
 
 #### `demo_ingestion_state`
@@ -191,7 +198,8 @@ Field selection guidance:
 
 ## Planned Schema Direction
 
-The following items are planned, but they should follow active-stage cleanup.
+The following items are planned, but they should follow the completed active
+stage-service and dbt-readiness cleanup.
 
 ### Completed lifecycle-state cleanup
 

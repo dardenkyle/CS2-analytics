@@ -46,6 +46,12 @@ The tables use table-specific URL fields for readability:
 - `map_url`
 - `demo_url`
 
+`map_ingestion_state` also stores parent map context discovered from match
+pages:
+
+- `match_id`
+- `map_order`
+
 ## Status Values
 
 The same status model is used across match, map, and demo ingestion state:
@@ -77,6 +83,10 @@ Each ingestion state table includes:
 - `source`
 - `priority`
 - `last_updated_at`
+
+`map_ingestion_state` additionally includes `match_id` and `map_order` so map
+processing can persist relational `maps` rows without parsing follow-up link
+strings from `matches`.
 
 Do not include `inserted_at` on these tables. `first_seen_at` is the row's
 creation/discovery timestamp, and `last_updated_at` captures later meaningful

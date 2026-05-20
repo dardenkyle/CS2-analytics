@@ -12,7 +12,7 @@ The schema uses PostgreSQL ingestion-state tables directly, and the active match
 - `MatchController`, `MapController`, and `DemoController` own batch-level concerns
 - stage services own per-item fetch, parse, persist, and lifecycle outcome work
 - demo processing remains deferred even though it now has a placeholder stage service boundary
-- dbt and Airflow remain later phases
+- dbt is the next planned phase; Airflow remains later
 
 ## Current Flow
 
@@ -36,7 +36,7 @@ The intended design is:
 - stage-specific processing reads from those lifecycle rows
 - per-item stage workflow is handled by dedicated stage services
 - controllers stay thin and focus on batch-level concerns
-- dbt is added only after ingestion semantics and stage boundaries are stable
+- dbt is added after ingestion semantics and stage boundaries are stable
 - Airflow is added only after dbt exists and the stage boundaries are clean
 
 ## Stage Responsibilities
@@ -162,14 +162,15 @@ Demo work stays separate because it introduces different operational concerns:
 
 The demo processing implementation should stay deferred until:
 
-- match/map lifecycle semantics are stable
-- downstream storage and transformation needs are clearer
+- the initial dbt transformation layer exists
+- downstream demo storage and transformation needs are clearer
 
 ## Recommended Implementation Sequence
 
 1. Keep the current `*_ingestion_state` tables stable.
 2. Keep controller/stage-service responsibilities clean as ingestion evolves.
-3. Implement dbt models after active stage boundaries are stable.
+3. Implement dbt models over the stable `matches`, `maps`, and `players`
+   parsed-source grains.
 4. Implement Airflow after dbt exists and the stage boundaries are clean.
 
 ## Rules

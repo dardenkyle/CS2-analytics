@@ -18,7 +18,7 @@ The current ingestion architecture uses PostgreSQL-backed ingestion-state tables
 ### Deferred / Later-Phase Work
 
 - Demo processing: demo download and parsing remain deferred, though `DemoStageService` preserves the stage boundary.
-- dbt transformation layer: dbt comes after ingestion/state semantics and active stage boundaries are stable.
+- dbt transformation layer: dbt is the next major architecture phase now that ingestion-state semantics, stage boundaries, and match/map/player grains are ready.
 - Airflow orchestration: Airflow comes after dbt and clean stage boundaries.
 
 ## Tech Stack
@@ -160,6 +160,8 @@ results discovery
 
 ## Data Insights & Usage (planned)
 
+- Current API surface includes a player-oriented read path for top players by
+  average rating.
 - View per-match player performance.
 - Compare teams' win rates on specific maps.
 - Identify key players in matchups.
@@ -174,7 +176,9 @@ Current architecture direction:
 
 - Phase 2 ingestion-state migration is complete.
 - Phase 3 controller thinning is complete.
-- The next major architecture phase is dbt, not more controller refactoring.
+- Phase 3.5 dbt readiness is complete for the active `matches`, `maps`, and
+  `players` grains.
+- The next major architecture phase is dbt scaffolding and staging models.
 - Demo pipeline implementation remains deferred.
 - Airflow comes after dbt and clean transformation boundaries.
 

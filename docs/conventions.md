@@ -54,7 +54,8 @@ The top-level pipeline is intentionally thin and is not the primary architectura
 
 ## Storage
 
-- Match/player writes belong in storage modules (`match_storage.py`, `player_storage.py`)
+- Match/map/player writes belong in storage modules (`match_storage.py`,
+  `map_storage.py`, `player_storage.py`)
 - Shared DB connection/cursor concerns belong in `storage/database.py`
 - Structured data stays in relational tables
 - Raise typed storage/database exceptions instead of logging terminal errors
