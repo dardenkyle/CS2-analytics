@@ -1,0 +1,71 @@
+name: Documentation Task
+description: Request a docs-only change or documentation maintenance update.
+title: "[Docs]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for docs-only changes. If code behavior must change too, use Implementation Task.
+  - type: input
+    id: phase
+    attributes:
+      label: Related roadmap phase
+      description: Example: Phase 3.6, Phase 3.75, Phase 4, Deferred Work.
+      placeholder: "Phase 3.6"
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What documentation should be added, changed, or clarified?
+      placeholder: "Document..."
+    validations:
+      required: true
+  - type: textarea
+    id: docs_to_update
+    attributes:
+      label: Documents to update
+      description: List expected docs or explain how to discover the right docs.
+      placeholder: |
+        - README.md
+        - docs/backlog.md
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: Checklist-style conditions that must be true before the docs issue is done.
+      placeholder: |
+        - [ ] ...
+        - [ ] Links and roadmap phase references are accurate.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Explicitly name related code, schema, workflow, or architecture changes that should not be included.
+      placeholder: "Do not change code or schema."
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Manual checks for docs-only work. Tests are usually not required unless docs describe executable behavior.
+      placeholder: |
+        - Review links and headings.
+        - Docs-only; tests not required.
+    validations:
+      required: true
+  - type: textarea
+    id: follow_up
+    attributes:
+      label: Follow-up issues
+      description: Any implementation or decision issues that should be created after this docs change.
+      placeholder: "None."
+    validations:
+      required: true
