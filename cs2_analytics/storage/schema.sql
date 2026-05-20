@@ -1,34 +1,5 @@
--- Drop existing tables in correct dependency order
-DROP TABLE IF EXISTS demo_files CASCADE;
-
-DROP TABLE IF EXISTS demo_ingestion_state CASCADE;
-
-DROP TABLE IF EXISTS map_ingestion_state CASCADE;
-
-DROP TABLE IF EXISTS match_ingestion_state CASCADE;
-
-DROP TABLE IF EXISTS player_metrics CASCADE;
-
-DROP TABLE IF EXISTS player_transfers CASCADE;
-
-DROP TABLE IF EXISTS player_aliases CASCADE;
-
-DROP TABLE IF EXISTS player_team_history CASCADE;
-
-DROP TABLE IF EXISTS players CASCADE;
-
-DROP TABLE IF EXISTS maps CASCADE;
-
-DROP TABLE IF EXISTS matches CASCADE;
-
-DROP TABLE IF EXISTS teams CASCADE;
-
-DROP TABLE IF EXISTS player_info CASCADE;
-
-DROP TABLE IF EXISTS scrape_runs CASCADE;
-
--- ✅ Teams Table
-CREATE TABLE teams (
+-- Teams Table
+CREATE TABLE IF NOT EXISTS teams (
     team_id INT PRIMARY KEY,
     team_name TEXT NOT NULL,
     team_url TEXT NOT NULL,
@@ -39,23 +10,21 @@ CREATE TABLE teams (
     data_complete BOOLEAN
 );
 
--- ✅ Player Info Table (Previously `players`)
-CREATE TABLE player_info (
+-- Player Info Table (Previously `players`)
+CREATE TABLE IF NOT EXISTS player_info (
     player_id INT PRIMARY KEY,
     player_name TEXT NOT NULL,
     player_url TEXT NOT NULL,
-    team_id INT REFERENCES teams(team_id) ON DELETE
-    SET
-        NULL,
-        active BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        last_scraped_at TIMESTAMP,
-        last_updated_at TIMESTAMP,
-        data_complete BOOLEAN
+    team_id INT REFERENCES teams(team_id) ON DELETE SET NULL,
+    active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_scraped_at TIMESTAMP,
+    last_updated_at TIMESTAMP,
+    data_complete BOOLEAN
 );
 
--- ✅ Matches Table
-CREATE TABLE matches (
+-- Matches Table
+CREATE TABLE IF NOT EXISTS matches (
     match_id INT PRIMARY KEY,
     match_url TEXT UNIQUE NOT NULL,
     map_links TEXT,
@@ -78,8 +47,8 @@ CREATE TABLE matches (
     data_complete BOOLEAN
 );
 
--- ✅ Maps Table (Previously `maps_played`)
-CREATE TABLE maps (
+-- Maps Table (Previously `maps_played`)
+CREATE TABLE IF NOT EXISTS maps (
     map_id INT PRIMARY KEY,
     match_id INT NOT NULL REFERENCES matches(match_id) ON DELETE CASCADE,
     map_url TEXT UNIQUE NOT NULL,
@@ -99,8 +68,8 @@ CREATE TABLE maps (
     UNIQUE (match_id, map_order)
 );
 
--- ✅ Players Table (Previously `players_stats`)
-CREATE TABLE players (
+-- Players Table (Previously `players_stats`)
+CREATE TABLE IF NOT EXISTS players (
     map_id INT NOT NULL REFERENCES maps(map_id) ON DELETE CASCADE,
     player_id INT,
     player_name TEXT NOT NULL,
@@ -130,48 +99,42 @@ CREATE TABLE players (
     PRIMARY KEY (map_id, player_id)
 );
 
--- ✅ Player Team History Table (Tracks past teams)
-CREATE TABLE player_team_history (
+-- Player Team History Table (Tracks past teams)
+CREATE TABLE IF NOT EXISTS player_team_history (
     id SERIAL PRIMARY KEY,
     player_id INT REFERENCES player_info(player_id) ON DELETE CASCADE,
     player_name TEXT NOT NULL,
-    team_id INT REFERENCES teams(team_id) ON DELETE
-    SET
-        NULL,
-        team_name TEXT NOT NULL,
-        start_date DATE NOT NULL,
-        end_date DATE,
-        last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(player_id, team_id, start_date)
+    team_id INT REFERENCES teams(team_id) ON DELETE SET NULL,
+    team_name TEXT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(player_id, team_id, start_date)
 );
 
--- ✅ Player Aliases Table (Tracks name changes)
-CREATE TABLE player_aliases (
+-- Player Aliases Table (Tracks name changes)
+CREATE TABLE IF NOT EXISTS player_aliases (
     id SERIAL PRIMARY KEY,
     player_id INT REFERENCES player_info(player_id) ON DELETE CASCADE,
     alias TEXT NOT NULL,
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ✅ Player Transfers Table (Tracks when players move between teams)
-CREATE TABLE player_transfers (
+-- Player Transfers Table (Tracks when players move between teams)
+CREATE TABLE IF NOT EXISTS player_transfers (
     transfer_id SERIAL PRIMARY KEY,
     player_id INT REFERENCES player_info(player_id) ON DELETE CASCADE,
     player_name TEXT NOT NULL,
-    old_team_id INT REFERENCES teams(team_id) ON DELETE
-    SET
-        NULL,
-        old_team_name TEXT NOT NULL,
-        new_team_id INT REFERENCES teams(team_id) ON DELETE
-    SET
-        NULL,
-        new_team_name TEXT NOT NULL,
-        transfer_date DATE NOT NULL
+    old_team_id INT REFERENCES teams(team_id) ON DELETE SET NULL,
+    old_team_name TEXT NOT NULL,
+    new_team_id INT REFERENCES teams(team_id) ON DELETE SET NULL,
+    new_team_name TEXT NOT NULL,
+    transfer_date DATE NOT NULL
 );
 
 -- Match Ingestion State Table
 -- Tracks discovery and processing lifecycle for matches.
-CREATE TABLE match_ingestion_state (
+CREATE TABLE IF NOT EXISTS match_ingestion_state (
     match_id INT PRIMARY KEY,
     match_url TEXT NOT NULL,
     status TEXT CHECK (
@@ -191,7 +154,7 @@ CREATE TABLE match_ingestion_state (
 
 -- Map Ingestion State Table
 -- Tracks discovery and processing lifecycle for maps.
-CREATE TABLE map_ingestion_state (
+CREATE TABLE IF NOT EXISTS map_ingestion_state (
     map_id INT PRIMARY KEY,
     map_url TEXT NOT NULL,
     match_id INT REFERENCES matches(match_id) ON DELETE CASCADE,
@@ -215,7 +178,7 @@ CREATE TABLE map_ingestion_state (
 );
 
 -- Demo Ingestion State Table
-CREATE TABLE demo_ingestion_state (
+CREATE TABLE IF NOT EXISTS demo_ingestion_state (
     demo_id TEXT PRIMARY KEY,
     demo_url TEXT NOT NULL,
     status TEXT CHECK (
@@ -234,7 +197,7 @@ CREATE TABLE demo_ingestion_state (
 );
 
 -- This table is used to track the status of demo files.
-CREATE TABLE demo_files (
+CREATE TABLE IF NOT EXISTS demo_files (
     map_id INT PRIMARY KEY REFERENCES maps(map_id) ON DELETE CASCADE,
     demo_url TEXT NOT NULL,
     local_path TEXT,
@@ -245,9 +208,9 @@ CREATE TABLE demo_files (
     last_processed_at TIMESTAMP
 );
 
--- ✅ Scraper history table
+-- Scraper history table
 -- This table is used to track the history of scrape runs.
-CREATE TABLE scrape_runs (
+CREATE TABLE IF NOT EXISTS scrape_runs (
     run_id SERIAL PRIMARY KEY,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ended_at TIMESTAMP,
@@ -257,9 +220,9 @@ CREATE TABLE scrape_runs (
     notes TEXT
 );
 
--- ✅ Player Metrics Table
+-- Player Metrics Table
 -- This table is used to store player performance metrics.
-CREATE TABLE player_metrics (
+CREATE TABLE IF NOT EXISTS player_metrics (
     player_id INT,
     map_name TEXT,
     average_kills FLOAT,
@@ -269,18 +232,3 @@ CREATE TABLE player_metrics (
     last_updated_at TIMESTAMP,
     PRIMARY KEY (player_id, map_name)
 );
-
--- ✅ Indexes for Performance Optimization
-CREATE INDEX idx_matches_date ON matches (date);
-
-CREATE INDEX idx_maps_match_id ON maps (match_id);
-
-CREATE INDEX idx_players_map_id ON players (map_id);
-
-CREATE INDEX idx_players_player_id ON players(player_id);
-
-CREATE INDEX idx_player_info_team_id ON player_info (team_id);
-
-CREATE INDEX idx_player_transfers_player_id ON player_transfers (player_id);
-
-CREATE INDEX idx_player_team_history_player_id ON player_team_history (player_id);

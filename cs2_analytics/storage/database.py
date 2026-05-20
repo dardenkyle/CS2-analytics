@@ -1,4 +1,4 @@
-"""Handles all database interactions, including connection management and data storage."""
+"""Handles database connections and cursor lifecycle."""
 
 from contextlib import contextmanager
 
@@ -31,7 +31,7 @@ def _initialize_db_pool() -> psycopg2.pool.SimpleConnectionPool | None:
             host=DB_HOST,
             port=DB_PORT,
         )
-        logger.info("✅ PostgreSQL connection pool initialized successfully.")
+        logger.info("PostgreSQL connection pool initialized successfully.")
     except (psycopg2.pool.PoolError, psycopg2.Error) as e:
         DB_POOL = None
         raise DatabaseConnectionError(
@@ -42,24 +42,19 @@ def _initialize_db_pool() -> psycopg2.pool.SimpleConnectionPool | None:
 
 
 class Database:
-    """Handles all database interactions, including connection management and data storage."""
-
-    _indexes_ensured = False
+    """Handles database connection pooling and cursor management."""
 
     def __init__(self):
-        """Initialize database connection."""
+        """Initialize the database connection pool."""
         self.pool = _initialize_db_pool()
         if self.pool is None:
             raise DatabaseConnectionError("Database connection pool is not available.")
-
-        if not Database._indexes_ensured:
-            Database._indexes_ensured = self.create_indexes()
 
     def get_connection(self):
         """Retrieves a database connection from the pool."""
         try:
             conn = self.pool.getconn()
-            logger.debug("✅ Retrieved database connection from pool.")
+            logger.debug("Retrieved database connection from pool.")
             return conn
         except (psycopg2.pool.PoolError, psycopg2.Error) as e:
             raise DatabaseConnectionError(
@@ -70,7 +65,7 @@ class Database:
         """Releases a database connection back to the pool."""
         if self.pool and conn:
             self.pool.putconn(conn)
-            logger.debug("🔄 Database connection released back to the pool.")
+            logger.debug("Database connection released back to the pool.")
 
     def close_db_pool(self):
         """Closes all connections in the database pool."""
@@ -79,11 +74,11 @@ class Database:
         if self.pool:
             self.pool.closeall()
             DB_POOL = None
-            logger.info("❌ Database connection pool closed.")
+            logger.info("Database connection pool closed.")
 
     @contextmanager
     def get_cursor(self):
-        """Yields a DB cursor and handles commit/rollback and connection release."""
+        """Yield a DB cursor and handle commit, rollback, and connection release."""
         conn = self.get_connection()
         if conn is None:
             raise DatabaseConnectionError(
@@ -101,7 +96,7 @@ class Database:
             self.release_connection(conn)
 
     def create_indexes(self) -> bool:
-        """Ensures necessary indexes exist for optimized queries."""
+        """Create schema indexes during explicit database setup."""
         conn = self.get_connection()
         if conn is None:
             return False
@@ -110,27 +105,30 @@ class Database:
             cur = conn.cursor()
             cur.execute(
                 """
-                ALTER TABLE players ADD COLUMN IF NOT EXISTS traded_deaths INT;
-                ALTER TABLE players ADD COLUMN IF NOT EXISTS opening_kills INT;
-                ALTER TABLE players ADD COLUMN IF NOT EXISTS opening_deaths INT;
-                ALTER TABLE players ADD COLUMN IF NOT EXISTS multi_kills INT;
-                ALTER TABLE players ADD COLUMN IF NOT EXISTS clutches_won INT;
-                ALTER TABLE players ADD COLUMN IF NOT EXISTS round_swing FLOAT;
-
                 CREATE INDEX IF NOT EXISTS idx_matches_date ON matches (date);
+                CREATE INDEX IF NOT EXISTS idx_maps_match_id ON maps (match_id);
                 CREATE INDEX IF NOT EXISTS idx_players_map_id ON players (map_id);
+                CREATE INDEX IF NOT EXISTS idx_players_player_id ON players (player_id);
                 CREATE INDEX IF NOT EXISTS idx_players_team_name ON players (team_name);
                 CREATE INDEX IF NOT EXISTS idx_player_stats ON players (player_id, map_id);
-            """
+                CREATE INDEX IF NOT EXISTS idx_player_info_team_id ON player_info (team_id);
+                CREATE INDEX IF NOT EXISTS idx_player_transfers_player_id
+                    ON player_transfers (player_id);
+                CREATE INDEX IF NOT EXISTS idx_player_team_history_player_id
+                    ON player_team_history (player_id);
+                CREATE INDEX IF NOT EXISTS idx_match_ingestion_state_pending
+                    ON match_ingestion_state (status, priority DESC, first_seen_at);
+                CREATE INDEX IF NOT EXISTS idx_map_ingestion_state_pending
+                    ON map_ingestion_state (status, priority DESC, first_seen_at);
+                CREATE INDEX IF NOT EXISTS idx_demo_ingestion_state_pending
+                    ON demo_ingestion_state (status, priority DESC, first_seen_at);
+                """
             )
             conn.commit()
-            logger.info("✅ Database indexes ensured.")
+            logger.info("Database indexes created or verified.")
             return True
 
         except Exception as e:
             raise DatabaseOperationError("Failed to create database indexes.") from e
         finally:
             self.release_connection(conn)
-
-
-
