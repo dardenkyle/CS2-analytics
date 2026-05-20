@@ -1,4 +1,19 @@
+import importlib
+import sys
+
 from cs2_analytics.storage import database as database_module
+
+IMPORT_SAFETY_MODULES = (
+    "cs2_analytics.storage.db_instance",
+    "cs2_analytics.storage.match_storage",
+    "cs2_analytics.storage.map_storage",
+    "cs2_analytics.storage.player_storage",
+    "cs2_analytics.storage.demo_storage",
+    "cs2_analytics.ingestion_state.base_ingestion_state",
+    "cs2_analytics.ingestion_state.match_ingestion_state",
+    "cs2_analytics.ingestion_state.map_ingestion_state",
+    "cs2_analytics.ingestion_state.demo_ingestion_state",
+)
 
 
 class _RecordingCursor:
@@ -31,6 +46,31 @@ class _RecordingPool:
 
     def putconn(self, conn: _RecordingConnection) -> None:
         self.released = True
+
+
+def _clear_import_safety_modules(monkeypatch) -> None:
+    for module_name in IMPORT_SAFETY_MODULES:
+        monkeypatch.delitem(sys.modules, module_name, raising=False)
+
+
+def test_importing_storage_and_state_modules_does_not_create_database(
+    monkeypatch,
+) -> None:
+    created_database_instances = 0
+
+    class _ForbiddenDatabase:
+        def __init__(self) -> None:
+            nonlocal created_database_instances
+            created_database_instances += 1
+            raise AssertionError("Database was created during import")
+
+    monkeypatch.setattr(database_module, "Database", _ForbiddenDatabase)
+    _clear_import_safety_modules(monkeypatch)
+
+    for module_name in IMPORT_SAFETY_MODULES:
+        importlib.import_module(module_name)
+
+    assert created_database_instances == 0
 
 
 def test_database_init_does_not_create_indexes(monkeypatch) -> None:

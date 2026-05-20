@@ -48,7 +48,7 @@ class _RecordingQueueDb:
 def test_match_queue_wraps_db_failures_in_typed_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(base_state_module, "db", _FailingQueueDb())
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _FailingQueueDb())
     queue = MatchIngestionState()
 
     with pytest.raises(
@@ -91,7 +91,7 @@ def test_match_ingestion_state_refreshes_existing_rows_on_rediscovery(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingQueueDb(cursor))
     state = MatchIngestionState()
 
     state.queue(1, "https://www.hltv.org/matches/1/test", source="results")
@@ -116,7 +116,7 @@ def test_match_ingestion_state_marks_failures_with_lifecycle_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingQueueDb(cursor))
     state = MatchIngestionState()
 
     state.mark_as_failed(1, "boom")
@@ -134,7 +134,7 @@ def test_map_ingestion_state_queues_parent_match_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(base_state_module, "db", _RecordingQueueDb(cursor))
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingQueueDb(cursor))
     state = MapIngestionState()
 
     state.queue(

@@ -1,6 +1,6 @@
 from cs2_analytics.exceptions import MapStorageError
 from cs2_analytics.models.map import Map
-from cs2_analytics.storage.db_instance import db
+from cs2_analytics.storage.db_instance import get_db
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -36,6 +36,7 @@ def store_maps(maps: list[Map]) -> None:
     """
 
     try:
+        db = get_db()
         with db.get_cursor() as cur:
             for map_obj in maps:
                 cur.execute(

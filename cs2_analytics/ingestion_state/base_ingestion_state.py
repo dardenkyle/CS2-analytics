@@ -3,7 +3,7 @@
 import datetime as dt
 
 from cs2_analytics.exceptions import QueueError
-from cs2_analytics.storage.db_instance import db
+from cs2_analytics.storage.db_instance import get_db
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -29,7 +29,11 @@ class BaseIngestionState:
         self.id_field = id_field
         self.url_field = url_field
         self.error_cls = error_cls
-        self.db = db
+
+    @property
+    def db(self):
+        """Return the shared database instance when an operation needs it."""
+        return get_db()
 
     def fetch(self, limit: int = 25) -> list[tuple[int | str, str]]:
         """Fetches pending items from the ingestion state table."""

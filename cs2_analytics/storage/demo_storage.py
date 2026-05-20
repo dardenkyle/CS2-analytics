@@ -1,7 +1,7 @@
 import datetime as dt
 
 from cs2_analytics.exceptions import DemoStorageError
-from cs2_analytics.storage.db_instance import db
+from cs2_analytics.storage.db_instance import get_db
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -59,6 +59,7 @@ def store_demo_file(
     }
 
     try:
+        db = get_db()
         with db.get_cursor() as cur:
             cur.execute(query, values)
             logger.info("📥 Stored demo file for map_id: %s", map_id)

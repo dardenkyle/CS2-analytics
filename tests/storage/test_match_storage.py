@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from cs2_analytics.exceptions import MatchStorageError
 from cs2_analytics.models.match import Match
 from cs2_analytics.storage import match_storage as match_storage_module
 
@@ -42,6 +43,11 @@ class _FakeDb:
         self.released = True
 
 
+class _ConnectionFailingDb:
+    def get_connection(self) -> None:
+        raise RuntimeError("connection unavailable")
+
+
 def _match() -> Match:
     now = datetime.now(UTC)
     return Match(
@@ -76,7 +82,7 @@ def test_store_matches_refreshes_trusted_fields_on_conflict(
     cursor = _RecordingCursor()
     conn = _RecordingConnection(cursor)
     fake_db = _FakeDb(conn)
-    monkeypatch.setattr(match_storage_module, "db", fake_db)
+    monkeypatch.setattr(match_storage_module, "get_db", lambda: fake_db)
 
     match_storage_module.store_matches([_match()])
 
@@ -108,3 +114,24 @@ def test_store_matches_refreshes_trusted_fields_on_conflict(
     assert conn.committed is True
     assert conn.rolled_back is False
     assert fake_db.released is True
+
+
+def test_store_matches_wraps_database_factory_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def raise_database_error():
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(match_storage_module, "get_db", raise_database_error)
+
+    with pytest.raises(MatchStorageError, match="Failed to store match records."):
+        match_storage_module.store_matches([_match()])
+
+
+def test_store_matches_wraps_connection_acquisition_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(match_storage_module, "get_db", lambda: _ConnectionFailingDb())
+
+    with pytest.raises(MatchStorageError, match="Failed to store match records."):
+        match_storage_module.store_matches([_match()])

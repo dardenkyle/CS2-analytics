@@ -58,7 +58,7 @@ def _conflict_update_clause(query: str) -> str:
 
 def test_store_maps_writes_active_map_contract(monkeypatch: pytest.MonkeyPatch) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(map_storage_module, "db", _FakeDb(cursor))
+    monkeypatch.setattr(map_storage_module, "get_db", lambda: _FakeDb(cursor))
 
     map_storage_module.store_maps([_map()])
 
@@ -77,7 +77,7 @@ def test_store_maps_refreshes_trusted_fields_without_replacing_inserted_at(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(map_storage_module, "db", _FakeDb(cursor))
+    monkeypatch.setattr(map_storage_module, "get_db", lambda: _FakeDb(cursor))
 
     map_storage_module.store_maps([_map()])
 
@@ -104,7 +104,19 @@ def test_store_maps_refreshes_trusted_fields_without_replacing_inserted_at(
 
 def test_store_maps_wraps_database_failures(monkeypatch: pytest.MonkeyPatch) -> None:
     cursor = _RecordingCursor(should_fail=True)
-    monkeypatch.setattr(map_storage_module, "db", _FakeDb(cursor))
+    monkeypatch.setattr(map_storage_module, "get_db", lambda: _FakeDb(cursor))
+
+    with pytest.raises(MapStorageError, match="Failed to store map records."):
+        map_storage_module.store_maps([_map()])
+
+
+def test_store_maps_wraps_database_factory_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def raise_database_error():
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(map_storage_module, "get_db", raise_database_error)
 
     with pytest.raises(MapStorageError, match="Failed to store map records."):
         map_storage_module.store_maps([_map()])

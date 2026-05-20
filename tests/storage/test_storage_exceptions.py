@@ -43,7 +43,7 @@ def test_store_matches_wraps_database_failures(
 ) -> None:
     conn = _FailingConnection()
     fake_db = _FakeDb(conn)
-    monkeypatch.setattr(match_storage_module, "db", fake_db)
+    monkeypatch.setattr(match_storage_module, "get_db", lambda: fake_db)
     now = datetime.now(UTC)
 
     match = Match(

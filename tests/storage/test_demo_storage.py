@@ -1,6 +1,9 @@
 from datetime import UTC
 from contextlib import contextmanager
 
+import pytest
+
+from cs2_analytics.exceptions import DemoStorageError
 from cs2_analytics.storage import demo_storage as demo_storage_module
 
 
@@ -29,7 +32,7 @@ def test_store_demo_file_relies_on_get_cursor_for_commit(
     monkeypatch,
 ) -> None:
     fake_db = _CursorOnlyDb()
-    monkeypatch.setattr(demo_storage_module, "db", fake_db)
+    monkeypatch.setattr(demo_storage_module, "get_db", lambda: fake_db)
 
     demo_storage_module.store_demo_file(
         map_id=123,
@@ -44,3 +47,18 @@ def test_store_demo_file_relies_on_get_cursor_for_commit(
     assert fake_db.cursor.values["demo_url"] == "https://www.hltv.org/download/demo/123"
     assert fake_db.cursor.values["last_inserted_at"].tzinfo is UTC
     assert fake_db.cursor.values["last_processed_at"].tzinfo is UTC
+
+
+def test_store_demo_file_wraps_database_factory_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def raise_database_error():
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(demo_storage_module, "get_db", raise_database_error)
+
+    with pytest.raises(DemoStorageError, match="Failed to store demo file."):
+        demo_storage_module.store_demo_file(
+            map_id=123,
+            demo_url="https://www.hltv.org/download/demo/123",
+        )
