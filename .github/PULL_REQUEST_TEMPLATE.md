@@ -1,6 +1,6 @@
 ## Summary
 
--
+<!-- Briefly describe what changed and why. -->
 
 ## Related Issue
 
@@ -8,13 +8,15 @@ Closes #
 
 ## Scope
 
--
+<!-- List the files, modules, docs, or behavior intentionally changed. -->
 
 ## Out of Scope
 
--
+<!-- List related work intentionally excluded from this PR. -->
 
 ## Risk Level
+
+Select exactly one:
 
 - [ ] Low
 - [ ] Medium
@@ -22,7 +24,7 @@ Closes #
 
 Reason:
 
--
+<!-- Explain why this risk level fits. -->
 
 ## Architecture And Roadmap Check
 
@@ -43,18 +45,18 @@ Reason:
 
 Reason:
 
--
+<!-- If docs were not needed, explain why. -->
 
 ## Verification
 
 Commands run:
 
--
+<!-- List commands or manual checks performed. -->
 
 Results:
 
--
+<!-- Summarize the result of each command or check. -->
 
 ## Review Notes
 
--
+<!-- Call out reviewer focus areas, decisions, or known follow-ups. -->
