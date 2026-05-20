@@ -1,4 +1,4 @@
-"""Controller for scraping and queuing match result links."""
+"""Controller for scraping and recording match result links."""
 
 import time
 
@@ -20,7 +20,7 @@ class ResultsController:
         self.scraper = ResultsScraper()
 
     def run(self, max_matches: int = 50) -> None:
-        """Scrapes result pages and queues match URLs for downstream stages."""
+        """Scrapes result pages and records match URLs for downstream stages."""
         logger.info("Running ResultsController with max_matches=%d", max_matches)
 
         max_attempts = 3

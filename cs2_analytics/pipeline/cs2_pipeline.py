@@ -16,7 +16,7 @@ class CS2AnalyticsPipeline:
     def run(self) -> None:
         self.logger.info("🚀 CS2 Analytics Pipeline started.")
 
-        # Step 1: Scrape results and queue match links
+        # Step 1: Scrape results and record match links
         self.logger.info("🔍 Scraping match results page...")
         self.results_controller.run()
 

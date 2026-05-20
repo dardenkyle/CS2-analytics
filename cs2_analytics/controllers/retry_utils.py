@@ -69,7 +69,7 @@ def reset_scraper(
 
 
 def mark_item_failed(
-    queue,
+    state,
     item_id: int | str,
     error: Exception,
     *,
@@ -80,5 +80,5 @@ def mark_item_failed(
     reason_limit: int = 500,
 ) -> None:
     """Marks an ingestion-state item failed, then logs the terminal controller exception."""
-    queue.mark_as_failed(item_id, str(error)[:reason_limit])
+    state.mark_as_failed(item_id, str(error)[:reason_limit])
     logger.exception(log_message, item_id, attempt, max_attempts, error)

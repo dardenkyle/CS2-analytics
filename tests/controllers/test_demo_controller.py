@@ -4,7 +4,7 @@ from cs2_analytics.controllers import demo_controller as demo_module
 from cs2_analytics.stage_services import StageItemResult
 
 
-class _FakeDemoQueue:
+class _FakeDemoState:
     def __init__(self) -> None:
         self.failed: list[tuple[str, str]] = []
         self.processed: list[str] = []
@@ -53,7 +53,7 @@ def test_demo_controller_delegates_per_item_work_and_continues(
     exception_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     monkeypatch.setattr(demo_module, "DemoScraper", _PassiveScraper)
     monkeypatch.setattr(demo_module, "DemoParser", _PassiveParser)
-    monkeypatch.setattr(demo_module, "DemoIngestionState", _FakeDemoQueue)
+    monkeypatch.setattr(demo_module, "DemoIngestionState", _FakeDemoState)
     monkeypatch.setattr(demo_module, "DemoStageService", _TrackingStageService)
     monkeypatch.setattr(demo_module, "store_demo_file", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(

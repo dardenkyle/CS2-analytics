@@ -5,7 +5,7 @@ from cs2_analytics.exceptions import MapParseError, SessionScrapeError
 from cs2_analytics.stage_services import StageItemResult
 
 
-class _FakeMapQueue:
+class _FakeMapState:
     def __init__(self) -> None:
         self.failed: list[tuple[int, str]] = []
         self.processed: list[int] = []
@@ -117,7 +117,7 @@ def _build_map_controller(
 ) -> map_module.MapController:
     monkeypatch.setattr(map_module, "MapScraper", scraper_cls)
     monkeypatch.setattr(map_module, "MapParser", parser_cls)
-    monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapQueue)
+    monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapState)
     monkeypatch.setattr(
         map_module,
         "store_maps",
@@ -140,7 +140,7 @@ def test_map_controller_continues_after_item_failure(
     info_calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
     monkeypatch.setattr(map_module, "MapScraper", _SuccessfulScraper)
     monkeypatch.setattr(map_module, "MapParser", _FailOnceThenSucceedParser)
-    monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapQueue)
+    monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapState)
     monkeypatch.setattr(
         map_module,
         "store_maps",

@@ -2,7 +2,7 @@
 
 import datetime as dt
 
-from cs2_analytics.exceptions import QueueError
+from cs2_analytics.exceptions import IngestionStateError
 from cs2_analytics.storage.db_instance import get_db
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -23,7 +23,7 @@ class BaseIngestionState:
         table_name: str,
         id_field: str,
         url_field: str,
-        error_cls: type[QueueError] = QueueError,
+        error_cls: type[IngestionStateError] = IngestionStateError,
     ):
         self.table_name = table_name
         self.id_field = id_field
@@ -79,10 +79,10 @@ class BaseIngestionState:
                 cur.execute(query, (id_value, url, source, priority, now, now, now))
         except Exception as e:
             raise self.error_cls(
-                f"Failed to queue ingestion state item in {self.table_name}."
+                f"Failed to record ingestion state item in {self.table_name}."
             ) from e
 
-    def queue_many(
+    def record_many(
         self,
         items: list[tuple[int | str, str]],
         source: str = "unknown",
@@ -118,11 +118,11 @@ class BaseIngestionState:
             with self.db.get_cursor() as cur:
                 cur.executemany(query, values)
                 logger.info(
-                    "Queued or refreshed %d items in %s", len(items), self.table_name
+                    "Recorded or refreshed %d items in %s", len(items), self.table_name
                 )
         except Exception as e:
             raise self.error_cls(
-                f"Failed to queue ingestion state items in {self.table_name}."
+                f"Failed to record ingestion state items in {self.table_name}."
             ) from e
 
     def mark_as_processing(self, id_value: int | str) -> None:

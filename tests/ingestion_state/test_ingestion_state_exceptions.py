@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import pytest
 
 from cs2_analytics import ingestion_state as ingestion_state_package
-from cs2_analytics.exceptions import MatchQueueError
+from cs2_analytics.exceptions import MatchIngestionStateError
 from cs2_analytics.ingestion_state import MatchIngestionState
 from cs2_analytics.ingestion_state import base_ingestion_state as base_state_module
 from cs2_analytics.ingestion_state.demo_ingestion_state import DemoIngestionState
@@ -13,7 +13,7 @@ from cs2_analytics.ingestion_state.match_ingestion_state import (
 )
 
 
-class _FailingQueueDb:
+class _FailingStateDb:
     @contextmanager
     def get_cursor(self):
         raise RuntimeError("db down")
@@ -36,7 +36,7 @@ class _RecordingCursor:
         self.executemany_values = values
 
 
-class _RecordingQueueDb:
+class _RecordingStateDb:
     def __init__(self, cursor: _RecordingCursor) -> None:
         self.cursor = cursor
 
@@ -45,17 +45,17 @@ class _RecordingQueueDb:
         yield self.cursor
 
 
-def test_match_queue_wraps_db_failures_in_typed_exception(
+def test_match_ingestion_state_wraps_db_failures_in_typed_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(base_state_module, "get_db", lambda: _FailingQueueDb())
-    queue = MatchIngestionState()
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _FailingStateDb())
+    state = MatchIngestionState()
 
     with pytest.raises(
-        MatchQueueError,
-        match="Failed to queue ingestion state items in match_ingestion_state.",
+        MatchIngestionStateError,
+        match="Failed to record ingestion state items in match_ingestion_state.",
     ):
-        queue.queue_many([(1, "https://www.hltv.org/matches/1/test")])
+        state.record_many([(1, "https://www.hltv.org/matches/1/test")])
 
 
 def test_ingestion_state_classes_use_ingestion_state_tables() -> None:
@@ -91,7 +91,7 @@ def test_match_ingestion_state_refreshes_existing_rows_on_rediscovery(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingQueueDb(cursor))
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingStateDb(cursor))
     state = MatchIngestionState()
 
     state.queue(1, "https://www.hltv.org/matches/1/test", source="results")
@@ -116,7 +116,7 @@ def test_match_ingestion_state_marks_failures_with_lifecycle_fields(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingQueueDb(cursor))
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingStateDb(cursor))
     state = MatchIngestionState()
 
     state.mark_as_failed(1, "boom")
@@ -130,11 +130,11 @@ def test_match_ingestion_state_marks_failures_with_lifecycle_fields(
     assert cursor.execute_values[2:] == ("boom", 1)
 
 
-def test_map_ingestion_state_queues_parent_match_context(
+def test_map_ingestion_state_records_parent_match_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingQueueDb(cursor))
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingStateDb(cursor))
     state = MapIngestionState()
 
     state.queue(

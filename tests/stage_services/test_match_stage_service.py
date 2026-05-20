@@ -47,7 +47,7 @@ class _FakeMatchState:
 
 class _FakeFollowupState:
     def __init__(self) -> None:
-        self.queued: list[tuple[int | str, str, str, int | None, int | None]] = []
+        self.recorded: list[tuple[int | str, str, str, int | None, int | None]] = []
 
     def queue(
         self,
@@ -57,10 +57,10 @@ class _FakeFollowupState:
         match_id: int | None = None,
         map_order: int | None = None,
     ) -> None:
-        self.queued.append((item_id, url, source, match_id, map_order))
+        self.recorded.append((item_id, url, source, match_id, map_order))
 
 
-def test_match_stage_service_processes_success_and_queues_followups() -> None:
+def test_match_stage_service_processes_success_and_records_followups() -> None:
     stored_matches: list[list[object]] = []
     match = object()
     match_state = _FakeMatchState()
@@ -88,7 +88,7 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
     assert match_state.processed == [1]
     assert match_state.failed == []
     assert stored_matches == [[match]]
-    assert map_state.queued == [
+    assert map_state.recorded == [
         (
             1,
             "https://www.hltv.org/stats/matches/mapstatsid/1/test",
@@ -97,7 +97,7 @@ def test_match_stage_service_processes_success_and_queues_followups() -> None:
             1,
         )
     ]
-    assert demo_state.queued == [
+    assert demo_state.recorded == [
         (
             "demo-1",
             "https://www.hltv.org/download/demo/test",

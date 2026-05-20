@@ -1,7 +1,7 @@
 import pytest
 
 from cs2_analytics.controllers import retry_utils
-from cs2_analytics.exceptions import MatchQueueError, SessionScrapeError
+from cs2_analytics.exceptions import MatchIngestionStateError, SessionScrapeError
 
 
 class _Logger:
@@ -32,9 +32,11 @@ class _Scraper:
             raise self.close_error
 
 
-class _FailingQueue:
+class _FailingState:
     def mark_as_failed(self, item_id: int, reason: str) -> None:
-        raise MatchQueueError("Failed to mark item as failed in match_ingestion_state.")
+        raise MatchIngestionStateError(
+            "Failed to mark item as failed in match_ingestion_state."
+        )
 
 
 def test_reset_scraper_retries_until_health_check_passes(
@@ -82,17 +84,18 @@ def test_reset_scraper_retries_until_health_check_passes(
     assert logger.infos == [("Scraper session recovered on reset attempt %d", 2)]
 
 
-def test_mark_item_failed_propagates_queue_errors(
+def test_mark_item_failed_propagates_ingestion_state_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     logger = _Logger()
     error = SessionScrapeError("Failed to fetch match page: https://www.hltv.org")
 
     with pytest.raises(
-        MatchQueueError, match="Failed to mark item as failed in match_ingestion_state."
+        MatchIngestionStateError,
+        match="Failed to mark item as failed in match_ingestion_state.",
     ):
         retry_utils.mark_item_failed(
-            _FailingQueue(),
+            _FailingState(),
             1,
             error,
             logger=logger,
