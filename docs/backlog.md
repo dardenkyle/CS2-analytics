@@ -211,7 +211,7 @@ relational ingestion outputs without starting dbt models yet.
 3. [x] `phase3.5-storage-upsert-idempotency`
    Strengthen match, map, and player upserts so reruns refresh trusted fields
    without duplicating rows or overwriting first-seen style timestamps.
-
+   
    Match storage now refreshes trusted parsed match fields on conflict while
    preserving `last_inserted_at`. Player storage refreshes the agreed context
    fields, metrics, scrape/update timestamps, and completeness flag on conflict
@@ -246,6 +246,12 @@ relational ingestion outputs without starting dbt models yet.
 7. [ ] `phase3.5-ingestion-terminology-cleanup`
    Rename queue-era exception and test names where they affect active
    ingestion-state readability.
+
+8. [ ] `phase3.5-dbt-readiness-final`
+   Add the final focused integration coverage for match discovery -> map
+   discovery -> map/player persistence, confirm the `matches`, `maps`, and
+   `players` grains are stable, and update the dbt entry criteria once Phase
+   3.5 is fully satisfied. Do not initialize dbt in this branch.
 
 ### dbt entry criteria
 
