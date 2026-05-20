@@ -81,20 +81,20 @@ class DemoStorageError(StorageError):
     """Raised when demo records cannot be stored."""
 
 
-class QueueError(CS2AnalyticsError):
-    """Base exception for queue operation failures."""
+class IngestionStateError(CS2AnalyticsError):
+    """Base exception for ingestion-state operation failures."""
 
 
-class MatchQueueError(QueueError):
-    """Raised when match queue operations fail."""
+class MatchIngestionStateError(IngestionStateError):
+    """Raised when match ingestion-state operations fail."""
 
 
-class MapQueueError(QueueError):
-    """Raised when map queue operations fail."""
+class MapIngestionStateError(IngestionStateError):
+    """Raised when map ingestion-state operations fail."""
 
 
-class DemoQueueError(QueueError):
-    """Raised when demo queue operations fail."""
+class DemoIngestionStateError(IngestionStateError):
+    """Raised when demo ingestion-state operations fail."""
 
 
 class PipelineError(CS2AnalyticsError):

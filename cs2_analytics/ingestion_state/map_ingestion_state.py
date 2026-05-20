@@ -2,7 +2,7 @@
 
 import datetime as dt
 
-from cs2_analytics.exceptions import MapQueueError
+from cs2_analytics.exceptions import MapIngestionStateError
 from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
 
 
@@ -14,7 +14,7 @@ class MapIngestionState(BaseIngestionState):
             table_name="map_ingestion_state",
             id_field="map_id",
             url_field="map_url",
-            error_cls=MapQueueError,
+            error_cls=MapIngestionStateError,
         )
 
     def fetch_with_match_context(
@@ -84,5 +84,5 @@ class MapIngestionState(BaseIngestionState):
                 )
         except Exception as e:
             raise self.error_cls(
-                "Failed to queue ingestion state item in map_ingestion_state."
+                "Failed to record ingestion state item in map_ingestion_state."
             ) from e
