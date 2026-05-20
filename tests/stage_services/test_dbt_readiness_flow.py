@@ -101,11 +101,10 @@ class _FakeMapState:
         item_id: int,
         url: str,
         source: str = "unknown",
-        priority: int = 0,
+        _priority: int = 0,
         match_id: int | None = None,
         map_order: int | None = None,
     ) -> None:
-        del priority
         self.records.append(
             _MapIngestionRecord(
                 map_id=item_id,
@@ -126,12 +125,12 @@ class _FakeMapState:
 class _FakeDemoState:
     def queue(
         self,
-        item_id: str,
-        url: str,
+        _item_id: str,
+        _url: str,
         source: str = "unknown",
-        priority: int = 0,
+        _priority: int = 0,
     ) -> None:
-        del item_id, url, source, priority
+        assert source in {"unknown", "match_parser"}
 
 
 def _match() -> Match:
