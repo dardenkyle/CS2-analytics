@@ -1,0 +1,89 @@
+name: Implementation Task
+description: Plan a focused code, schema, workflow, or feature change.
+title: "[Task]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for planned implementation work. Keep the scope small enough for a focused branch and review.
+  - type: input
+    id: phase
+    attributes:
+      label: Roadmap phase
+      description: Example: Phase 3.6, Phase 3.75, Phase 4, Deferred API Expansion.
+      placeholder: "Phase 3.6"
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What should change, and why now?
+      placeholder: "Add..."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List the files, modules, docs, or behavior expected to change.
+      placeholder: |
+        - .github/ISSUE_TEMPLATE/...
+        - docs/backlog.md
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: Checklist-style conditions that must be true before the issue is done.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Explicitly name related work that should not be changed in this issue. Write "None" only when there are no boundaries to call out.
+      placeholder: |
+        - Do not add dbt models.
+        - Do not change ingestion schema.
+    validations:
+      required: true
+  - type: textarea
+    id: architecture_boundaries
+    attributes:
+      label: Architecture boundaries
+      description: Note any controller, stage service, scraper, parser, storage, schema, dbt, Airflow, or demo constraints.
+      placeholder: "No ingestion boundary changes expected."
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Commands or manual checks expected for this issue. For docs-only work, say tests are not required and why.
+      placeholder: |
+        - python -m pytest tests/...
+        - Docs-only; tests not required.
+    validations:
+      required: true
+  - type: textarea
+    id: docs_impact
+    attributes:
+      label: Documentation impact
+      description: Which docs should be updated, or why docs are not needed?
+      placeholder: "Update docs/backlog.md because..."
+    validations:
+      required: true
+  - type: textarea
+    id: human_review
+    attributes:
+      label: Human review notes
+      description: Decisions, risks, credentials, migrations, or repo settings that need human attention before merge.
+      placeholder: "No special review required beyond normal PR review."
+    validations:
+      required: true

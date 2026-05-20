@@ -1,0 +1,85 @@
+name: Maintenance Task
+description: Plan focused cleanup, test, dependency, tooling, or repo hygiene work.
+title: "[Maintenance]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for focused upkeep that does not introduce a feature. Keep refactors small and behavior-preserving unless explicitly stated.
+  - type: input
+    id: phase
+    attributes:
+      label: Related roadmap phase
+      description: Example: Phase 3.6, Phase 3.75, Deferred Work.
+      placeholder: "Phase 3.6"
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What maintenance work should happen, and what risk does it reduce?
+      placeholder: "Clean up..."
+    validations:
+      required: true
+  - type: dropdown
+    id: maintenance_type
+    attributes:
+      label: Maintenance type
+      options:
+        - Tests
+        - Tooling
+        - Dependency
+        - Repo hygiene
+        - Refactor
+        - Documentation maintenance
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Files, modules, commands, or workflows expected to change.
+      placeholder: |
+        - tests/...
+        - pyproject.toml
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: Checklist-style conditions that must be true before this maintenance task is done.
+      placeholder: |
+        - [ ] ...
+        - [ ] No unrelated formatting or refactors.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Related behavior, feature, schema, or architecture work that should not be included.
+      placeholder: "Do not change runtime behavior."
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Commands or manual checks expected for this task.
+      placeholder: |
+        - python -m pytest tests/...
+        - python -m pytest
+    validations:
+      required: true
+  - type: textarea
+    id: docs_impact
+    attributes:
+      label: Documentation impact
+      description: Which docs should change, or why docs are not needed?
+      placeholder: "Docs not needed because..."
+    validations:
+      required: true

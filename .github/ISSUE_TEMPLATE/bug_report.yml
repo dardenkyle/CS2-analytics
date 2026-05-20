@@ -1,0 +1,87 @@
+name: Bug Report
+description: Report a reproducible regression, failing behavior, or broken workflow.
+title: "[Bug]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for observed failures. Include enough detail for someone else to reproduce or verify the fix.
+  - type: input
+    id: phase
+    attributes:
+      label: Related roadmap phase
+      description: If known, connect the bug to a phase or deferred area.
+      placeholder: "Phase 3.5, Phase 3.75, unknown"
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Current behavior
+      description: What is failing or surprising?
+      placeholder: "When I run..., the result is..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What should happen instead?
+      placeholder: "The pipeline should..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Commands, inputs, environment details, or data needed to reproduce.
+      placeholder: |
+        1. Run ...
+        2. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Who or what is blocked by this?
+      placeholder: "Blocks..."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: Checklist-style conditions proving the bug is fixed.
+      placeholder: |
+        - [ ] ...
+        - [ ] Regression test added or updated.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: Related cleanup, refactors, or feature work that should not be included in the fix.
+      placeholder: "Do not refactor unrelated storage code."
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Targeted tests, full test command, or manual reproduction checks.
+      placeholder: |
+        - python -m pytest tests/...
+        - python -m pytest
+    validations:
+      required: true
+  - type: textarea
+    id: docs_impact
+    attributes:
+      label: Documentation impact
+      description: Should docs change because of this bug or fix?
+      placeholder: "Docs not needed because this restores intended behavior."
+    validations:
+      required: true
