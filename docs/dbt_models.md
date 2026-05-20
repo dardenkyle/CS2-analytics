@@ -2,7 +2,9 @@
 
 This document describes the planned dbt model structure for the CS2 Analytics project.
 
-dbt is a later-phase transformation layer. It should be introduced only after match/map ingestion semantics are stable and the active stage boundaries are clear.
+dbt is the next planned transformation layer. It should be introduced only
+after match/map ingestion semantics are stable and the active stage boundaries
+are clear.
 
 At this stage, dbt is planned work, not an active part of the ingestion pipeline.
 
@@ -14,10 +16,12 @@ Completed prerequisite order:
 1. review lifecycle semantics for the current match/map discovery tables
 2. update the current state tables and their audit fields
 3. thin `MatchController` and `MapController` by introducing stage services
+4. stabilize the active `matches`, `maps`, and `players` grains for dbt
+   readiness
 
 Next dependency:
 
-4. add dbt after the ingestion contract is stable
+5. add dbt scaffolding and staging models over the active parsed-source tables
 
 ---
 
@@ -149,12 +153,14 @@ Example fields:
 - team2
 - score1
 - score2
+- winner, or `match_winner` as a staging alias
 - event
 - match_type
 - match_date
 - forfeit
 - data_complete
-- inserted_at
+- last_inserted_at, or `inserted_at` after the planned source schema
+  normalization
 - last_scraped_at
 - last_updated_at
 
@@ -170,18 +176,19 @@ Possible responsibilities:
 
 - cast numeric score fields
 - normalize map names
-- standardize winner and overtime fields
+- standardize `map_winner`
 - preserve foreign key relationship to match_id
 
 Example fields:
 
 - map_id
 - match_id
+- map_url
+- map_order
 - map_name
 - team1_score
 - team2_score
-- winner
-- overtime
+- map_winner
 - data_complete
 - inserted_at
 - last_scraped_at
@@ -218,7 +225,8 @@ Example fields:
 - kd_diff
 - fk_diff
 - data_complete
-- inserted_at
+- last_inserted_at, or `inserted_at` after the planned source schema
+  normalization
 - last_scraped_at
 - last_updated_at
 
@@ -698,7 +706,8 @@ This keeps transformation logic out of the API code and reinforces separation of
 
 ## Planned Rollout Order
 
-dbt should be introduced only after lifecycle semantics and active-stage responsibilities are stable.
+dbt should be introduced now that lifecycle semantics, active-stage
+responsibilities, and match/map/player grains are stable.
 
 Recommended rollout order:
 

@@ -1,11 +1,20 @@
 # Intended Schema Target
 
-This is the intended parsed-source schema target before implementing dbt.
-It belongs to Phase 3.5 and should stabilize match, map, and player source
-tables before dbt models are added.
+This is the intended parsed-source schema normalization target captured before
+dbt implementation. It documents a later cleanup path for the match, map, and
+player source tables.
 
 `cs2_analytics/storage/schema.sql` remains the source of truth until this target
 is implemented.
+
+Current status:
+
+- Phase 3.5 dbt readiness is complete for the active schema in
+  `cs2_analytics/storage/schema.sql`.
+- This document is planning guidance for a later focused schema/model/storage
+  normalization pass.
+- The changes below are not blockers for initial dbt staging over the current
+  `matches`, `maps`, and `players` tables.
 
 ## Audit Field Convention
 
@@ -38,9 +47,9 @@ Do not copy ingestion-state lifecycle fields such as `first_seen_at`,
 `failure_count`, or `last_error_message` into these parsed source tables. Those
 belong in `*_ingestion_state`.
 
-The current implementation still uses `last_inserted_at` in storage models.
-Renaming it to `inserted_at` should be handled in the focused Phase 3.5 schema,
-model, storage, and test update that implements this target.
+The current implementation still uses `last_inserted_at` in the `matches` and
+`players` storage models. Renaming it to `inserted_at` should be handled in the
+focused schema, model, storage, and test update that implements this target.
 
 ## Follow-Up Link Convention
 
@@ -192,7 +201,7 @@ stage service or storage boundary.
 ## Deferred Schema Candidates
 
 The saved HLTV map stats page shows additional player stat variants that are
-available but intentionally outside this immediate Phase 3.5 target.
+available but intentionally outside this parsed-source normalization target.
 
 ### Side-split player stats
 
