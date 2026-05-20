@@ -48,9 +48,9 @@ class _RecordingPool:
         self.released = True
 
 
-def _clear_import_safety_modules() -> None:
+def _clear_import_safety_modules(monkeypatch) -> None:
     for module_name in IMPORT_SAFETY_MODULES:
-        sys.modules.pop(module_name, None)
+        monkeypatch.delitem(sys.modules, module_name, raising=False)
 
 
 def test_importing_storage_and_state_modules_does_not_create_database(
@@ -65,13 +65,10 @@ def test_importing_storage_and_state_modules_does_not_create_database(
             raise AssertionError("Database was created during import")
 
     monkeypatch.setattr(database_module, "Database", _ForbiddenDatabase)
-    _clear_import_safety_modules()
+    _clear_import_safety_modules(monkeypatch)
 
-    try:
-        for module_name in IMPORT_SAFETY_MODULES:
-            importlib.import_module(module_name)
-    finally:
-        _clear_import_safety_modules()
+    for module_name in IMPORT_SAFETY_MODULES:
+        importlib.import_module(module_name)
 
     assert created_database_instances == 0
 
