@@ -4,12 +4,14 @@ Guidance for coding agents working in this repository.
 
 ## Read First
 
-- Start with `README.md`, `docs/architecture.md`, `docs/conventions.md`, and
-  `docs/backlog.md`.
+- Start with `README.md`, `docs/architecture/overview.md`,
+  `docs/architecture/current_state.md`, `docs/conventions.md`,
+  `docs/workflow.md`, and `docs/backlog.md`.
 - Treat `cs2_analytics/storage/schema.sql` as the schema source of truth.
 - Prefer the existing architecture over new abstractions.
-- Keep changes aligned with the current roadmap: Phase 3 is complete, dbt is
-  next, demo expansion is deferred, and Airflow comes after dbt.
+- Keep changes aligned with the current roadmap: Phase 3 and Phase 3.5 are
+  complete, Phase 3.6 is workflow hardening, Phase 3.75 deployment baseline
+  comes before dbt, demo expansion is deferred, and Airflow comes after dbt.
 
 ## Python Coding Standards
 
@@ -51,6 +53,34 @@ Guidance for coding agents working in this repository.
 - Do not move ingestion responsibilities into dbt.
 - Do not let orchestration concerns drive schema semantics prematurely.
 
+## Agent Change Policy
+
+Agents may make small, scoped changes without additional approval when the work
+matches an issue, branch, or explicit request and stays within the documented
+architecture.
+
+Agents may normally update:
+
+- docs, templates, labels, and issue metadata
+- focused tests for the behavior being changed
+- parser, scraper, controller, stage-service, storage, API, or config code that
+  is directly in scope for the requested task
+- backlog status when a branch completes or roadmap status changes
+
+Agents must ask before:
+
+- changing database schema, migrations, or lifecycle field semantics
+- changing ingestion stage order or controller/stage-service boundaries
+- adding dbt, Airflow, demo expansion, CT/T splits, eco-adjusted stats, or
+  unrelated analytics scope
+- changing deployment targets, production runtime assumptions, or credentials
+- running destructive commands, destructive schema resets, or broad formatters
+- refactoring outside the requested scope
+
+Human review is required before merge for schema changes, deployment/runtime
+changes, architecture-boundary changes, dependency changes, CI changes, and any
+PR marked medium or high risk.
+
 ## Change Discipline
 
 - Prefer small, reviewable diffs.
@@ -88,7 +118,29 @@ Guidance for coding agents working in this repository.
 ## Documentation Expectations
 
 - Update `docs/backlog.md` when roadmap status changes.
-- Update `docs/architecture.md` or `docs/conventions.md` when architectural
-  boundaries change.
+- Update `docs/architecture/overview.md`,
+  `docs/architecture/current_state.md`, `docs/architecture/decision_log.md`, or
+  `docs/conventions.md` when architectural boundaries or project decisions
+  change.
+- Update `docs/workflow.md` when agent, branch, PR, review, or documentation
+  workflow rules change.
 - Keep README changes user-facing and concise.
 - Prefer linking to existing docs over repeating long explanations.
+- Every PR must include a documentation check explaining whether docs were
+  updated or why they were not needed.
+
+Documentation must be updated when a change affects:
+
+- architecture or module responsibilities
+- setup/install commands
+- environment variables or configuration
+- database schema or migrations
+- API routes, request/response behavior, or health checks
+- pipeline execution flow
+- deployment/runtime behavior
+- test commands or CI behavior
+- agent/developer workflow rules
+
+Documentation does not need to be updated for purely internal refactors that do
+not change behavior, setup, architecture boundaries, commands, or public
+interfaces.

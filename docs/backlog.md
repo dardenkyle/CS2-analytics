@@ -288,26 +288,27 @@ agent-friendly implementation before deployment hardening begins.
 
 Status:
 In progress. The `phase3.6-issue-templates` branch has added GitHub issue
-forms and a pull request template, and the `phase3.6-label-taxonomy` branch has
-added the repo-tracked label taxonomy. Agent docs, workflow docs, and deployment
-issue creation remain open.
+forms and a pull request template, the `phase3.6-label-taxonomy` branch has
+added the repo-tracked label taxonomy, and the `phase3.6-agent-docs` branch has
+added agent/workflow/architecture decision documentation. Deployment issue
+creation remains open.
 
 ### Planned work
 
 - [x] Add GitHub issue templates
 - [x] Add pull request template
 - [x] Add labels for phase, type, priority, and risk
-- [ ] Ensure `AGENTS.md` complies with repo rules and coding standards
-- [ ] Add `docs/workflow.md` describing issue -> branch -> PR -> merge flow
-- [ ] Add `docs/architecture/current_state.md` summarizing the active architecture
-- [ ] Add `docs/architecture/decision_log.md` for project decisions
-- [ ] Add documentation maintenance rules to `AGENTS.md`, `docs/workflow.md`,
+- [x] Ensure `AGENTS.md` complies with repo rules and coding standards
+- [x] Add `docs/workflow.md` describing issue -> branch -> PR -> merge flow
+- [x] Add `docs/architecture/current_state.md` summarizing the active architecture
+- [x] Add `docs/architecture/decision_log.md` for project decisions
+- [x] Add documentation maintenance rules to `AGENTS.md`, `docs/workflow.md`,
       and the pull request template
 - [ ] Convert Phase 3.75 deployment tasks into GitHub issues
 - [ ] Create small acceptance criteria for each issue
-- [ ] Create branch naming conventions
-- [ ] Define what agents are allowed to change without approval
-- [ ] Define what requires human review before merge
+- [x] Create branch naming conventions
+- [x] Define what agents are allowed to change without approval
+- [x] Define what requires human review before merge
 
 ### Documentation maintenance rule
 
@@ -334,12 +335,13 @@ Every pull request must include a documentation check section:
 
 ## Documentation Check
 
-- [ ] Docs updated
-- [ ] Docs not needed
+Select exactly one: `Updated` or `Update not needed`.
+
+Documentation:
 
 Reason:
 
-If `Docs not needed` is selected, the PR must briefly explain why.
+If `Update not needed` is selected, the PR must briefly explain why.
 
 ### Suggested branch sequence
 
@@ -362,7 +364,7 @@ If `Docs not needed` is selected, the PR must briefly explain why.
    - priority labels
    - risk labels
 
-3. [ ] `phase3.6-agent-docs`
+3. [x] `phase3.6-agent-docs`
        Add `AGENTS.md`, workflow docs, current architecture summary, decision
        log, and agent/human review policy.
 
@@ -390,12 +392,12 @@ If `Docs not needed` is selected, the PR must briefly explain why.
 
 - [ ] GitHub issues can be created from templates
 - [ ] Pull requests have a consistent review checklist
-- [ ] Pull requests include a documentation check
-- [ ] `AGENTS.md` explains repo architecture, coding standards, and no-touch areas
-- [ ] `AGENTS.md` explains documentation responsibilities
-- [ ] `docs/workflow.md` explains documentation expectations
+- [x] Pull requests include a documentation check
+- [x] `AGENTS.md` explains repo architecture, coding standards, and no-touch areas
+- [x] `AGENTS.md` explains documentation responsibilities
+- [x] `docs/workflow.md` explains documentation expectations
 - [ ] Deployment baseline work is represented as small, reviewable issues
-- [ ] Branch naming and issue-to-PR workflow are documented
+- [x] Branch naming and issue-to-PR workflow are documented
 
 ---
 
