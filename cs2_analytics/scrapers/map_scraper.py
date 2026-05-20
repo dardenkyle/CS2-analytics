@@ -15,7 +15,8 @@ class MapScraper:
     """
     Fetches map pages and returns soup objects for parsing.
 
-    This scraper does NOT handle queue orchestration, parsing, or persistence.
+    This scraper does NOT handle lifecycle-state orchestration, parsing, or
+    persistence.
     """
 
     def __init__(self) -> None:

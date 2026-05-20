@@ -15,7 +15,8 @@ class MatchScraper:
     """
     Scrapes match pages and returns raw soup for later parsing.
 
-    This class does NOT handle queue orchestration, parsing, or database insertion.
+    This class does NOT handle lifecycle-state orchestration, parsing, or
+    database insertion.
     """
 
     def __init__(self):

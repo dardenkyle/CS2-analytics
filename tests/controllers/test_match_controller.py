@@ -4,7 +4,7 @@ from cs2_analytics.controllers import match_controller as match_module
 from cs2_analytics.exceptions import MatchParseError, SessionScrapeError
 
 
-class _FakeMatchQueue:
+class _FakeMatchState:
     def __init__(self) -> None:
         self.failed: list[tuple[int, str]] = []
         self.processed: list[int] = []
@@ -24,9 +24,9 @@ class _FakeMatchQueue:
         self.processing.append(item_id)
 
 
-class _FakeFollowupQueue:
+class _FakeFollowupState:
     def __init__(self) -> None:
-        self.queued: list[tuple[int | str, str, str, int | None]] = []
+        self.recorded: list[tuple[int | str, str, str, int | None]] = []
 
     def queue(
         self,
@@ -35,7 +35,7 @@ class _FakeFollowupQueue:
         source: str = "unknown",
         match_id: int | None = None,
     ) -> None:
-        self.queued.append((item_id, url, source, match_id))
+        self.recorded.append((item_id, url, source, match_id))
 
 
 class _PassiveScraper:
@@ -99,9 +99,9 @@ def _build_match_controller(
 ) -> match_module.MatchController:
     monkeypatch.setattr(match_module, "MatchScraper", scraper_cls)
     monkeypatch.setattr(match_module, "MatchParser", parser_cls)
-    monkeypatch.setattr(match_module, "MatchIngestionState", _FakeMatchQueue)
-    monkeypatch.setattr(match_module, "MapIngestionState", _FakeFollowupQueue)
-    monkeypatch.setattr(match_module, "DemoIngestionState", _FakeFollowupQueue)
+    monkeypatch.setattr(match_module, "MatchIngestionState", _FakeMatchState)
+    monkeypatch.setattr(match_module, "MapIngestionState", _FakeFollowupState)
+    monkeypatch.setattr(match_module, "DemoIngestionState", _FakeFollowupState)
     monkeypatch.setattr(match_module, "store_matches", lambda _matches: None)
     monkeypatch.setattr(match_module.time, "sleep", lambda *_args, **_kwargs: None)
     return match_module.MatchController()

@@ -1,4 +1,4 @@
-"""Scrapes HLTV results page to extract match links and queues them."""
+"""Scrapes HLTV results pages and records discovered match links."""
 
 import datetime as dt
 import random
@@ -28,7 +28,7 @@ class ResultsScraper:
         """Initializes the scraper with a SeleniumBase driver and config params."""
         self.driver = Driver(uc=True, headless=True)
         self.base_url = HLTV_URL
-        self.queue = MatchIngestionState()
+        self.match_state = MatchIngestionState()
         self.source: str = "results_scraper"
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
@@ -43,15 +43,15 @@ class ResultsScraper:
 
     def run(self, max_matches: int = MAX_MATCHES) -> None:
         """
-        Scrapes HLTV results and queues match links.
+        Scrapes HLTV results and records match links in ingestion state.
 
         Args:
-            max_matches (int): Maximum number of matches to queue.
+            max_matches (int): Maximum number of matches to record.
         """
         offset = 0
-        total_queued = 0
+        total_recorded = 0
 
-        while total_queued < max_matches:
+        while total_recorded < max_matches:
             page_url = f"{self.base_url}?offset={offset}&gameType=CS2"
             logger.info("Scraping page: %s", page_url)
 
@@ -61,11 +61,11 @@ class ResultsScraper:
                 match_id = self._extract_match_id(full_url)
                 if match_id:
                     batch.append((match_id, full_url))
-                    total_queued += 1
+                    total_recorded += 1
 
             chunk_and_queue(
                 items=batch,
-                queue_obj=self.queue,
+                queue_obj=self.match_state,
                 chunk_size=1000,
                 source=self.source,
             )
@@ -76,7 +76,7 @@ class ResultsScraper:
             offset += 100
             time.sleep(random.uniform(1.0, 2.0))
 
-        logger.info("Queued %s matches total.", total_queued)
+        logger.info("Recorded %s discovered matches total.", total_recorded)
 
     def _extract_matches_from_page(self, url: str) -> tuple[list[str], bool]:
         """
