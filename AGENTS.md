@@ -5,8 +5,8 @@ Guidance for coding agents working in this repository.
 ## Read First
 
 - Start with `README.md`, `docs/architecture/overview.md`,
-  `docs/architecture/current_state.md`, `docs/conventions.md`, and
-  `docs/backlog.md`.
+  `docs/architecture/current_state.md`, `docs/conventions.md`,
+  `docs/workflow.md`, and `docs/backlog.md`.
 - Treat `cs2_analytics/storage/schema.sql` as the schema source of truth.
 - Prefer the existing architecture over new abstractions.
 - Keep changes aligned with the current roadmap: Phase 3 and Phase 3.5 are
