@@ -14,6 +14,16 @@ Closes #
 
 -
 
+## Risk Level
+
+- [ ] Low
+- [ ] Medium
+- [ ] High
+
+Reason:
+
+-
+
 ## Architecture And Roadmap Check
 
 - [ ] Controllers still own batch coordination, retry policy, scraper reset/rotation, summaries, and retry exhaustion.
@@ -24,7 +34,7 @@ Closes #
 - [ ] Pipelines remain thin.
 - [ ] No ingestion responsibilities moved into dbt.
 - [ ] No dbt, Airflow, CT/T splits, eco-adjusted stats, or demo expansion added unless explicitly requested.
-- [ ] Schema changes, if any, keep `cs2_analytics/storage/schema.sql` as the source of truth.
+- [ ] Schema changes, if any, follow the current schema ownership rule for this phase.
 
 ## Documentation Check
 
@@ -36,6 +46,12 @@ Reason:
 -
 
 ## Verification
+
+Commands run:
+
+-
+
+Results:
 
 -
 
