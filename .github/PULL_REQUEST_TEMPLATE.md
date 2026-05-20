@@ -16,11 +16,9 @@ Closes #
 
 ## Risk Level
 
-Select exactly one:
+Select exactly one: `Low`, `Medium`, or `High`.
 
-- [ ] Low
-- [ ] Medium
-- [ ] High
+Risk level:
 
 Reason:
 
@@ -40,12 +38,14 @@ Reason:
 
 ## Documentation Check
 
-- [ ] Docs updated
-- [ ] Docs not needed
+Select exactly one: `Updated` or `Update not needed`.
+
+Documentation:
 
 Reason:
 
 <!-- If docs were not needed, explain why. -->
+<!-- See docs/workflow.md for documentation expectations. -->
 
 ## Verification
 
