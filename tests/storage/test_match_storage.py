@@ -76,7 +76,7 @@ def test_store_matches_refreshes_trusted_fields_on_conflict(
     cursor = _RecordingCursor()
     conn = _RecordingConnection(cursor)
     fake_db = _FakeDb(conn)
-    monkeypatch.setattr(match_storage_module, "db", fake_db)
+    monkeypatch.setattr(match_storage_module, "get_db", lambda: fake_db)
 
     match_storage_module.store_matches([_match()])
 

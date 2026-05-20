@@ -69,7 +69,7 @@ def test_store_players_refreshes_context_and_metrics_on_conflict(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cursor = _RecordingCursor()
-    monkeypatch.setattr(player_storage_module, "db", _FakeDb(cursor))
+    monkeypatch.setattr(player_storage_module, "get_db", lambda: _FakeDb(cursor))
 
     player_storage_module.store_players([_player()])
 

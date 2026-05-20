@@ -29,7 +29,7 @@ def test_store_demo_file_relies_on_get_cursor_for_commit(
     monkeypatch,
 ) -> None:
     fake_db = _CursorOnlyDb()
-    monkeypatch.setattr(demo_storage_module, "db", fake_db)
+    monkeypatch.setattr(demo_storage_module, "get_db", lambda: fake_db)
 
     demo_storage_module.store_demo_file(
         map_id=123,
