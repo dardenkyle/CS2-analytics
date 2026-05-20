@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from cs2_analytics.exceptions import PlayerStorageError
 from cs2_analytics.models.player import Player
 from cs2_analytics.storage import player_storage as player_storage_module
 
@@ -107,3 +108,15 @@ def test_store_players_refreshes_context_and_metrics_on_conflict(
     assert "last_inserted_at = EXCLUDED.last_inserted_at" not in conflict_update
     assert params["map_id"] == 100
     assert params["player_id"] == 200
+
+
+def test_store_players_wraps_database_factory_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def raise_database_error():
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(player_storage_module, "get_db", raise_database_error)
+
+    with pytest.raises(PlayerStorageError, match="Failed to store player records."):
+        player_storage_module.store_players([_player()])

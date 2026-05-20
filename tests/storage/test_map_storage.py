@@ -108,3 +108,15 @@ def test_store_maps_wraps_database_failures(monkeypatch: pytest.MonkeyPatch) -> 
 
     with pytest.raises(MapStorageError, match="Failed to store map records."):
         map_storage_module.store_maps([_map()])
+
+
+def test_store_maps_wraps_database_factory_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def raise_database_error():
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(map_storage_module, "get_db", raise_database_error)
+
+    with pytest.raises(MapStorageError, match="Failed to store map records."):
+        map_storage_module.store_maps([_map()])
