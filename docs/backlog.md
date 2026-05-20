@@ -247,6 +247,12 @@ relational ingestion outputs without starting dbt models yet.
    Rename queue-era exception and test names where they affect active
    ingestion-state readability.
 
+   Queue-era typed exceptions are now named for ingestion-state operations,
+   and the related tests live under `tests/ingestion_state/`. Active helper
+   and call-site terminology now uses record/refresh language, including the
+   ingestion-state chunk helper and batch refresh method, while preserving the
+   existing per-item `queue()` API for discovered follow-up links.
+
 8. [ ] `phase3.5-dbt-readiness-final`
    Add the final focused integration coverage for match discovery -> map
    discovery -> map/player persistence, confirm the `matches`, `maps`, and
