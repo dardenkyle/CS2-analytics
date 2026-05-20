@@ -6,7 +6,7 @@ This test:
 - Launches a headless browser using SeleniumBase
 - Navigates to a real HLTV match page
 - Parses the page using MatchParser
-- Prints the Match object and discovered demo/map links
+- Prints the MatchParser return value
 """
 
 from bs4 import BeautifulSoup
