@@ -288,14 +288,15 @@ agent-friendly implementation before deployment hardening begins.
 
 Status:
 In progress. The `phase3.6-issue-templates` branch has added GitHub issue
-forms and a pull request template. Label taxonomy, agent docs, workflow docs,
-and deployment issue creation remain open.
+forms and a pull request template, and the `phase3.6-label-taxonomy` branch has
+added the repo-tracked label taxonomy. Agent docs, workflow docs, and deployment
+issue creation remain open.
 
 ### Planned work
 
 - [x] Add GitHub issue templates
 - [x] Add pull request template
-- [ ] Add labels for phase, type, priority, and risk
+- [x] Add labels for phase, type, priority, and risk
 - [ ] Ensure `AGENTS.md` complies with repo rules and coding standards
 - [ ] Add `docs/workflow.md` describing issue -> branch -> PR -> merge flow
 - [ ] Add `docs/architecture/current_state.md` summarizing the active architecture
@@ -351,7 +352,7 @@ If `Docs not needed` is selected, the PR must briefly explain why.
    - pull request template
    - pull request documentation check
 
-2. [ ] `phase3.6-label-taxonomy`
+2. [x] `phase3.6-label-taxonomy`
        Add labels for phase, type, priority, and risk.
 
    Covers:

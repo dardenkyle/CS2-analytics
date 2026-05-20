@@ -1,0 +1,70 @@
+# GitHub label taxonomy for issue and pull request triage.
+# Apply these labels in GitHub manually or with a label-sync tool.
+
+- name: "phase: 3.6"
+  color: "5319e7"
+  description: "Issue-driven workflow and agent readiness work."
+
+- name: "phase: 3.75"
+  color: "6f42c1"
+  description: "Deployment baseline work before dbt."
+
+- name: "phase: 4"
+  color: "1d76db"
+  description: "dbt transformation layer work."
+
+- name: "phase: 5"
+  color: "0052cc"
+  description: "Airflow orchestration work."
+
+- name: "phase: deferred"
+  color: "bfdadc"
+  description: "Deferred work such as demo expansion, API expansion, or later orchestration."
+
+- name: "type: implementation"
+  color: "0e8a16"
+  description: "Planned code, schema, workflow, or feature implementation."
+
+- name: "type: bug"
+  color: "d73a4a"
+  description: "Regression, failing behavior, or broken workflow."
+
+- name: "type: documentation"
+  color: "0075ca"
+  description: "Documentation-only change or documentation maintenance."
+
+- name: "type: maintenance"
+  color: "cfd3d7"
+  description: "Focused cleanup, tests, tooling, dependency, or repo hygiene work."
+
+- name: "type: architecture"
+  color: "fbca04"
+  description: "Architecture decision, boundary, or design documentation work."
+
+- name: "type: deployment"
+  color: "a2eeef"
+  description: "Deployment, runtime, container, migration, CI, or release-readiness work."
+
+- name: "priority: high"
+  color: "b60205"
+  description: "High-priority work that blocks the current roadmap or important reliability."
+
+- name: "priority: medium"
+  color: "fbca04"
+  description: "Normal-priority work needed for the active roadmap."
+
+- name: "priority: low"
+  color: "0e8a16"
+  description: "Useful but non-blocking work."
+
+- name: "risk: high"
+  color: "b60205"
+  description: "High-risk change with broad behavior, schema, deployment, or data impact."
+
+- name: "risk: medium"
+  color: "fbca04"
+  description: "Moderate-risk change with contained but meaningful impact."
+
+- name: "risk: low"
+  color: "0e8a16"
+  description: "Low-risk change such as docs, templates, or narrow behavior updates."
