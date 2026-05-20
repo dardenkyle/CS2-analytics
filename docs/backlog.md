@@ -287,9 +287,9 @@ Move the project from ad hoc development into issue-driven, reviewable,
 agent-friendly implementation before deployment hardening begins.
 
 Status:
-In progress. The issue-template branch has added GitHub issue forms and a pull
-request template. Label taxonomy, agent docs, workflow docs, and deployment
-issue creation remain open.
+In progress. The `phase3.6-issue-templates` branch has added GitHub issue
+forms and a pull request template. Label taxonomy, agent docs, workflow docs,
+and deployment issue creation remain open.
 
 ### Planned work
 
