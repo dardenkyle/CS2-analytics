@@ -287,12 +287,14 @@ Move the project from ad hoc development into issue-driven, reviewable,
 agent-friendly implementation before deployment hardening begins.
 
 Status:
-Not started.
+In progress. The issue-template branch has added GitHub issue forms and a pull
+request template. Label taxonomy, agent docs, workflow docs, and deployment
+issue creation remain open.
 
 ### Planned work
 
-- [ ] Add GitHub issue templates
-- [ ] Add pull request template
+- [x] Add GitHub issue templates
+- [x] Add pull request template
 - [ ] Add labels for phase, type, priority, and risk
 - [ ] Ensure `AGENTS.md` complies with repo rules and coding standards
 - [ ] Add `docs/workflow.md` describing issue -> branch -> PR -> merge flow
@@ -340,15 +342,48 @@ If `Docs not needed` is selected, the PR must briefly explain why.
 
 ### Suggested branch sequence
 
-1. [ ] `phase3.6-issue-templates`
+1. [x] `phase3.6-issue-templates`
        Add GitHub issue templates and a pull request template.
 
-2. [ ] `phase3.6-agent-docs`
-       Add `AGENTS.md`, workflow docs, current architecture summary, and decision log.
+   Covers:
 
-3. [ ] `phase3.6-create-deployment-issues`
+   - GitHub issue templates
+   - pull request template
+   - pull request documentation check
+
+2. [ ] `phase3.6-label-taxonomy`
+       Add labels for phase, type, priority, and risk.
+
+   Covers:
+
+   - phase labels
+   - type labels
+   - priority labels
+   - risk labels
+
+3. [ ] `phase3.6-agent-docs`
+       Add `AGENTS.md`, workflow docs, current architecture summary, decision
+       log, and agent/human review policy.
+
+   Covers:
+
+   - `AGENTS.md` repo rules and coding standards
+   - `docs/workflow.md` issue -> branch -> PR -> merge flow
+   - `docs/architecture/current_state.md`
+   - `docs/architecture/decision_log.md`
+   - documentation maintenance rules in `AGENTS.md` and `docs/workflow.md`
+   - branch naming conventions
+   - what agents may change without approval
+   - what requires human review before merge
+
+4. [ ] `phase3.6-create-deployment-issues`
        Convert Phase 3.75 work into small GitHub issues with clear scope,
        acceptance criteria, out-of-scope notes, and verification commands.
+
+   Covers:
+
+   - Phase 3.75 deployment tasks converted into GitHub issues
+   - small acceptance criteria for each deployment issue
 
 ### Phase 3.6 exit criteria
 
