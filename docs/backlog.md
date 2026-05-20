@@ -174,7 +174,7 @@ remains the active schema source of truth.
 - [x] Add storage idempotency tests for match, map, and player upserts
 - [x] Add relationship readiness tests proving `players.map_id` joins to
       `maps.map_id` and `maps.match_id` joins to `matches.match_id`
-- [ ] Add a focused integration-style test for match discovery -> map discovery
+- [x] Add a focused integration-style test for match discovery -> map discovery
       -> map/player persistence
 - [x] Separate destructive schema reset behavior from normal schema
       initialization
@@ -253,19 +253,26 @@ relational ingestion outputs without starting dbt models yet.
    ingestion-state chunk helper and batch refresh method, while preserving the
    existing per-item `queue()` API for discovered follow-up links.
 
-8. [ ] `phase3.5-dbt-readiness-final`
+8. [x] `phase3.5-dbt-readiness-final`
    Add the final focused integration coverage for match discovery -> map
    discovery -> map/player persistence, confirm the `matches`, `maps`, and
    `players` grains are stable, and update the dbt entry criteria once Phase
    3.5 is fully satisfied. Do not initialize dbt in this branch.
 
+   Final readiness coverage now exercises the active match-stage to map-stage
+   handoff with in-memory fakes and confirms the parsed-source grains:
+   `matches` is one row per match, `maps` is one row per played map, and
+   `players` is one row per player per map. Schema normalization items captured
+   in `docs/schema_target_pre_dbt.md` remain deferred follow-up work rather than
+   blockers for initial dbt staging.
+
 ### dbt entry criteria
 
-- [ ] `matches`, `maps`, and `players` have stable grains
+- [x] `matches`, `maps`, and `players` have stable grains
 - [x] Map-player-match relationships are queryable without parsing strings
 - [x] Storage upserts are duplicate-safe and refresh trusted fields
 - [x] Tests pass
-- [ ] dbt can start with clean staging models: `stg_matches`, `stg_maps`, and
+- [x] dbt can start with clean staging models: `stg_matches`, `stg_maps`, and
       `stg_players`
 
 ---
