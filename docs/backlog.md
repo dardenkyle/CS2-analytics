@@ -6,13 +6,19 @@ This document tracks the recommended implementation order for the next architect
 
 ## Current Position
 
-The active codebase already has useful stage boundaries and controller retry hardening, but the next work should not jump directly to dbt or Airflow.
+Phase 3 is complete, and the active codebase now has stable stage-service
+boundaries, controller retry hardening, and relational match/map/player storage
+contracts. Phase 3.5 remains the active stabilization phase before dbt.
 
 Current priorities:
 
-- move per-item stage workflow out of `MatchController` and `MapController`
-- keep controller concerns focused on batch coordination while stage services absorb per-item workflow
-- preserve the ingestion-state lifecycle model while thinning the active controllers
+- keep `matches`, `maps`, and `players` stable, relational, and idempotent
+- close the remaining focused integration coverage around discovery through
+  map/player persistence
+- clean up remaining queue-era terminology where it affects active
+  ingestion-state readability
+- defer dbt, demo expansion, and Airflow until the Phase 3.5 entry criteria are
+  satisfied
 
 ---
 
@@ -133,8 +139,9 @@ Goal:
 Make ingestion outputs stable, relational, and idempotent before adding dbt.
 
 Status:
-Planned. This phase should close the remaining gap between the current
-ingestion-state pipeline and the relational source tables that dbt will model.
+In progress. Most storage, schema initialization, relationship, and database
+access cleanup work is complete. Remaining work should stay focused on
+integration coverage and ingestion terminology before dbt begins.
 
 ### Schema target reference
 
@@ -173,7 +180,7 @@ remains the active schema source of truth.
       initialization
 - [x] Move `ALTER TABLE` and index mutation out of `Database.__init__` into an
       explicit schema/setup path
-- [ ] Clean up import-time global database connection behavior so importing
+- [x] Clean up import-time global database connection behavior so importing
       storage modules does not require a live PostgreSQL database
 - [ ] Rename queue-era exception and test names where they affect active code
       readability
@@ -204,7 +211,7 @@ relational ingestion outputs without starting dbt models yet.
 3. [x] `phase3.5-storage-upsert-idempotency`
    Strengthen match, map, and player upserts so reruns refresh trusted fields
    without duplicating rows or overwriting first-seen style timestamps.
-
+   
    Match storage now refreshes trusted parsed match fields on conflict while
    preserving `last_inserted_at`. Player storage refreshes the agreed context
    fields, metrics, scrape/update timestamps, and completeness flag on conflict
@@ -226,14 +233,25 @@ relational ingestion outputs without starting dbt models yet.
    Separate destructive schema reset behavior from normal initialization and
    move runtime schema mutation out of `Database.__init__`.
 
-6. [ ] `phase3.5-database-access-cleanup`
+6. [x] `phase3.5-database-access-cleanup`
    Remove remaining import-time global database connection behavior, such as
    module-level `db = Database()` access paths, and move toward lazy or
    injectable database access where it improves tests and setup commands.
 
+   Storage modules no longer create a live global `Database` connection at
+   import time. Database access now favors explicit, lazy, or injectable paths
+   so imports, tests, and setup commands do not require PostgreSQL until work
+   actually needs a connection.
+
 7. [ ] `phase3.5-ingestion-terminology-cleanup`
    Rename queue-era exception and test names where they affect active
    ingestion-state readability.
+
+8. [ ] `phase3.5-dbt-readiness-final`
+   Add the final focused integration coverage for match discovery -> map
+   discovery -> map/player persistence, confirm the `matches`, `maps`, and
+   `players` grains are stable, and update the dbt entry criteria once Phase
+   3.5 is fully satisfied. Do not initialize dbt in this branch.
 
 ### dbt entry criteria
 
