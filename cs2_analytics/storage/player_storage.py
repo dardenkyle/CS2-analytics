@@ -1,6 +1,6 @@
 from cs2_analytics.exceptions import PlayerStorageError
 from cs2_analytics.models.player import Player
-from cs2_analytics.storage.db_instance import db
+from cs2_analytics.storage.db_instance import get_db
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -52,6 +52,7 @@ def store_players(players: list[Player]) -> None:
     """
 
     try:
+        db = get_db()
         with db.get_cursor() as cur:
             for p in players:
                 cur.execute(

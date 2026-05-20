@@ -1,6 +1,6 @@
 from cs2_analytics.exceptions import MatchStorageError
 from cs2_analytics.models.match import Match
-from cs2_analytics.storage.db_instance import db
+from cs2_analytics.storage.db_instance import get_db
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -41,6 +41,7 @@ def store_matches(matches: list[Match]) -> None:
         data_complete = EXCLUDED.data_complete;
     """
 
+    db = get_db()
     conn = db.get_connection()
     if conn is None:
         return
