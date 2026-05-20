@@ -182,7 +182,7 @@ remains the active schema source of truth.
       explicit schema/setup path
 - [x] Clean up import-time global database connection behavior so importing
       storage modules does not require a live PostgreSQL database
-- [ ] Rename queue-era exception and test names where they affect active code
+- [x] Rename queue-era exception and test names where they affect active code
       readability
 
 ### Suggested branch sequence
@@ -243,7 +243,7 @@ relational ingestion outputs without starting dbt models yet.
    so imports, tests, and setup commands do not require PostgreSQL until work
    actually needs a connection.
 
-7. [ ] `phase3.5-ingestion-terminology-cleanup`
+7. [x] `phase3.5-ingestion-terminology-cleanup`
    Rename queue-era exception and test names where they affect active
    ingestion-state readability.
 
