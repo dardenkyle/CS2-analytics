@@ -82,7 +82,7 @@ class BaseIngestionState:
                 f"Failed to record ingestion state item in {self.table_name}."
             ) from e
 
-    def queue_many(
+    def record_many(
         self,
         items: list[tuple[int | str, str]],
         source: str = "unknown",

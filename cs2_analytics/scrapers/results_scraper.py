@@ -11,8 +11,8 @@ from seleniumbase import Driver
 from cs2_analytics.config.config import END_DATE, HLTV_URL, MAX_MATCHES, START_DATE
 from cs2_analytics.exceptions import ResultsScrapeError, SessionScrapeError
 from cs2_analytics.ingestion_state import MatchIngestionState
+from cs2_analytics.utils.ingestion_state_helpers import chunk_and_record
 from cs2_analytics.utils.log_manager import get_logger
-from cs2_analytics.utils.queue_helpers import chunk_and_queue
 
 logger = get_logger(__name__)
 
@@ -63,9 +63,9 @@ class ResultsScraper:
                     batch.append((match_id, full_url))
                     total_recorded += 1
 
-            chunk_and_queue(
+            chunk_and_record(
                 items=batch,
-                queue_obj=self.match_state,
+                state_obj=self.match_state,
                 chunk_size=1000,
                 source=self.source,
             )

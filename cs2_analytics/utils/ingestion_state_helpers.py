@@ -3,9 +3,9 @@
 from more_itertools import chunked
 
 
-def chunk_and_queue(
+def chunk_and_record(
     items: list[tuple[int | str, str]],
-    queue_obj,
+    state_obj,
     chunk_size: int = 1000,
     source: str = "scraper",
     priority: int = 0,
@@ -15,7 +15,7 @@ def chunk_and_queue(
 
     Args:
         items: List of (id, url) tuples to record.
-        queue_obj: Ingestion-state instance with a `queue_many()` method.
+        state_obj: Ingestion-state manager used to refresh rows.
         chunk_size (int): Max number of rows per insert batch. Defaults to 1000.
         source (str): Source identifier string for logging/tracking. Defaults to "scraper".
         priority (int): Optional priority score for processing. Defaults to 0.
@@ -24,4 +24,4 @@ def chunk_and_queue(
         None
     """
     for chunk in chunked(items, chunk_size):
-        queue_obj.queue_many(chunk, source=source, priority=priority)
+        state_obj.record_many(chunk, source=source, priority=priority)

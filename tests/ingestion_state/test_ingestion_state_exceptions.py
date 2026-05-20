@@ -55,7 +55,7 @@ def test_match_ingestion_state_wraps_db_failures_in_typed_exception(
         MatchIngestionStateError,
         match="Failed to record ingestion state items in match_ingestion_state.",
     ):
-        state.queue_many([(1, "https://www.hltv.org/matches/1/test")])
+        state.record_many([(1, "https://www.hltv.org/matches/1/test")])
 
 
 def test_ingestion_state_classes_use_ingestion_state_tables() -> None:
