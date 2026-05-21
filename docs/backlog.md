@@ -287,11 +287,12 @@ Move the project from ad hoc development into issue-driven, reviewable,
 agent-friendly implementation before deployment hardening begins.
 
 Status:
-In progress. The `phase3.6-issue-templates` branch has added GitHub issue
-forms and a pull request template, the `phase3.6-label-taxonomy` branch has
-added the repo-tracked label taxonomy, and the `phase3.6-agent-docs` branch has
-added agent/workflow/architecture decision documentation. Deployment issue
-creation remains open.
+Complete. The `phase3.6-issue-templates` branch added GitHub issue forms and a
+pull request template, the `phase3.6-label-taxonomy` branch added the
+repo-tracked label taxonomy, the `phase3.6-agent-docs` branch added
+agent/workflow/architecture decision documentation, and the
+`phase3.6-create-deployment-issues` branch converted Phase 3.75 deployment work
+into small GitHub issues.
 
 ### Planned work
 
@@ -304,8 +305,8 @@ creation remains open.
 - [x] Add `docs/architecture/decision_log.md` for project decisions
 - [x] Add documentation maintenance rules to `AGENTS.md`, `docs/workflow.md`,
       and the pull request template
-- [ ] Convert Phase 3.75 deployment tasks into GitHub issues
-- [ ] Create small acceptance criteria for each issue
+- [x] Convert Phase 3.75 deployment tasks into GitHub issues
+- [x] Create small acceptance criteria for each issue
 - [x] Create branch naming conventions
 - [x] Define what agents are allowed to change without approval
 - [x] Define what requires human review before merge
@@ -379,7 +380,7 @@ If `Update not needed` is selected, the PR must briefly explain why.
    - what agents may change without approval
    - what requires human review before merge
 
-4. [ ] `phase3.6-create-deployment-issues`
+4. [x] `phase3.6-create-deployment-issues`
        Convert Phase 3.75 work into small GitHub issues with clear scope,
        acceptance criteria, out-of-scope notes, and verification commands.
 
@@ -390,13 +391,13 @@ If `Update not needed` is selected, the PR must briefly explain why.
 
 ### Phase 3.6 exit criteria
 
-- [ ] GitHub issues can be created from templates
-- [ ] Pull requests have a consistent review checklist
+- [x] GitHub issues can be created from templates
+- [x] Pull requests have a consistent review checklist
 - [x] Pull requests include a documentation check
 - [x] `AGENTS.md` explains repo architecture, coding standards, and no-touch areas
 - [x] `AGENTS.md` explains documentation responsibilities
 - [x] `docs/workflow.md` explains documentation expectations
-- [ ] Deployment baseline work is represented as small, reviewable issues
+- [x] Deployment baseline work is represented as small, reviewable issues
 - [x] Branch naming and issue-to-PR workflow are documented
 
 ---
