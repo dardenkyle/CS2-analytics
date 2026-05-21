@@ -5,6 +5,10 @@ class CS2AnalyticsError(Exception):
     """Base exception for application-specific failures."""
 
 
+class ConfigurationError(CS2AnalyticsError):
+    """Raised when runtime configuration is invalid or incomplete."""
+
+
 class ParseError(CS2AnalyticsError):
     """Base exception for parsing failures."""
 

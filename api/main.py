@@ -6,6 +6,8 @@ Includes middleware setup and route registration.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from cs2_analytics.config import API_CORS_ORIGINS, API_DEBUG
+
 from .routes import players
 
 
@@ -13,11 +15,11 @@ def create_app() -> FastAPI:
     """
     Creates and configures the FastAPI application.
     """
-    app = FastAPI(title="CS2 Analytics API")
+    app = FastAPI(title="CS2 Analytics API", debug=API_DEBUG)
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Replace with specific origins in production
+        allow_origins=API_CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
