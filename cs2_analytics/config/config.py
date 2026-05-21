@@ -49,8 +49,12 @@ def _read_int(name: str, *, default: int) -> int:
     if raw_value is None:
         return default
 
+    normalized = raw_value.strip()
+    if not normalized:
+        raise ConfigurationError(f"{name} must be an integer.")
+
     try:
-        return int(raw_value)
+        return int(normalized)
     except ValueError as exc:
         raise ConfigurationError(f"{name} must be an integer.") from exc
 

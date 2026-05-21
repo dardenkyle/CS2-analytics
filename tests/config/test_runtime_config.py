@@ -28,6 +28,19 @@ def test_read_int_rejects_non_integer_values(monkeypatch: pytest.MonkeyPatch) ->
         config._read_int("API_PORT", default=8000)
 
 
+def test_read_int_strips_whitespace(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("API_PORT", " 8000 ")
+
+    assert config._read_int("API_PORT", default=9000) == 8000
+
+
+def test_read_int_rejects_empty_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("API_PORT", " ")
+
+    with pytest.raises(ConfigurationError, match="API_PORT must be an integer"):
+        config._read_int("API_PORT", default=8000)
+
+
 def test_read_csv_rejects_empty_values(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("API_CORS_ORIGINS", " , ")
 
