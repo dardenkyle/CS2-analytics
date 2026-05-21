@@ -88,9 +88,33 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
-### 4. Set Up Database
+### 4. Configure Environment Variables
 
-Ensure PostgreSQL is installed and configure database credentials through your local environment or `cs2_analytics/config/config.py`.
+Copy `.env.example` to `.env` for local development and adjust the values for
+your PostgreSQL instance.
+
+Required runtime variables:
+
+| Variable | Purpose | Local example |
+| --- | --- | --- |
+| `ENVIRONMENT` | Runtime environment name. Use `production` for deployed runtime validation. | `development` |
+| `DEBUG_MODE` | Enables debug logging and API reload behavior. Must be `false` in production. | `true` |
+| `API_HOST` | Host address used by `python run_api.py`. | `127.0.0.1` |
+| `API_PORT` | Port used by `python run_api.py`. | `8000` |
+| `API_CORS_ORIGINS` | Comma-separated browser origins allowed by the API. Wildcard CORS is rejected in production. | `http://localhost:8501` |
+| `DB_NAME` | PostgreSQL database name. | `cs2_db` |
+| `DB_USER` | PostgreSQL user. | `postgres` |
+| `DB_PASS` | PostgreSQL password. | `change_me` |
+| `DB_HOST` | PostgreSQL host. | `localhost` |
+| `DB_PORT` | PostgreSQL port. | `5432` |
+
+Production mode fails fast when required runtime variables are missing, when
+`DEBUG_MODE=true`, or when `API_CORS_ORIGINS` includes `*`.
+
+### 5. Set Up Database
+
+Ensure PostgreSQL is installed and configure database credentials through your
+local environment or `.env`.
 
 Run:
 
@@ -115,21 +139,22 @@ python manage_db.py --wipe
 
 The wipe command asks for `y` confirmation before dropping tables.
 
-### 5. Run the Pipeline
+### 6. Run the Pipeline
 
 ```sh
 python main.py
 ```
 
-### 6. Run the API
+### 7. Run the API
 
 ```sh
 python run_api.py
 ```
 
-Then open: `http://127.0.0.1:8000/docs`
+Then open the host and port configured by `API_HOST` and `API_PORT`, such as
+`http://127.0.0.1:8000/docs`.
 
-### 7. Run Tests
+### 8. Run Tests
 
 ```sh
 python -m pytest
