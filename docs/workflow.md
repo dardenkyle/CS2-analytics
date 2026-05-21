@@ -21,12 +21,15 @@ Airflow comes after dbt.
    convention below.
 3. Keep the change focused on the issue. Split broad work into follow-up issues.
 4. Open a pull request using the repo template.
-5. Fill in summary, related issue, scope, out of scope, risk level,
+5. Before opening or finalizing the pull request, update `docs/backlog.md` when
+   the branch completes roadmap work, changes phase status, or alters planned
+   branch sequencing.
+6. Fill in summary, related issue, scope, out of scope, risk level,
    architecture/roadmap check, documentation check, verification, and review
    notes.
-6. Request human review for medium-risk, high-risk, schema, deployment,
+7. Request human review for medium-risk, high-risk, schema, deployment,
    dependency, CI, or architecture-boundary changes.
-7. Merge only after review concerns and verification gaps are resolved.
+8. Merge only after review concerns and verification gaps are resolved.
 
 ## Branch Naming
 
@@ -127,6 +130,11 @@ to be small and fast to evaluate.
 
 Every PR must select either `Updated` or `Update not needed` in the PR template
 and include a reason.
+
+At the end of each branch, update `docs/backlog.md` when the branch completes
+roadmap work, changes phase status, changes checklist status, or alters planned
+branch sequencing. If no backlog update is needed, explain why in the PR
+documentation check.
 
 Documentation must be updated when a change affects:
 

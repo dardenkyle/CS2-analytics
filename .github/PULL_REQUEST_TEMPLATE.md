@@ -44,7 +44,12 @@ Documentation:
 
 Reason:
 
+Backlog:
+
+Reason:
+
 <!-- If docs were not needed, explain why. -->
+<!-- Set Backlog to `Updated` when this branch completes roadmap work, changes phase status, changes checklist status, or alters planned branch sequencing. Otherwise explain why backlog changes were not needed. -->
 <!-- See docs/workflow.md for documentation expectations. -->
 
 ## Verification
