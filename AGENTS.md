@@ -118,6 +118,10 @@ PR marked medium or high risk.
 ## Documentation Expectations
 
 - Update `docs/backlog.md` when roadmap status changes.
+- At the end of each branch, update `docs/backlog.md` when the branch completes
+  roadmap work, changes phase status, changes checklist status, or alters
+  planned branch sequencing. If no backlog update is needed, explain why in the
+  PR documentation check.
 - Update `docs/architecture/overview.md`,
   `docs/architecture/current_state.md`, `docs/architecture/decision_log.md`, or
   `docs/conventions.md` when architectural boundaries or project decisions

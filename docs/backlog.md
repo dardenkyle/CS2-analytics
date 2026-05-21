@@ -311,46 +311,12 @@ into small GitHub issues.
 - [x] Define what agents are allowed to change without approval
 - [x] Define what requires human review before merge
 
-### Documentation maintenance rule
-
-Agents must check whether their coding session changes any
-documentation-relevant behavior.
-
-Documentation must be updated when a change affects:
-
-- architecture or module responsibilities
-- setup/install commands
-- environment variables or configuration
-- database schema or migrations
-- API routes, request/response behavior, or health checks
-- pipeline execution flow
-- deployment/runtime behavior
-- test commands or CI behavior
-- agent/developer workflow rules
-
-Documentation does not need to be updated for purely internal refactors that do
-not change behavior, setup, architecture boundaries, commands, or public
-interfaces.
-
-Every pull request must include a documentation check section:
-
-## Documentation Check
-
-Select exactly one: `Updated` or `Update not needed`.
-
-Documentation:
-
-Reason:
-
-If `Update not needed` is selected, the PR must briefly explain why.
-
 ### Suggested branch sequence
 
 1. [x] `phase3.6-issue-templates`
        Add GitHub issue templates and a pull request template.
 
    Covers:
-
    - GitHub issue templates
    - pull request template
    - pull request documentation check
@@ -359,7 +325,6 @@ If `Update not needed` is selected, the PR must briefly explain why.
        Add labels for phase, type, priority, and risk.
 
    Covers:
-
    - phase labels
    - type labels
    - priority labels
@@ -370,7 +335,6 @@ If `Update not needed` is selected, the PR must briefly explain why.
        log, and agent/human review policy.
 
    Covers:
-
    - `AGENTS.md` repo rules and coding standards
    - `docs/workflow.md` issue -> branch -> PR -> merge flow
    - `docs/architecture/current_state.md`
@@ -385,7 +349,6 @@ If `Update not needed` is selected, the PR must briefly explain why.
        acceptance criteria, out-of-scope notes, and verification commands.
 
    Covers:
-
    - Phase 3.75 deployment tasks converted into GitHub issues
    - small acceptance criteria for each deployment issue
 
@@ -409,7 +372,9 @@ Make the current ingestion pipeline and API deployable in a reproducible,
 containerized environment before adding dbt.
 
 Status:
-Not started.
+In progress. The `phase3.75-env-config-hardening` branch completed the first
+deployment-baseline slice by making runtime configuration environment-driven
+and production-safe.
 
 Rationale:
 Phase 3.5 confirms that the parsed-source tables are stable enough for dbt, but
@@ -420,9 +385,9 @@ assumptions work outside the local development machine.
 
 ### Planned work
 
-- [ ] Add `.env.example` with all required runtime variables
-- [ ] Move dev-only config defaults out of production paths
-- [ ] Make API host, port, CORS origins, debug mode, and database settings environment-driven
+- [x] Add `.env.example` with all required runtime variables
+- [x] Move dev-only config defaults out of production paths
+- [x] Make API host, port, CORS origins, debug mode, and database settings environment-driven
 - [ ] Add Alembic for versioned application database migrations
 - [ ] Convert the current `schema.sql` source tables into an initial Alembic migration
 - [ ] Keep schema initialization non-destructive by default
@@ -443,9 +408,14 @@ assumptions work outside the local development machine.
 
 ### Suggested branch sequence
 
-1. [ ] `phase3.75-env-config-hardening`
+1. [x] `phase3.75-env-config-hardening`
        Add `.env.example`, environment-driven runtime config, production-safe CORS
        config, debug toggles, and deployment-safe API host/port settings.
+
+   Runtime configuration now uses explicit environment variables for API host,
+   API port, CORS origins, debug mode, and database settings. Production mode
+   fails fast when required runtime variables are missing, debug mode is enabled,
+   wildcard CORS is configured, or numeric ports are invalid.
 
 2. [ ] `phase3.75-alembic-migrations`
        Add Alembic, create the initial migration from the active schema, document
