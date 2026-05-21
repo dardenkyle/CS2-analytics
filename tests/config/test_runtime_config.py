@@ -1,3 +1,5 @@
+import importlib
+
 import pytest
 
 from cs2_analytics.config import config
@@ -39,6 +41,27 @@ def test_read_int_rejects_empty_values(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(ConfigurationError, match="API_PORT must be an integer"):
         config._read_int("API_PORT", default=8000)
+
+
+def test_db_port_is_parsed_as_integer() -> None:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setenv("DB_PORT", " 5433 ")
+
+        reloaded_config = importlib.reload(config)
+
+        assert reloaded_config.DB_PORT == 5433
+
+    importlib.reload(config)
+
+
+def test_db_port_rejects_invalid_values() -> None:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setenv("DB_PORT", "not-a-port")
+
+        with pytest.raises(ConfigurationError, match="DB_PORT must be an integer"):
+            importlib.reload(config)
+
+    importlib.reload(config)
 
 
 def test_read_csv_rejects_empty_values(monkeypatch: pytest.MonkeyPatch) -> None:

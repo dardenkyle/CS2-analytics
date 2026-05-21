@@ -105,7 +105,7 @@ DB_NAME = os.getenv("DB_NAME", default="cs2_db")
 DB_USER = os.getenv("DB_USER", default="postgres")
 DB_PASS = os.getenv("DB_PASS", default="password")
 DB_HOST = os.getenv("DB_HOST", default="localhost")
-DB_PORT = os.getenv("DB_PORT", default="5432")
+DB_PORT = _read_int("DB_PORT", default=5432)
 BATCH_SIZE = 1000
 
 # API Configuration
