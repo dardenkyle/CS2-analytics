@@ -311,46 +311,12 @@ into small GitHub issues.
 - [x] Define what agents are allowed to change without approval
 - [x] Define what requires human review before merge
 
-### Documentation maintenance rule
-
-Agents must check whether their coding session changes any
-documentation-relevant behavior.
-
-Documentation must be updated when a change affects:
-
-- architecture or module responsibilities
-- setup/install commands
-- environment variables or configuration
-- database schema or migrations
-- API routes, request/response behavior, or health checks
-- pipeline execution flow
-- deployment/runtime behavior
-- test commands or CI behavior
-- agent/developer workflow rules
-
-Documentation does not need to be updated for purely internal refactors that do
-not change behavior, setup, architecture boundaries, commands, or public
-interfaces.
-
-Every pull request must include a documentation check section:
-
-## Documentation Check
-
-Select exactly one: `Updated` or `Update not needed`.
-
-Documentation:
-
-Reason:
-
-If `Update not needed` is selected, the PR must briefly explain why.
-
 ### Suggested branch sequence
 
 1. [x] `phase3.6-issue-templates`
        Add GitHub issue templates and a pull request template.
 
    Covers:
-
    - GitHub issue templates
    - pull request template
    - pull request documentation check
@@ -359,7 +325,6 @@ If `Update not needed` is selected, the PR must briefly explain why.
        Add labels for phase, type, priority, and risk.
 
    Covers:
-
    - phase labels
    - type labels
    - priority labels
@@ -370,7 +335,6 @@ If `Update not needed` is selected, the PR must briefly explain why.
        log, and agent/human review policy.
 
    Covers:
-
    - `AGENTS.md` repo rules and coding standards
    - `docs/workflow.md` issue -> branch -> PR -> merge flow
    - `docs/architecture/current_state.md`
@@ -385,7 +349,6 @@ If `Update not needed` is selected, the PR must briefly explain why.
        acceptance criteria, out-of-scope notes, and verification commands.
 
    Covers:
-
    - Phase 3.75 deployment tasks converted into GitHub issues
    - small acceptance criteria for each deployment issue
 
