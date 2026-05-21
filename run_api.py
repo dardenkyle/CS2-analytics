@@ -1,10 +1,22 @@
 #!/usr/bin/env python
-"""Simple script to run the FastAPI backend server."""
+"""Run the FastAPI backend server."""
 
 import uvicorn
 
-from api.main import app
+from cs2_analytics.config import API_DEBUG, API_HOST, API_PORT
+from cs2_analytics.utils.log_manager import get_logger
+
+logger = get_logger(__name__)
+
+
+def main() -> None:
+    """Run the API server with environment-driven runtime settings."""
+    logger.info(
+        "Starting FastAPI server.",
+        extra={"host": API_HOST, "port": API_PORT, "debug": API_DEBUG},
+    )
+    uvicorn.run("api.main:app", host=API_HOST, port=API_PORT, reload=API_DEBUG)
+
 
 if __name__ == "__main__":
-    print("🚀 Starting FastAPI server on http://127.0.0.1:8000")
-    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)
+    main()
