@@ -1,6 +1,7 @@
 import builtins
-import io
-from pathlib import Path
+import sys
+import types
+from pathlib import Path, PurePath
 
 import pytest
 
@@ -56,26 +57,6 @@ class _RecordingConnection:
         return self.cursor_obj
 
 
-class _RecordingDatabase:
-    instances: list["_RecordingDatabase"] = []
-
-    def __init__(self) -> None:
-        self.indexes_created = False
-        self.closed = False
-        self.instances.append(self)
-
-    def create_indexes(self) -> bool:
-        self.indexes_created = True
-        return True
-
-    def close_db_pool(self) -> None:
-        self.closed = True
-
-
-def _fake_schema_file(*_args, **_kwargs) -> io.StringIO:
-    return io.StringIO("SELECT 1;")
-
-
 def _table_definition(schema_sql: str, table_name: str) -> str:
     start_marker = f"CREATE TABLE IF NOT EXISTS {table_name} ("
     start_index = schema_sql.index(start_marker)
@@ -83,77 +64,87 @@ def _table_definition(schema_sql: str, table_name: str) -> str:
     return schema_sql[start_index:end_index]
 
 
-def test_initialize_database_executes_schema_and_creates_indexes(
+def test_run_migrations_invokes_alembic_upgrade(monkeypatch: pytest.MonkeyPatch) -> None:
+    upgrade_calls: list[tuple[object, str]] = []
+    config_paths: list[str] = []
+    config_options: list[tuple[str, str]] = []
+
+    class _FakeConfig:
+        def __init__(self, path: str) -> None:
+            config_paths.append(path)
+
+        def set_main_option(self, name: str, value: str) -> None:
+            config_options.append((name, value))
+
+    fake_command = types.SimpleNamespace(
+        upgrade=lambda config, revision: upgrade_calls.append((config, revision))
+    )
+    fake_config = types.SimpleNamespace(Config=_FakeConfig)
+    fake_alembic = types.ModuleType("alembic")
+    fake_alembic.command = fake_command
+    fake_alembic.config = fake_config
+
+    monkeypatch.setitem(sys.modules, "alembic", fake_alembic)
+    monkeypatch.setitem(sys.modules, "alembic.command", fake_command)
+    monkeypatch.setitem(sys.modules, "alembic.config", fake_config)
+
+    initialize_db_module.run_migrations()
+
+    assert PurePath(config_paths[0]).parts[-2:] == ("cs2_analytics", "alembic.ini")
+    assert config_options[0][0] == "script_location"
+    assert PurePath(config_options[0][1]).parts[-1:] == ("alembic",)
+    assert config_options[1][0] == "prepend_sys_path"
+    assert upgrade_calls[0][1] == "head"
+
+
+def test_initialize_database_runs_migrations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cursor = _RecordingCursor()
-    connection = _RecordingConnection(cursor)
-    _RecordingDatabase.instances = []
+    migration_calls: list[bool] = []
 
     monkeypatch.setattr(
-        initialize_db_module.psycopg2, "connect", lambda **_: connection
+        initialize_db_module,
+        "run_migrations",
+        lambda: migration_calls.append(True),
     )
-    monkeypatch.setattr(initialize_db_module, "Database", _RecordingDatabase)
-    monkeypatch.setattr(initialize_db_module.os.path, "dirname", lambda _: "fake_dir")
-    monkeypatch.setattr(
-        builtins,
-        "open",
-        _fake_schema_file,
-    )
-
     initialize_db_module.initialize_database()
 
-    assert connection.entered is True
-    assert connection.exited is True
-    assert cursor.entered is True
-    assert cursor.exited is True
-    assert cursor.executed == [("SELECT 1;", None)]
-    assert _RecordingDatabase.instances[0].indexes_created is True
-    assert _RecordingDatabase.instances[0].closed is True
+    assert migration_calls == [True]
 
 
 def test_initialize_database_can_create_configured_database_first(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cursor = _RecordingCursor()
-    connection = _RecordingConnection(cursor)
     create_database_calls: list[bool] = []
-    _RecordingDatabase.instances = []
+    migration_calls: list[bool] = []
 
-    monkeypatch.setattr(
-        initialize_db_module.psycopg2, "connect", lambda **_: connection
-    )
-    monkeypatch.setattr(initialize_db_module, "Database", _RecordingDatabase)
     monkeypatch.setattr(
         initialize_db_module,
         "create_database_if_missing",
         lambda: create_database_calls.append(True),
     )
-    monkeypatch.setattr(initialize_db_module.os.path, "dirname", lambda _: "fake_dir")
-    monkeypatch.setattr(builtins, "open", _fake_schema_file)
+    monkeypatch.setattr(
+        initialize_db_module,
+        "run_migrations",
+        lambda: migration_calls.append(True),
+    )
 
     initialize_db_module.initialize_database(create_db=True)
 
     assert create_database_calls == [True]
-    assert cursor.executed == [("SELECT 1;", None)]
-    assert _RecordingDatabase.instances[0].indexes_created is True
+    assert migration_calls == [True]
 
 
-def test_initialize_database_wraps_schema_failures_in_typed_error(
+def test_initialize_database_wraps_migration_failures_in_typed_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    cursor = _RecordingCursor(should_fail=True)
-    connection = _RecordingConnection(cursor)
+    def fail_migrations() -> None:
+        raise RuntimeError("migration failed")
 
     monkeypatch.setattr(
-        initialize_db_module.psycopg2, "connect", lambda **_: connection
-    )
-    monkeypatch.setattr(initialize_db_module, "Database", _RecordingDatabase)
-    monkeypatch.setattr(initialize_db_module.os.path, "dirname", lambda _: "fake_dir")
-    monkeypatch.setattr(
-        builtins,
-        "open",
-        _fake_schema_file,
+        initialize_db_module,
+        "run_migrations",
+        fail_migrations,
     )
 
     with pytest.raises(
@@ -162,8 +153,6 @@ def test_initialize_database_wraps_schema_failures_in_typed_error(
         initialize_db_module.initialize_database()
 
     assert isinstance(exc_info.value.__cause__, RuntimeError)
-    assert connection.exited is True
-    assert cursor.exited is True
 
 
 def test_wipe_database_executes_explicit_drop_table_statements(
