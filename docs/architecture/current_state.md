@@ -1,7 +1,8 @@
 # Current Architecture State
 
-This document summarizes the active architecture as of Phase 3.6. For the
-longer architecture overview, see `docs/architecture/overview.md`.
+This document summarizes the active architecture as of the Phase 3.75 Alembic
+migration baseline. For the longer architecture overview, see
+`docs/architecture/overview.md`.
 
 ## Active Runtime Flow
 
@@ -30,8 +31,11 @@ Phase 3.5 made the active parsed-source tables ready for downstream dbt staging:
 - `maps`: one row per played map
 - `players`: one row per player per map
 
-`cs2_analytics/storage/schema.sql` remains the current schema source of truth
-until deployment baseline work introduces versioned migrations.
+Alembic now owns the application/source schema for deployed environments. The
+initial migration mirrors the active `cs2_analytics/storage/schema.sql` tables,
+constraints, ingestion-state lifecycle fields, and setup indexes. Keep
+`schema.sql` aligned as a readable schema reference while migration ownership is
+being established.
 
 `docs/schema_target_pre_dbt.md` remains planning guidance only until implemented.
 
@@ -98,6 +102,11 @@ clearer.
 Phase 3.75 deployment baseline comes before dbt. The deployment baseline should
 prove that runtime configuration, migrations, containers, CI, and smoke tests
 work outside the local development machine.
+
+Normal database setup applies Alembic migrations through
+`alembic -c cs2_analytics/alembic.ini upgrade head` or
+`python manage_db.py --init`. Destructive table wipes remain explicit and
+interactive.
 
 dbt will be added after the deployment baseline and must remain downstream of
 ingestion. It should transform stable source tables, not own ingestion logic or

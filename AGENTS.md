@@ -7,7 +7,10 @@ Guidance for coding agents working in this repository.
 - Start with `README.md`, `docs/architecture/overview.md`,
   `docs/architecture/current_state.md`, `docs/conventions.md`,
   `docs/workflow.md`, and `docs/backlog.md`.
-- Treat `cs2_analytics/storage/schema.sql` as the schema source of truth.
+- Treat Alembic migrations in `cs2_analytics/alembic/versions/` as the
+  executable application/source schema source of truth. Keep
+  `cs2_analytics/storage/schema.sql` aligned as the readable schema reference
+  during the migration ownership transition.
 - Prefer the existing architecture over new abstractions.
 - Keep changes aligned with the current roadmap: Phase 3 and Phase 3.5 are
   complete, Phase 3.6 is workflow hardening, Phase 3.75 deployment baseline
@@ -109,8 +112,9 @@ PR marked medium or high risk.
 ## Local Development Notes
 
 - Install development dependencies with `pip install -e ".[dev]"`.
-- Use `python -m cs2_analytics.storage.initialize_db` to initialize the local
-  database schema when needed.
+- Use `python -m cs2_analytics.storage.initialize_db` or
+  `alembic -c cs2_analytics/alembic.ini upgrade head` to initialize or upgrade
+  the local database schema when needed.
 - Keep local credentials and environment-specific settings out of commits.
 - Avoid committing generated caches, coverage output, logs, parsed data, or
   downloaded demos.

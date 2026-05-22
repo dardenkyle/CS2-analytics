@@ -116,16 +116,29 @@ Production mode fails fast when required runtime variables are missing, when
 Ensure PostgreSQL is installed and configure database credentials through your
 local environment or `.env`.
 
-Run:
+Run the non-destructive migration path:
 
 ```sh
 python manage_db.py --init
 ```
 
-Running `python manage_db.py` with no flags also uses the safe init path.
+Running `python manage_db.py` with no flags also applies migrations. Deployed
+environments should run the equivalent Alembic command during release startup:
+
+```sh
+alembic -c cs2_analytics/alembic.ini upgrade head
+```
+
+For an existing database that was already initialized from the current
+`schema.sql`, first confirm the live schema matches the initial Alembic
+migration, then mark it as migration-managed without recreating tables:
+
+```sh
+alembic -c cs2_analytics/alembic.ini stamp head
+```
 
 For first-time local setup when the configured PostgreSQL database does not
-exist yet:
+exist yet, create it and then apply migrations:
 
 ```sh
 python manage_db.py --create-database
@@ -137,7 +150,9 @@ To explicitly wipe application tables:
 python manage_db.py --wipe
 ```
 
-The wipe command asks for `y` confirmation before dropping tables.
+The wipe command asks for `y` confirmation before dropping tables. Alembic owns
+the application/source schema; future dbt models will remain downstream and
+will not manage ingestion tables.
 
 ### 6. Run the Pipeline
 

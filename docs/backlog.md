@@ -374,7 +374,9 @@ containerized environment before adding dbt.
 Status:
 In progress. The `phase3.75-env-config-hardening` branch completed the first
 deployment-baseline slice by making runtime configuration environment-driven
-and production-safe.
+and production-safe. The `phase3.75-alembic-migrations` branch added Alembic
+configuration and an initial migration for the current application/source
+schema.
 
 Rationale:
 Phase 3.5 confirms that the parsed-source tables are stable enough for dbt, but
@@ -388,11 +390,11 @@ assumptions work outside the local development machine.
 - [x] Add `.env.example` with all required runtime variables
 - [x] Move dev-only config defaults out of production paths
 - [x] Make API host, port, CORS origins, debug mode, and database settings environment-driven
-- [ ] Add Alembic for versioned application database migrations
-- [ ] Convert the current `schema.sql` source tables into an initial Alembic migration
-- [ ] Keep schema initialization non-destructive by default
-- [ ] Add migration command documentation for local Docker and deployment usage
-- [ ] Ensure deployed database updates through `alembic upgrade head`
+- [x] Add Alembic for versioned application database migrations
+- [x] Convert the current `schema.sql` source tables into an initial Alembic migration
+- [x] Keep schema initialization non-destructive by default
+- [x] Add migration command documentation for local Docker and deployment usage
+- [x] Ensure deployed database updates through `alembic -c cs2_analytics/alembic.ini upgrade head`
 - [ ] Add a `Dockerfile` for the application runtime
 - [ ] Add `docker-compose.yml` for local deployment with app/API + PostgreSQL
 - [ ] Add a dedicated pipeline runner command or module entrypoint
@@ -417,10 +419,19 @@ assumptions work outside the local development machine.
    fails fast when required runtime variables are missing, debug mode is enabled,
    wildcard CORS is configured, or numeric ports are invalid.
 
-2. [ ] `phase3.75-alembic-migrations`
+2. [x] `phase3.75-alembic-migrations`
        Add Alembic, create the initial migration from the active schema, document
        migration commands, and make migrations the source of truth for deployed
        application/source tables.
+
+   Alembic now manages the application/source schema through an initial
+   migration that mirrors the active tables, constraints, ingestion-state
+   lifecycle fields, and setup indexes. `python manage_db.py --init` and
+   `python manage_db.py --create-database` apply
+   `alembic -c cs2_analytics/alembic.ini upgrade head`
+   non-destructively, while explicit wipe behavior remains separate. Existing
+   databases that already match the initial migration can be brought under
+   migration tracking with `alembic -c cs2_analytics/alembic.ini stamp head`.
 
 3. [ ] `phase3.75-container-runtime`
        Add `Dockerfile`, `docker-compose.yml`, and documented local container
@@ -444,10 +455,10 @@ assumptions work outside the local development machine.
 - [ ] Required environment variables are documented
 - [ ] API binds correctly in a deployed/container environment
 - [ ] PostgreSQL connection works through environment config
-- [ ] Fresh database can be initialized through migrations
-- [ ] Existing database can be upgraded without destructive reset
-- [ ] App tables and ingestion-state tables are migration-managed
-- [ ] Schema initialization is explicit and non-destructive by default
+- [x] Fresh database can be initialized through migrations
+- [x] Existing database can be brought under migration tracking without destructive reset
+- [x] App tables and ingestion-state tables are migration-managed
+- [x] Schema initialization is explicit and non-destructive by default
 - [ ] CI passes on every PR
 - [ ] A limited ingestion run works outside the local dev environment
 - [ ] API health endpoint works in deployed environment
@@ -466,7 +477,7 @@ reproducible deployment baseline.
 - [ ] Phase 3.6 issue-driven workflow is complete
 - [ ] Phase 3.75 deployment baseline is complete
 - [ ] Current ingestion pipeline can run outside the local dev machine
-- [ ] Application/source tables are managed by Alembic migrations
+- [x] Application/source tables are managed by Alembic migrations
 - [ ] dbt will be additive and downstream of ingestion, not a replacement for ingestion logic
 
 ### Database ownership boundary

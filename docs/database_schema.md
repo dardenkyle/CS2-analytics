@@ -2,23 +2,26 @@
 
 This document is split into two parts:
 
-- Current schema: what exists today in `cs2_analytics/storage/schema.sql`
+- Current schema: what exists today in Alembic and `cs2_analytics/storage/schema.sql`
 - Planned schema direction: candidates for follow-up schema cleanup, dbt, and
   later orchestration
 
 Current intent:
 
-- `cs2_analytics/storage/schema.sql` remains the source of truth for the current implementation.
+- Alembic migrations own application/source schema for setup and deployment.
+- `cs2_analytics/storage/schema.sql` remains a readable reference for the current
+  implementation and should stay aligned with migrations during the transition.
 - The ingestion-state lifecycle schema is implemented.
 - Active match, map, and demo controllers delegate per-item workflow to stage
   services; the next major architecture phase is dbt.
 
 ---
 
-## Current Schema (Source of Truth)
+## Current Schema Reference
 
-Use `cs2_analytics/storage/schema.sql` as final authority.
-Treat this as the working contract for the current codebase.
+Use the initial Alembic migration as the executable setup path. Treat
+`cs2_analytics/storage/schema.sql` as the readable schema reference for the
+current codebase.
 
 ### Core tables
 
@@ -232,6 +235,7 @@ See `docs/dbt_models.md` for later-phase dbt planning.
 
 ## Notes
 
-- Do not assume planned tables or fields exist until they are added to `schema.sql`.
+- Do not assume planned tables or fields exist until they are added to Alembic
+  migrations and the schema reference.
 - Treat current table names and future semantic roles separately.
 - For implementation work, align code and docs to the current section above first.

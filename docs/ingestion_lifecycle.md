@@ -3,8 +3,9 @@
 Status: Phase 1 decisions implemented in Phase 2
 
 This document captures the lifecycle semantics now implemented in the
-`*_ingestion_state` tables. The implementation source of truth remains
-`cs2_analytics/storage/schema.sql`.
+`*_ingestion_state` tables. Alembic migrations are now the executable setup
+path, and `cs2_analytics/storage/schema.sql` remains the readable schema
+reference during the migration ownership transition.
 
 ## Decisions So Far
 

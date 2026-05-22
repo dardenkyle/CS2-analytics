@@ -112,6 +112,10 @@ outside the requested scope.
 Agents must not add dbt, Airflow, demo expansion, CT/T splits, eco-adjusted
 stats, or unrelated analytics scope unless explicitly requested.
 
+During Phase 3.75 and later, Alembic owns application/source schema changes.
+Keep `cs2_analytics/storage/schema.sql` aligned as a readable reference when
+schema migrations change application tables.
+
 ## Human Review Policy
 
 Human review is required before merge for:
