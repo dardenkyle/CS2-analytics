@@ -1,7 +1,7 @@
 # Current Architecture State
 
-This document summarizes the active architecture as of the Phase 3.75 Alembic
-migration baseline. For the longer architecture overview, see
+This document summarizes the active architecture as of the Phase 3.75 container
+runtime baseline. For the longer architecture overview, see
 `docs/architecture/overview.md`.
 
 ## Active Runtime Flow
@@ -107,6 +107,17 @@ Normal database setup applies Alembic migrations through
 `alembic -c cs2_analytics/alembic.ini upgrade head` or
 `python manage_db.py --init`. Destructive table wipes remain explicit and
 interactive.
+
+The local container runtime now packages the existing Python entrypoints without
+changing ingestion responsibilities:
+
+- API: `python run_api.py`
+- migrations: `python manage_db.py --init`
+- pipeline: `python main.py`
+
+`docker-compose.yml` provides local PostgreSQL plus app, migration, and
+pipeline services. Runtime artifacts such as logs, downloaded demos, and parsed
+data stay mounted from the working tree and are not baked into the image.
 
 dbt will be added after the deployment baseline and must remain downstream of
 ingestion. It should transform stable source tables, not own ingestion logic or
