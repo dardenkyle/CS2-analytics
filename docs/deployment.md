@@ -37,7 +37,7 @@ curl http://localhost:8000/docs
 Apply Alembic migrations against the compose PostgreSQL service:
 
 ```sh
-docker compose run --rm migrate
+docker compose --profile tools run --rm migrate
 ```
 
 This runs:
@@ -55,7 +55,7 @@ entrypoint.
 Run the current ingestion pipeline in the container:
 
 ```sh
-docker compose run --rm pipeline
+docker compose --profile tools run --rm pipeline
 ```
 
 The pipeline still follows the existing application flow:

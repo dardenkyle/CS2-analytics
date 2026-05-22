@@ -168,13 +168,13 @@ docker compose up --build app
 Apply database migrations in the compose environment:
 
 ```sh
-docker compose run --rm migrate
+docker compose --profile tools run --rm migrate
 ```
 
 Run the ingestion pipeline in the compose environment:
 
 ```sh
-docker compose run --rm pipeline
+docker compose --profile tools run --rm pipeline
 ```
 
 The API is available at `http://localhost:8000` by default. See
