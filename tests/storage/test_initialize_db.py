@@ -135,7 +135,27 @@ def test_initialize_database_can_create_configured_database_first(
     assert migration_calls == [True]
 
 
-def test_initialize_database_wraps_migration_failures_in_typed_error(
+def test_initialize_database_preserves_typed_migration_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    migration_error = DatabaseOperationError("Failed to apply database migrations.")
+
+    def fail_migrations() -> None:
+        raise migration_error
+
+    monkeypatch.setattr(
+        initialize_db_module,
+        "run_migrations",
+        fail_migrations,
+    )
+
+    with pytest.raises(DatabaseOperationError) as exc_info:
+        initialize_db_module.initialize_database()
+
+    assert exc_info.value is migration_error
+
+
+def test_initialize_database_wraps_unexpected_migration_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fail_migrations() -> None:

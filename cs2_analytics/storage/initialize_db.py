@@ -114,7 +114,8 @@ def initialize_database(create_db: bool = False) -> None:
         logger.info("Applying database migrations.")
         run_migrations()
         logger.info("Database migrations applied successfully.")
-
+    except DatabaseOperationError:
+        raise
     except Exception as e:
         raise DatabaseOperationError("Failed to initialize database schema.") from e
 
