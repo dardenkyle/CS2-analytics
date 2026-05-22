@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import tomllib
@@ -30,7 +31,12 @@ def _table_block(migration_sql: str, table_name: str) -> str:
 def test_alembic_is_project_dependency() -> None:
     pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
 
-    assert "alembic" in pyproject["project"]["dependencies"]
+    dependencies = pyproject["project"]["dependencies"]
+
+    assert any(
+        re.match(r"^alembic(\s|$|[<>=!~\[])", dependency.strip().lower())
+        for dependency in dependencies
+    )
 
 
 def test_alembic_env_does_not_render_plaintext_password_url() -> None:
