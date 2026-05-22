@@ -1,3 +1,4 @@
+import ast
 import re
 from pathlib import Path
 
@@ -18,14 +19,69 @@ def _migration_sql() -> str:
     return MIGRATION_PATH.read_text(encoding="utf-8")
 
 
-def _table_block(migration_sql: str, table_name: str) -> str:
-    start_marker = f'op.create_table(\n        "{table_name}",'
-    start_index = migration_sql.index(start_marker)
-    next_table_index = migration_sql.find("    op.create_table(", start_index + 1)
-    index_start = migration_sql.find("    op.create_index(", start_index + 1)
-    candidates = [value for value in (next_table_index, index_start) if value != -1]
-    end_index = min(candidates) if candidates else len(migration_sql)
-    return migration_sql[start_index:end_index]
+def _migration_tree() -> ast.Module:
+    return ast.parse(_migration_sql())
+
+
+def _is_op_call(node: ast.Call, name: str) -> bool:
+    return (
+        isinstance(node.func, ast.Attribute)
+        and node.func.attr == name
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "op"
+    )
+
+
+def _string_constant(node: ast.expr) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def _create_table_calls() -> dict[str, ast.Call]:
+    table_calls: dict[str, ast.Call] = {}
+    for node in ast.walk(_migration_tree()):
+        if not isinstance(node, ast.Call) or not _is_op_call(node, "create_table"):
+            continue
+        table_name = _string_constant(node.args[0])
+        if table_name is not None:
+            table_calls[table_name] = node
+    return table_calls
+
+
+def _column_calls(table_call: ast.Call) -> dict[str, ast.Call]:
+    columns: dict[str, ast.Call] = {}
+    for arg in table_call.args[1:]:
+        if (
+            isinstance(arg, ast.Call)
+            and isinstance(arg.func, ast.Attribute)
+            and arg.func.attr == "Column"
+        ):
+            column_name = _string_constant(arg.args[0])
+            if column_name is not None:
+                columns[column_name] = arg
+    return columns
+
+
+def _has_bool_keyword(call: ast.Call, name: str, expected: bool) -> bool:
+    for keyword in call.keywords:
+        if keyword.arg == name and isinstance(keyword.value, ast.Constant):
+            return keyword.value.value is expected
+    return False
+
+
+def _index_names() -> set[str]:
+    names: set[str] = set()
+    for node in ast.walk(_migration_tree()):
+        if isinstance(node, ast.Call) and _is_op_call(node, "create_index"):
+            index_name = _string_constant(node.args[0])
+            if index_name is not None:
+                names.add(index_name)
+        elif isinstance(node, ast.Call) and _is_op_call(node, "execute"):
+            sql = _string_constant(node.args[0])
+            if sql is not None:
+                names.update(re.findall(r"CREATE INDEX ([a-z0-9_]+)", sql))
+    return names
 
 
 def test_alembic_is_project_dependency() -> None:
@@ -48,7 +104,7 @@ def test_alembic_env_does_not_render_plaintext_password_url() -> None:
 
 
 def test_initial_migration_defines_application_tables_and_indexes() -> None:
-    migration_sql = _migration_sql()
+    table_calls = _create_table_calls()
 
     for table_name in (
         "teams",
@@ -66,7 +122,9 @@ def test_initial_migration_defines_application_tables_and_indexes() -> None:
         "scrape_runs",
         "player_metrics",
     ):
-        assert f'"{table_name}"' in migration_sql
+        assert table_name in table_calls
+
+    index_names = _index_names()
 
     for index_name in (
         "idx_matches_date",
@@ -82,11 +140,11 @@ def test_initial_migration_defines_application_tables_and_indexes() -> None:
         "idx_map_ingestion_state_pending",
         "idx_demo_ingestion_state_pending",
     ):
-        assert index_name in migration_sql
+        assert index_name in index_names
 
 
 def test_initial_migration_preserves_ingestion_lifecycle_fields() -> None:
-    migration_sql = _migration_sql()
+    table_calls = _create_table_calls()
     required_columns = (
         "status",
         "first_seen_at",
@@ -106,15 +164,15 @@ def test_initial_migration_preserves_ingestion_lifecycle_fields() -> None:
         "map_ingestion_state",
         "demo_ingestion_state",
     ):
-        table_sql = _table_block(migration_sql, table_name)
+        column_names = set(_column_calls(table_calls[table_name]))
         for column_name in required_columns:
-            assert column_name in table_sql
-        assert "inserted_at" not in table_sql
-        assert "last_inserted_at" not in table_sql
+            assert column_name in column_names
+        assert "inserted_at" not in column_names
+        assert "last_inserted_at" not in column_names
 
 
 def test_initial_migration_preserves_explicit_source_id_primary_keys() -> None:
-    migration_sql = _migration_sql()
+    table_calls = _create_table_calls()
 
     for table_name, column_name in (
         ("teams", "team_id"),
@@ -124,6 +182,6 @@ def test_initial_migration_preserves_explicit_source_id_primary_keys() -> None:
         ("match_ingestion_state", "match_id"),
         ("map_ingestion_state", "map_id"),
     ):
-        table_sql = _table_block(migration_sql, table_name)
-        assert f'"{column_name}", sa.Integer(), primary_key=True' in table_sql
-        assert "autoincrement=False" in table_sql
+        columns = _column_calls(table_calls[table_name])
+        assert _has_bool_keyword(columns[column_name], "primary_key", True)
+        assert _has_bool_keyword(columns[column_name], "autoincrement", False)
