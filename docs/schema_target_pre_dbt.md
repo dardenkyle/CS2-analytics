@@ -4,13 +4,13 @@ This is the intended parsed-source schema normalization target captured before
 dbt implementation. It documents a later cleanup path for the match, map, and
 player source tables.
 
-`cs2_analytics/storage/schema.sql` remains the source of truth until this target
-is implemented.
+Alembic migrations are now the executable setup path, while
+`cs2_analytics/storage/schema.sql` remains the readable schema reference during
+the migration ownership transition.
 
 Current status:
 
-- Phase 3.5 dbt readiness is complete for the active schema in
-  `cs2_analytics/storage/schema.sql`.
+- Phase 3.5 dbt readiness is complete for the active application/source schema.
 - This document is planning guidance for a later focused schema/model/storage
   normalization pass.
 - The changes below are not blockers for initial dbt staging over the current

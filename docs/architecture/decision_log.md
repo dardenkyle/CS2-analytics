@@ -97,8 +97,8 @@ Consequences:
 - Phase 3.75 follows Phase 3.6.
 - dbt remains the next analytics layer, but starts only after runtime and
   deployment assumptions are reproducible.
-- Application/source schema should move to Alembic during deployment baseline
-  work before dbt owns downstream transformation models.
+- Application/source schema moves to Alembic during deployment baseline work
+  before dbt owns downstream transformation models.
 - Airflow remains deferred until after dbt.
 
 ## ADR-0005: Keep Demo Expansion Deferred
@@ -125,7 +125,36 @@ Consequences:
 - Demo expansion should not be bundled into deployment baseline or dbt staging
   work.
 
-## ADR-0006: Use Issue-Driven, Reviewable Branches
+## ADR-0006: Use Alembic For Application Source Schema
+
+Status:
+Accepted
+
+Date:
+2026-05-21
+
+Context:
+Deployment baseline work needs a reproducible, non-destructive way to create
+and upgrade application/source tables outside one local development database.
+The previous setup path executed `schema.sql` directly and created indexes from
+Python setup code.
+
+Decision:
+Use Alembic migrations for application/source schema ownership. The initial
+migration mirrors the active `schema.sql` table shape, constraints,
+ingestion-state lifecycle fields, and setup indexes. Normal setup runs
+`alembic -c cs2_analytics/alembic.ini upgrade head` through
+`python manage_db.py --init`.
+
+Consequences:
+- Deployed environments update schema through Alembic.
+- `schema.sql` remains a readable schema reference during the migration
+  ownership transition and must stay aligned when schema changes occur.
+- Ingestion-state tables keep their lifecycle fields and do not gain
+  parsed-source audit fields.
+- dbt remains downstream and will not manage application/source schema.
+
+## ADR-0007: Use Issue-Driven, Reviewable Branches
 
 Status:
 Accepted

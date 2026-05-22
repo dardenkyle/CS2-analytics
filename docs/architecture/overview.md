@@ -30,6 +30,11 @@ Demo processing is intentionally staged for later and remains decoupled from the
 
 The architecture is centered on explicit lifecycle/state tracking for discovered entities.
 
+Application/source schema changes are now managed through Alembic migrations
+during deployment baseline work. The initial migration preserves the active
+`schema.sql` semantics, including ingestion-state lifecycle fields and setup
+indexes. dbt remains downstream and does not own ingestion tables.
+
 For match and map discovery, the PostgreSQL tables `match_ingestion_state` and `map_ingestion_state` are source-of-truth lifecycle tables rather than simple transient work queues.
 
 The intended design is:

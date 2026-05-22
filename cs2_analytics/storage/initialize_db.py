@@ -1,14 +1,13 @@
 """Database setup commands for schema creation and explicit wipes."""
 
 import argparse
-import os
+from pathlib import Path
 
 import psycopg2
 from psycopg2 import sql
 
 from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from cs2_analytics.exceptions import DatabaseOperationError
-from cs2_analytics.storage.database import Database
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -28,6 +27,7 @@ TABLES_TO_WIPE = (
     "teams",
     "player_info",
     "scrape_runs",
+    "alembic_version",
 )
 
 
@@ -63,6 +63,25 @@ def create_database_if_missing(maintenance_db: str = "postgres") -> None:
         raise DatabaseOperationError("Failed to create database.") from e
 
 
+def run_migrations() -> None:
+    """Apply application schema migrations to the configured database."""
+    try:
+        from alembic import command
+        from alembic.config import Config
+
+        backend_root = Path(__file__).parents[1]
+        project_root = backend_root.parent
+        alembic_config = Config(str(backend_root / "alembic.ini"))
+        alembic_config.set_main_option(
+            "script_location",
+            str(backend_root / "alembic"),
+        )
+        alembic_config.set_main_option("prepend_sys_path", str(project_root))
+        command.upgrade(alembic_config, "head")
+    except Exception as e:
+        raise DatabaseOperationError("Failed to apply database migrations.") from e
+
+
 def wipe_database() -> None:
     """Drop application tables from the configured database."""
     drop_sql = "\n".join(
@@ -88,30 +107,16 @@ def confirm_wipe() -> bool:
 
 
 def initialize_database(create_db: bool = False) -> None:
-    """Create schema tables and indexes in the configured database."""
+    """Apply non-destructive schema migrations to the configured database."""
     if create_db:
         create_database_if_missing()
 
     try:
-        with psycopg2.connect(**_connection_kwargs(DB_NAME)) as conn:
-            logger.info("Connected to PostgreSQL database for schema initialization.")
-            with conn.cursor() as cur:
-                schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
-
-                with open(schema_path, encoding="utf-8") as schema_file:
-                    schema_sql = schema_file.read()
-                    cur.execute(schema_sql)
-
-        logger.info("Database tables created or verified.")
-
-        db = Database()
-        try:
-            db.create_indexes()
-        finally:
-            db.close_db_pool()
-
-        logger.info("Database schema initialized successfully.")
-
+        logger.info("Applying database migrations.")
+        run_migrations()
+        logger.info("Database migrations applied successfully.")
+    except DatabaseOperationError:
+        raise
     except Exception as e:
         raise DatabaseOperationError("Failed to initialize database schema.") from e
 
