@@ -9,6 +9,7 @@ MIGRATION_PATH = (
     / "versions"
     / "20260521_0001_initial_application_schema.py"
 )
+ENV_PATH = Path(__file__).parents[2] / "cs2_analytics" / "alembic" / "env.py"
 PYPROJECT_PATH = Path(__file__).parents[2] / "pyproject.toml"
 
 
@@ -30,6 +31,14 @@ def test_alembic_is_project_dependency() -> None:
     pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding="utf-8"))
 
     assert "alembic" in pyproject["project"]["dependencies"]
+
+
+def test_alembic_env_does_not_render_plaintext_password_url() -> None:
+    env_sql = ENV_PATH.read_text(encoding="utf-8")
+
+    assert "hide_password=False" not in env_sql
+    assert "create_engine(" in env_sql
+    assert "render_as_string(hide_password=True)" in env_sql
 
 
 def test_initial_migration_defines_application_tables_and_indexes() -> None:

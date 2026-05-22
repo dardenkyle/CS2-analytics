@@ -1,7 +1,7 @@
 """Alembic runtime configuration for CS2 Analytics."""
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 from sqlalchemy.engine import URL
 
 from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
@@ -11,8 +11,8 @@ config = context.config
 target_metadata = None
 
 
-def _database_url() -> str:
-    url = URL.create(
+def _database_url() -> URL:
+    return URL.create(
         drivername="postgresql+psycopg2",
         username=DB_USER,
         password=DB_PASS,
@@ -20,13 +20,16 @@ def _database_url() -> str:
         port=DB_PORT,
         database=DB_NAME,
     )
-    return url.render_as_string(hide_password=False)
+
+
+def _redacted_database_url() -> str:
+    return _database_url().render_as_string(hide_password=True)
 
 
 def run_migrations_offline() -> None:
     """Run migrations without opening a DBAPI connection."""
     context.configure(
-        url=_database_url(),
+        url=_redacted_database_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -38,10 +41,8 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations with a live database connection."""
-    config.set_main_option("sqlalchemy.url", _database_url())
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_engine(
+        _database_url(),
         poolclass=pool.NullPool,
     )
 
