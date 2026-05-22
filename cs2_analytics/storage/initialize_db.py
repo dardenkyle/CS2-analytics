@@ -27,6 +27,7 @@ TABLES_TO_WIPE = (
     "teams",
     "player_info",
     "scrape_runs",
+    "alembic_version",
 )
 
 
