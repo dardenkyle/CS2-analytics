@@ -183,6 +183,22 @@ The API is available at `http://localhost:8000` by default. See
 `docs/deployment.md` for Docker build, environment variable, runtime data, and
 container command details.
 
+Run the deterministic deployment smoke path after PostgreSQL, migrations, and
+the API are available:
+
+```sh
+docker compose up -d db
+docker compose --profile tools run --rm migrate
+docker compose up -d app
+docker compose --profile tools run --rm smoke
+```
+
+The smoke path seeds a tiny fixed-ID dataset, checks `/health`, verifies the API
+can query PostgreSQL through the top players read path, and removes the smoke
+rows before exiting. It should run against a local or deployment-validation
+database, not a production analytics database, and does not depend on live
+website scraping.
+
 ### 7. Run the Pipeline
 
 ```sh
