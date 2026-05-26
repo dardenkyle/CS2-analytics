@@ -25,15 +25,19 @@ ENV/
 *.log
 project.log
 app.log
+logs/*
+!logs/.gitkeep
 
 # Environment variables
 .env
 .env.local
 
 # Downloaded files & data
-demos/
+demos/*
+!demos/.gitkeep
 downloaded_files/
-parsed_data/
+parsed_data/*
+!parsed_data/.gitkeep
 
 # OS
 .DS_Store

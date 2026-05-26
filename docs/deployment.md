@@ -96,5 +96,8 @@ Compose mounts generated runtime directories from the working tree:
 - `./demos:/app/demos`
 - `./parsed_data:/app/parsed_data`
 
-These mounts keep local runtime artifacts out of the image while preserving the
-current application paths.
+These directories are pre-created in the repository with placeholder files so
+fresh Linux clones mount user-owned host paths instead of Docker-created
+root-owned directories. Generated files inside those directories remain ignored
+by Git. These mounts keep local runtime artifacts out of the image while
+preserving the current application paths.
