@@ -376,8 +376,11 @@ In progress. The `phase3.75-env-config-hardening` branch completed the first
 deployment-baseline slice by making runtime configuration environment-driven
 and production-safe. The `phase3.75-alembic-migrations` branch added Alembic
 configuration and an initial migration for the current application/source
-schema. The `phase3.75-container-runtime` branch adds the local Docker runtime
-baseline for PostgreSQL, migrations, the API, and pipeline runs.
+schema. The `phase3.75-container-runtime` branch added the local Docker runtime
+baseline for PostgreSQL, migrations, the API, and pipeline runs. The
+`phase3.75-ci-gate` branch added the minimum GitHub Actions merge gate for
+installation, focused linting, initial runtime type checking, migrations, and
+tests.
 
 Rationale:
 Phase 3.5 confirms that the parsed-source tables are stable enough for dbt, but
@@ -401,7 +404,7 @@ assumptions work outside the local development machine.
 - [x] Add a dedicated pipeline runner command or module entrypoint
 - [x] Add a dedicated API runner command or deployment-safe Uvicorn command
 - [ ] Add `/health` endpoint for API health checks
-- [ ] Add GitHub Actions CI for lint, type check, and tests
+- [x] Add GitHub Actions CI for lint, type check, and tests
 - [ ] Add a deployment smoke test path:
       migrations -> limited ingestion -> API health/top players check
 - [x] Document local Docker startup and production deployment variables
@@ -444,9 +447,16 @@ assumptions work outside the local development machine.
    runs. Runtime artifacts such as logs, demos, and parsed data are mounted from
    the working tree and excluded from the image.
 
-4. [ ] `phase3.75-ci-gate`
+4. [x] `phase3.75-ci-gate`
        Add GitHub Actions for install, lint, type check, and tests. CI should become
        the minimum merge gate before dbt begins.
+
+   CI now runs on pull requests and pushes to `main`. The gate installs dev
+   dependencies, runs a focused `python -m ruff` `E,F` lint over runtime code,
+   type checks API and runner entrypoints with `python -m mypy`, applies
+   Alembic migrations against a PostgreSQL service container, and runs
+   `python -m pytest`. Broader Ruff rules, formatting checks, and full-package
+   MyPy remain follow-up tightening work.
 
 5. [ ] `phase3.75-deployment-smoke-test`
        Add a small deployment verification path that proves the container can run
@@ -466,7 +476,7 @@ assumptions work outside the local development machine.
 - [x] Existing database can be brought under migration tracking without destructive reset
 - [x] App tables and ingestion-state tables are migration-managed
 - [x] Schema initialization is explicit and non-destructive by default
-- [ ] CI passes on every PR
+- [x] CI passes on every PR
 - [ ] A limited ingestion run works outside the local dev environment
 - [ ] API health endpoint works in deployed environment
 - [ ] There is a temporary scheduled/manual runner path before Airflow

@@ -1,5 +1,7 @@
 # Counter-Strike 2 Pro Match Analytics Tool
 
+[![CI](https://github.com/dardenkyle/CS2-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/dardenkyle/CS2-analytics/actions/workflows/ci.yml)
+
 ## Project Overview
 
 This project is a Counter-Strike 2 analytics tool focused on collecting professional match, map, and player data and turning it into reliable, queryable analytics data.

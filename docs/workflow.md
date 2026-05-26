@@ -29,7 +29,8 @@ Airflow comes after dbt.
    notes.
 7. Request human review for medium-risk, high-risk, schema, deployment,
    dependency, CI, or architecture-boundary changes.
-8. Merge only after review concerns and verification gaps are resolved.
+8. Merge only after CI passes, review concerns are resolved, and verification
+   gaps are closed.
 
 ## Branch Naming
 
@@ -129,6 +130,17 @@ Human review is required before merge for:
 
 Low-risk docs and template changes may still be reviewed, but they are intended
 to be small and fast to evaluate.
+
+## CI Gate
+
+GitHub Actions CI runs on pull requests and pushes to `main`. The minimum gate
+installs development dependencies, runs focused `python -m ruff` `E,F` linting
+over runtime code, type checks API and runner entrypoints with
+`python -m mypy`, applies Alembic migrations against PostgreSQL, and runs
+`python -m pytest`.
+
+Broader Ruff rules, formatting checks, and full-package MyPy may be added later
+once the project is ready to enforce stricter gates.
 
 ## Documentation Check
 
