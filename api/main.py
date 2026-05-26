@@ -27,9 +27,13 @@ def create_app() -> FastAPI:
 
     app.include_router(players.router, prefix="/api", tags=["Players"])
 
-    @app.get("/")
+    @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "cs2-analytics-api"}
+
+    @app.get("/")
+    def root_health() -> dict[str, str]:
+        return health()
 
     return app
 
