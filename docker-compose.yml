@@ -44,7 +44,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "python -c \"import os, urllib.request; port = os.environ.get('API_PORT', '8000'); urllib.request.urlopen('http://127.0.0.1:' + port + '/', timeout=5).read()\"",
+          "python -c \"import os, urllib.request; port = os.environ.get('API_PORT', '8000'); urllib.request.urlopen('http://127.0.0.1:' + port + '/health', timeout=5).read()\"",
         ]
       interval: 30s
       timeout: 5s
@@ -75,6 +75,22 @@ services:
     shm_size: "2gb"
     depends_on:
       db:
+        condition: service_healthy
+
+  smoke:
+    image: cs2-analytics:local
+    build:
+      context: .
+    profiles: ["tools"]
+    environment:
+      <<: *app_environment
+      SMOKE_API_BASE_URL: "http://app:${API_PORT:-8000}"
+      SMOKE_API_TIMEOUT_SECONDS: "10"
+    command: ["python", "scripts/deployment_smoke.py"]
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
         condition: service_healthy
 
 volumes:
