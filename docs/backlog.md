@@ -410,9 +410,21 @@ assumptions work outside the local development machine.
 - [x] Add a deployment smoke test path:
       migrations -> deterministic source-row seed/read/cleanup -> API health/top players check
 - [x] Document local Docker startup and production deployment variables
-- [ ] Choose first deployment target for the API and worker
-- [ ] Choose temporary scheduling strategy for scraper runs before Airflow
-- [ ] Confirm the system can run without relying on local machine state
+- [ ] Choose first deployment target for the API runtime
+- [ ] Choose first deployment target for pipeline/worker runs
+- [ ] Document the API + worker deployment topology
+- [ ] Document staging/production environment variables and secret source
+- [ ] Define migration order for deployment startup or release
+- [ ] Define read-only production validation checks:
+      Alembic version -> `/health` -> DB-backed API read
+- [ ] Define smoke/staging database policy for write-based smoke tests
+- [ ] Choose temporary pre-Airflow runner strategy:
+      manual job, scheduled platform job, or GitHub Actions manual dispatch
+- [ ] Confirm containerized Selenium/Chromium can run in the chosen worker environment
+- [ ] Confirm runtime artifacts do not rely on local machine state:
+      logs, demos, parsed data, browser cache, and temporary files
+- [ ] Document rollback/recovery expectations for failed deploys or migrations
+- [ ] Run one limited live ingestion validation in a staging/smoke environment
 
 ### Suggested branch sequence
 
@@ -474,9 +486,20 @@ assumptions work outside the local development machine.
    intentionally avoids live HLTV scraping so deployment checks do not fail when
    the upstream website is unavailable or changes markup.
 
-6. [ ] `phase3.75-first-cloud-deploy`
+6. [ ] `phase3.75-first-cloud-deploy-plan`
+       Choose the first API and worker deployment targets, document the intended
+       topology, define staging/production environment variables and secret
+       sources, define migration order, define smoke/staging database policy,
+       define read-only production validation checks, choose the temporary
+       pre-Airflow runner strategy, and document rollback/recovery expectations.
+
+7. [ ] `phase3.75-first-cloud-deploy`
        Deploy the API and pipeline runner to the chosen initial platform. Keep the
-       deployment simple and low-cost. Do not add Airflow yet.
+       deployment simple and low-cost. Run migrations in the chosen release flow,
+       run the deterministic smoke path against staging or smoke infrastructure,
+       run read-only production validation after deploy, confirm
+       Selenium/Chromium works in the worker environment, and run one limited
+       live ingestion validation in staging/smoke. Do not add Airflow yet.
 
 ### Phase 3.75 exit criteria
 
@@ -491,7 +514,16 @@ assumptions work outside the local development machine.
 - [x] CI passes on every PR
 - [x] A deterministic source-row seed/read/cleanup smoke path works outside the local dev environment
 - [x] API health endpoint works in deployed environment
+- [ ] First API and worker deployment targets are chosen and documented
+- [ ] Staging/production environment variables and secret source are documented
+- [ ] Deployment migration order is documented
+- [ ] Smoke/staging database policy is documented for write-based smoke tests
+- [ ] Read-only production validation checks are defined
+- [ ] Containerized Selenium/Chromium works in the chosen worker environment
+- [ ] Runtime artifacts do not rely on local machine state
+- [ ] Rollback/recovery expectations are documented
 - [ ] There is a temporary scheduled/manual runner path before Airflow
+- [ ] One limited live ingestion validation passes in staging/smoke
 
 ---
 
