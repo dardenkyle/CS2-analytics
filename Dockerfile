@@ -17,6 +17,7 @@ RUN apt-get update \
 COPY pyproject.toml README.md ./
 COPY api ./api
 COPY cs2_analytics ./cs2_analytics
+COPY scripts ./scripts
 
 RUN python -m pip install --upgrade pip \
     && python -m pip install .

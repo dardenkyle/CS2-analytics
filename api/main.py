@@ -11,6 +11,11 @@ from cs2_analytics.config import API_CORS_ORIGINS, API_DEBUG
 from .routes import players
 
 
+def health_payload() -> dict[str, str]:
+    """Return the stable API health response."""
+    return {"status": "ok", "service": "cs2-analytics-api"}
+
+
 def create_app() -> FastAPI:
     """
     Creates and configures the FastAPI application.
@@ -27,9 +32,13 @@ def create_app() -> FastAPI:
 
     app.include_router(players.router, prefix="/api", tags=["Players"])
 
-    @app.get("/")
+    @app.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok", "service": "cs2-analytics-api"}
+        return health_payload()
+
+    @app.get("/")
+    def root_health() -> dict[str, str]:
+        return health_payload()
 
     return app
 

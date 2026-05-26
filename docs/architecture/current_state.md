@@ -114,9 +114,15 @@ changing ingestion responsibilities:
 - API: `python run_api.py`
 - migrations: `python manage_db.py --init`
 - pipeline: `python main.py`
+- deployment smoke: `python scripts/deployment_smoke.py`
 
-`docker-compose.yml` provides local PostgreSQL plus app, migration, and
-pipeline services. Runtime artifacts such as logs, downloaded demos, and parsed
+`docker-compose.yml` provides local PostgreSQL plus app, migration, pipeline,
+and smoke services. The smoke service is deterministic: it verifies migrated
+source tables, removes stale fixed-ID smoke rows, seeds source rows through
+existing storage upserts, checks `/health`, confirms the top players API can
+query PostgreSQL, and removes the fixed-ID rows before exiting. It should run
+against a local or deployment-validation database rather than a production
+analytics database. Runtime artifacts such as logs, downloaded demos, and parsed
 data stay mounted from the working tree and are not baked into the image.
 
 dbt will be added after the deployment baseline and must remain downstream of

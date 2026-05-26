@@ -24,11 +24,10 @@ docker compose up --build app
 ```
 
 The API binds to `0.0.0.0` in the container and is published on
-`http://localhost:8000` by default. Check the root health response or FastAPI
-docs:
+`http://localhost:8000` by default. Check the health response or FastAPI docs:
 
 ```sh
-curl http://localhost:8000/
+curl http://localhost:8000/health
 curl http://localhost:8000/docs
 ```
 
@@ -66,6 +65,30 @@ results discovery -> match processing -> map processing
 
 Demo download and parsing remain deferred.
 
+## Deployment Smoke Test
+
+Run the deterministic deployment smoke path after PostgreSQL, migrations, and
+the API are available:
+
+```sh
+docker compose up -d db
+docker compose --profile tools run --rm migrate
+docker compose up -d app
+docker compose --profile tools run --rm smoke
+```
+
+The smoke script validates that migrations created the expected source tables,
+cleans up any stale fixed-ID smoke rows, seeds a tiny fixed-ID match/map/player
+dataset through the existing storage upsert functions, checks `GET /health`,
+checks `GET /api/top_players?min_maps=1&limit=100` for the seeded smoke player,
+and removes the fixed-ID smoke rows before exiting.
+
+This path is intentionally deterministic and does not call HLTV. Live scraping
+can be checked manually with the pipeline command above, but deployment smoke
+tests should not fail because the upstream website is unavailable or has
+changed markup. Run it against local, smoke, staging, or otherwise disposable
+deployment-validation databases rather than a production analytics database.
+
 ## Environment
 
 Compose provides container-safe defaults for local development. Override these
@@ -81,6 +104,8 @@ through your shell environment or a local `.env` file when needed.
 | `DB_USER` | `postgres` | PostgreSQL user. |
 | `DB_PASS` | `change_me` | PostgreSQL password for local compose only. |
 | `POSTGRES_HOST_PORT` | `5432` | Host port mapped to the PostgreSQL container. |
+| `SMOKE_API_BASE_URL` | `http://app:8000` | API base URL used by the compose smoke service. |
+| `SMOKE_API_TIMEOUT_SECONDS` | `10` | HTTP timeout used by the smoke script. |
 
 The application container always uses `DB_HOST=db` and `DB_PORT=5432` when
 running through compose.

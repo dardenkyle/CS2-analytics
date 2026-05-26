@@ -380,7 +380,9 @@ schema. The `phase3.75-container-runtime` branch added the local Docker runtime
 baseline for PostgreSQL, migrations, the API, and pipeline runs. The
 `phase3.75-ci-gate` branch added the minimum GitHub Actions merge gate for
 installation, focused linting, initial runtime type checking, migrations, and
-tests.
+tests. The `phase3.75-deployment-smoke-test` branch added a deterministic
+container smoke path for migrations, fixed-ID source-row seed/read/cleanup,
+API health, and a DB-backed top players read check.
 
 Rationale:
 Phase 3.5 confirms that the parsed-source tables are stable enough for dbt, but
@@ -403,14 +405,26 @@ assumptions work outside the local development machine.
 - [x] Add `docker-compose.yml` for local deployment with app/API + PostgreSQL
 - [x] Add a dedicated pipeline runner command or module entrypoint
 - [x] Add a dedicated API runner command or deployment-safe Uvicorn command
-- [ ] Add `/health` endpoint for API health checks
+- [x] Add `/health` endpoint for API health checks
 - [x] Add GitHub Actions CI for lint, type check, and tests
-- [ ] Add a deployment smoke test path:
-      migrations -> limited ingestion -> API health/top players check
+- [x] Add a deployment smoke test path:
+      migrations -> deterministic source-row seed/read/cleanup -> API health/top players check
 - [x] Document local Docker startup and production deployment variables
-- [ ] Choose first deployment target for the API and worker
-- [ ] Choose temporary scheduling strategy for scraper runs before Airflow
-- [ ] Confirm the system can run without relying on local machine state
+- [ ] Choose first deployment target for the API runtime
+- [ ] Choose first deployment target for pipeline/worker runs
+- [ ] Document the API + worker deployment topology
+- [ ] Document staging/production environment variables and secret source
+- [ ] Define migration order for deployment startup or release
+- [ ] Define read-only production validation checks:
+      Alembic version -> `/health` -> DB-backed API read
+- [ ] Define smoke/staging database policy for write-based smoke tests
+- [ ] Choose temporary pre-Airflow runner strategy:
+      manual job, scheduled platform job, or GitHub Actions manual dispatch
+- [ ] Confirm containerized Selenium/Chromium can run in the chosen worker environment
+- [ ] Confirm runtime artifacts do not rely on local machine state:
+      logs, demos, parsed data, browser cache, and temporary files
+- [ ] Document rollback/recovery expectations for failed deploys or migrations
+- [ ] Run one limited live ingestion validation in a staging/smoke environment
 
 ### Suggested branch sequence
 
@@ -458,13 +472,34 @@ assumptions work outside the local development machine.
    `python -m pytest`. Broader Ruff rules, formatting checks, and full-package
    MyPy remain follow-up tightening work.
 
-5. [ ] `phase3.75-deployment-smoke-test`
+5. [x] `phase3.75-deployment-smoke-test`
        Add a small deployment verification path that proves the container can run
-       migrations, execute a limited ingestion pass, and start the API.
+       migrations, execute a deterministic source-row smoke pass, and start the
+       API.
 
-6. [ ] `phase3.75-first-cloud-deploy`
+   The deployment smoke path now runs through compose with PostgreSQL,
+   migrations, and the API, then executes `scripts/deployment_smoke.py`. The
+   script verifies migrated source tables, removes stale fixed-ID smoke rows,
+   seeds deterministic match/map/player rows through existing storage upserts,
+   checks `/health`, confirms the API can query PostgreSQL through
+   `/api/top_players`, and removes the fixed-ID smoke rows before exiting. It
+   intentionally avoids live HLTV scraping so deployment checks do not fail when
+   the upstream website is unavailable or changes markup.
+
+6. [ ] `phase3.75-first-cloud-deploy-plan`
+       Choose the first API and worker deployment targets, document the intended
+       topology, define staging/production environment variables and secret
+       sources, define migration order, define smoke/staging database policy,
+       define read-only production validation checks, choose the temporary
+       pre-Airflow runner strategy, and document rollback/recovery expectations.
+
+7. [ ] `phase3.75-first-cloud-deploy`
        Deploy the API and pipeline runner to the chosen initial platform. Keep the
-       deployment simple and low-cost. Do not add Airflow yet.
+       deployment simple and low-cost. Run migrations in the chosen release flow,
+       run the deterministic smoke path against staging or smoke infrastructure,
+       run read-only production validation after deploy, confirm
+       Selenium/Chromium works in the worker environment, and run one limited
+       live ingestion validation in staging/smoke. Do not add Airflow yet.
 
 ### Phase 3.75 exit criteria
 
@@ -477,9 +512,18 @@ assumptions work outside the local development machine.
 - [x] App tables and ingestion-state tables are migration-managed
 - [x] Schema initialization is explicit and non-destructive by default
 - [x] CI passes on every PR
-- [ ] A limited ingestion run works outside the local dev environment
-- [ ] API health endpoint works in deployed environment
+- [x] A deterministic source-row seed/read/cleanup smoke path works outside the local dev environment
+- [x] API health endpoint works in deployed environment
+- [ ] First API and worker deployment targets are chosen and documented
+- [ ] Staging/production environment variables and secret source are documented
+- [ ] Deployment migration order is documented
+- [ ] Smoke/staging database policy is documented for write-based smoke tests
+- [ ] Read-only production validation checks are defined
+- [ ] Containerized Selenium/Chromium works in the chosen worker environment
+- [ ] Runtime artifacts do not rely on local machine state
+- [ ] Rollback/recovery expectations are documented
 - [ ] There is a temporary scheduled/manual runner path before Airflow
+- [ ] One limited live ingestion validation passes in staging/smoke
 
 ---
 
