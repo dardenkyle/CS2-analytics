@@ -154,13 +154,40 @@ The wipe command asks for `y` confirmation before dropping tables. Alembic owns
 the application/source schema; future dbt models will remain downstream and
 will not manage ingestion tables.
 
-### 6. Run the Pipeline
+### 6. Run With Docker Compose
+
+The Phase 3.75 deployment baseline includes a local container runtime for
+PostgreSQL, migrations, the API, and pipeline runs.
+
+Build the application image and start PostgreSQL plus the API:
+
+```sh
+docker compose up --build app
+```
+
+Apply database migrations in the compose environment:
+
+```sh
+docker compose --profile tools run --rm migrate
+```
+
+Run the ingestion pipeline in the compose environment:
+
+```sh
+docker compose --profile tools run --rm pipeline
+```
+
+The API is available at `http://localhost:8000` by default. See
+`docs/deployment.md` for Docker build, environment variable, runtime data, and
+container command details.
+
+### 7. Run the Pipeline
 
 ```sh
 python main.py
 ```
 
-### 7. Run the API
+### 8. Run the API
 
 ```sh
 python run_api.py
@@ -169,7 +196,7 @@ python run_api.py
 Then open the host and port configured by `API_HOST` and `API_PORT`, such as
 `http://127.0.0.1:8000/docs`.
 
-### 8. Run Tests
+### 9. Run Tests
 
 ```sh
 python -m pytest

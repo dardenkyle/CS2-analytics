@@ -376,7 +376,8 @@ In progress. The `phase3.75-env-config-hardening` branch completed the first
 deployment-baseline slice by making runtime configuration environment-driven
 and production-safe. The `phase3.75-alembic-migrations` branch added Alembic
 configuration and an initial migration for the current application/source
-schema.
+schema. The `phase3.75-container-runtime` branch adds the local Docker runtime
+baseline for PostgreSQL, migrations, the API, and pipeline runs.
 
 Rationale:
 Phase 3.5 confirms that the parsed-source tables are stable enough for dbt, but
@@ -395,15 +396,15 @@ assumptions work outside the local development machine.
 - [x] Keep schema initialization non-destructive by default
 - [x] Add migration command documentation for local Docker and deployment usage
 - [x] Ensure deployed database updates through `alembic -c cs2_analytics/alembic.ini upgrade head`
-- [ ] Add a `Dockerfile` for the application runtime
-- [ ] Add `docker-compose.yml` for local deployment with app/API + PostgreSQL
-- [ ] Add a dedicated pipeline runner command or module entrypoint
-- [ ] Add a dedicated API runner command or deployment-safe Uvicorn command
+- [x] Add a `Dockerfile` for the application runtime
+- [x] Add `docker-compose.yml` for local deployment with app/API + PostgreSQL
+- [x] Add a dedicated pipeline runner command or module entrypoint
+- [x] Add a dedicated API runner command or deployment-safe Uvicorn command
 - [ ] Add `/health` endpoint for API health checks
 - [ ] Add GitHub Actions CI for lint, type check, and tests
 - [ ] Add a deployment smoke test path:
       migrations -> limited ingestion -> API health/top players check
-- [ ] Document local Docker startup and production deployment variables
+- [x] Document local Docker startup and production deployment variables
 - [ ] Choose first deployment target for the API and worker
 - [ ] Choose temporary scheduling strategy for scraper runs before Airflow
 - [ ] Confirm the system can run without relying on local machine state
@@ -433,9 +434,15 @@ assumptions work outside the local development machine.
    databases that already match the initial migration can be brought under
    migration tracking with `alembic -c cs2_analytics/alembic.ini stamp head`.
 
-3. [ ] `phase3.75-container-runtime`
+3. [x] `phase3.75-container-runtime`
        Add `Dockerfile`, `docker-compose.yml`, and documented local container
        startup flow for PostgreSQL, migrations, API, and pipeline runs.
+
+   The local container runtime now builds a Python application image, runs
+   PostgreSQL through compose, exposes an API service with container-safe host
+   binding, and provides compose commands for migrations and one-off pipeline
+   runs. Runtime artifacts such as logs, demos, and parsed data are mounted from
+   the working tree and excluded from the image.
 
 4. [ ] `phase3.75-ci-gate`
        Add GitHub Actions for install, lint, type check, and tests. CI should become
@@ -451,10 +458,10 @@ assumptions work outside the local development machine.
 
 ### Phase 3.75 exit criteria
 
-- [ ] Fresh clone can run through Docker without manual local setup
-- [ ] Required environment variables are documented
-- [ ] API binds correctly in a deployed/container environment
-- [ ] PostgreSQL connection works through environment config
+- [x] Fresh clone can run through Docker without manual local setup
+- [x] Required environment variables are documented
+- [x] API binds correctly in a deployed/container environment
+- [x] PostgreSQL connection works through environment config
 - [x] Fresh database can be initialized through migrations
 - [x] Existing database can be brought under migration tracking without destructive reset
 - [x] App tables and ingestion-state tables are migration-managed
