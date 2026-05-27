@@ -152,13 +152,23 @@ Render API environment variables:
 | `ENVIRONMENT=production` | Render environment variable |
 | `DEBUG_MODE=false` | Render environment variable |
 | `API_HOST=0.0.0.0` | Render environment variable |
-| `API_PORT` | Map to Render's web service `PORT` value in the service start command or environment |
+| `API_PORT` | Must resolve to Render's web service `PORT` value |
 | `API_CORS_ORIGINS` | Render environment variable containing the GitHub Pages origin |
 | `DB_NAME` | Render PostgreSQL connection setting |
 | `DB_USER` | Render PostgreSQL connection setting |
 | `DB_PASS` | Render secret |
 | `DB_HOST` | Render PostgreSQL connection setting |
 | `DB_PORT` | Render PostgreSQL connection setting |
+
+Render provides the port a web service must bind to through `PORT`. The app
+reads `API_PORT`, so the Render start command should map `PORT` explicitly:
+
+```sh
+API_PORT=$PORT python run_api.py
+```
+
+Keep `API_HOST=0.0.0.0` so the service binds on the container interface Render
+can route to.
 
 GitHub Actions pipeline secrets:
 
