@@ -121,9 +121,10 @@ GitHub Pages frontend
 -> Render PostgreSQL
 
 GitHub Actions manual pipeline workflow
--> python main.py
+-> build/run the application Docker image
+-> execute python main.py inside the container
 -> Render PostgreSQL
--> HLTV fetches through the containerized scraper runtime
+-> HLTV fetches through the containerized Chromium/Selenium runtime
 ```
 
 The API and pipeline should continue using the existing entrypoints:
@@ -131,6 +132,11 @@ The API and pipeline should continue using the existing entrypoints:
 - API: `python run_api.py`
 - migrations: `alembic -c cs2_analytics/alembic.ini upgrade head`
 - pipeline: `python main.py`
+
+The GitHub Actions pipeline workflow should run the same application image used
+by the local container runtime, so scraper dependencies such as Chromium,
+ChromiumDriver, SeleniumBase, and Python packages are supplied by the Docker
+image rather than by the host runner.
 
 GitHub Actions should be manual-only at first. Scheduled scraper runs are
 deferred until the match and map batch behavior is validated, especially the
