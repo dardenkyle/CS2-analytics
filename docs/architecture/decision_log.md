@@ -176,3 +176,42 @@ Consequences:
   documentation impact.
 - Medium-risk, high-risk, schema, deployment, dependency, CI, and architecture
   changes require human review before merge.
+
+## ADR-0008: Use Render And GitHub Actions For First Cloud Deployment
+
+Status:
+Accepted
+
+Date:
+2026-05-26
+
+Context:
+The project needs a first cloud deployment target before dbt work begins. The
+deployment should stay low-cost and operationally simple, preserve the current
+API and pipeline entrypoints, and avoid introducing Airflow or broader
+ingestion architecture changes.
+
+Decision:
+Use GitHub Pages for the frontend, Render for the API web service, Render
+PostgreSQL for the application database, and GitHub Actions as the manual
+pipeline/scraper runner. Store API runtime secrets in Render environment
+variables and pipeline/deployment secrets in GitHub Actions secrets. Run
+migrations manually from a controlled local environment for the first deploy,
+with a GitHub Actions migration workflow deferred until the release path is
+stable.
+
+Consequences:
+- No custom frontend domain is planned for the first deploy.
+- The Render API CORS allowlist must include the GitHub Pages origin.
+- Scheduled scraper runs remain deferred until match and map batch behavior is
+  validated.
+- Write-based deterministic smoke checks must use a separate minimal smoke or
+  staging database, not the production analytics database.
+- Production validation must be read-only: Alembic current revision, API
+  `/health`, and a DB-backed API read.
+- Rollback relies on a recovery point or exported logical backup before manual
+  migrations, forward-fix migrations when possible, Render API deploy rollback
+  when schema compatibility allows, and database restore for unrecoverable
+  migration mistakes.
+- Pipeline failures are treated as ingestion recovery through lifecycle state
+  inspection and manual retry, not as schema rollback events.
