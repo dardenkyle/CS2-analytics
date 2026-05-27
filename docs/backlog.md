@@ -514,6 +514,17 @@ assumptions work outside the local development machine.
        Selenium/Chromium works in the worker environment, and run one limited
        live ingestion validation in staging/smoke. Do not add Airflow yet.
 
+   In progress: the Render API and Render PostgreSQL deployment are reachable,
+   Alembic migrations have run, the production `/health` endpoint returns the
+   expected payload, and the DB-backed top players API returns real ingested
+   player data from Render PostgreSQL. A manual GitHub Actions worker workflow
+   now builds the application Docker image, validates containerized
+   Selenium/Chromium, and can run `python main.py` against the configured
+   PostgreSQL database. Remaining closeout work is to run the workflow in
+   GitHub Actions, record validation results, run or explicitly defer
+   deterministic smoke against separate smoke/staging infrastructure, rotate
+   exposed database credentials, and finalize the deployment documentation.
+
 ### Phase 3.75 exit criteria
 
 - [x] Fresh clone can run through Docker without manual local setup

@@ -122,6 +122,7 @@ changing ingestion responsibilities:
 - migrations: `python manage_db.py --init`
 - pipeline: `python main.py`
 - deployment smoke: `python scripts/deployment_smoke.py`
+- worker browser validation: `python scripts/validate_worker_browser.py`
 
 `docker-compose.yml` provides local PostgreSQL plus app, migration, pipeline,
 and smoke services. The smoke service is deterministic: it verifies migrated
@@ -131,6 +132,13 @@ query PostgreSQL, and removes the fixed-ID rows before exiting. It should run
 against a local or deployment-validation database rather than a production
 analytics database. Runtime artifacts such as logs, downloaded demos, and parsed
 data stay mounted from the working tree and are not baked into the image.
+
+The first cloud worker path is a manual GitHub Actions workflow,
+`Manual Pipeline Worker`, that builds the same Docker image, validates
+Selenium/Chromium inside the container, and optionally runs `python main.py`
+against the configured PostgreSQL database. It is manual-only and serialized so
+scheduled ingestion remains deferred until live match/map batch behavior is
+validated.
 
 dbt will be added after the deployment baseline and must remain downstream of
 ingestion. It should transform stable source tables, not own ingestion logic or

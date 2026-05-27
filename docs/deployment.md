@@ -138,10 +138,25 @@ by the local container runtime, so scraper dependencies such as Chromium,
 ChromiumDriver, SeleniumBase, and Python packages are supplied by the Docker
 image rather than by the host runner.
 
-GitHub Actions should be manual-only at first. Scheduled scraper runs are
-deferred until the match and map batch behavior is validated, especially the
-handoff from a fetched match batch to the number of discovered maps that still
-need processing.
+GitHub Actions is manual-only at first. The workflow lives at
+`.github/workflows/manual-pipeline-worker.yml`, builds the application Docker
+image, validates that Selenium/Chromium can start inside the container, and can
+then run `python main.py` against the configured PostgreSQL database. Scheduled
+scraper runs are deferred until the match and map batch behavior is validated,
+especially the handoff from a fetched match batch to the number of discovered
+maps that still need processing.
+
+Run the manual worker from GitHub:
+
+1. Open the repository in GitHub.
+2. Go to Actions.
+3. Select `Manual Pipeline Worker`.
+4. Choose `Run workflow`.
+5. Keep `run_pipeline` enabled to validate the browser and run ingestion, or
+   disable it to validate only the containerized Selenium/Chromium runtime.
+
+The workflow uses a concurrency group so only one manual pipeline worker run
+executes at a time.
 
 ## Cloud Environment And Secrets
 
@@ -179,6 +194,10 @@ GitHub Actions pipeline secrets:
 | `DB_PASS` | Pipeline database password |
 | `DB_HOST` | Pipeline database host |
 | `DB_PORT` | Pipeline database port |
+
+Use Render's external PostgreSQL host for local migration commands and for the
+GitHub Actions manual worker. The short internal hostname is only reachable
+from Render services on Render's private network.
 
 Secret values must stay out of the repository, docs, logs, and committed
 configuration files. `.env.example` should keep placeholder values only.

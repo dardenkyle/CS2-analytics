@@ -1,0 +1,88 @@
+name: Manual Pipeline Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_pipeline:
+        description: Run the ingestion pipeline after browser validation.
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-pipeline-worker
+  cancel-in-progress: false
+
+jobs:
+  worker:
+    name: Validate Worker And Run Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      ENVIRONMENT: production
+      DEBUG_MODE: "false"
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+      API_CORS_ORIGINS: https://dardenkyle.github.io
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASS: ${{ secrets.DB_PASS }}
+      DB_HOST: ${{ secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      IMAGE_NAME: cs2-analytics:manual-worker
+
+    steps:
+      - name: Check out repository
+        # actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Check required secrets
+        run: |
+          missing=0
+          for name in DB_NAME DB_USER DB_PASS DB_HOST DB_PORT; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing GitHub Actions secret: ${name}"
+              missing=1
+            fi
+          done
+          exit "${missing}"
+
+      - name: Build worker image
+        run: docker build -t "${IMAGE_NAME}" .
+
+      - name: Validate Selenium and Chromium
+        run: |
+          docker run --rm --shm-size=2g \
+            -e ENVIRONMENT \
+            -e DEBUG_MODE \
+            -e API_HOST \
+            -e API_PORT \
+            -e API_CORS_ORIGINS \
+            -e DB_NAME \
+            -e DB_USER \
+            -e DB_PASS \
+            -e DB_HOST \
+            -e DB_PORT \
+            "${IMAGE_NAME}" \
+            python scripts/validate_worker_browser.py
+
+      - name: Run ingestion pipeline
+        if: ${{ inputs.run_pipeline }}
+        run: |
+          docker run --rm --shm-size=2g \
+            -e ENVIRONMENT \
+            -e DEBUG_MODE \
+            -e API_HOST \
+            -e API_PORT \
+            -e API_CORS_ORIGINS \
+            -e DB_NAME \
+            -e DB_USER \
+            -e DB_PASS \
+            -e DB_HOST \
+            -e DB_PORT \
+            "${IMAGE_NAME}" \
+            python main.py

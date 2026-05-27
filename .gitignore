@@ -30,6 +30,7 @@ logs/*
 
 # Environment variables
 .env
+.env.*
 .env.local
 
 # Downloaded files & data
