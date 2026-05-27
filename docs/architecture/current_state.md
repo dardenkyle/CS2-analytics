@@ -103,6 +103,13 @@ Phase 3.75 deployment baseline comes before dbt. The deployment baseline should
 prove that runtime configuration, migrations, containers, CI, and smoke tests
 work outside the local development machine.
 
+The first cloud deployment plan uses GitHub Pages for the frontend, a Render
+web service for the API, Render PostgreSQL for the database, and a manual
+GitHub Actions workflow for the pipeline/scraper runner. Scheduled scraper
+runs are deferred until match and map batch behavior is validated. Manual
+migrations remain the first release path, with write-based smoke checks limited
+to separate smoke or staging databases and production validation kept read-only.
+
 Normal database setup applies Alembic migrations through
 `alembic -c cs2_analytics/alembic.ini upgrade head` or
 `python manage_db.py --init`. Destructive table wipes remain explicit and

@@ -89,6 +89,174 @@ tests should not fail because the upstream website is unavailable or has
 changed markup. Run it against local, smoke, staging, or otherwise disposable
 deployment-validation databases rather than a production analytics database.
 
+## First Cloud Deployment Plan
+
+The first cloud deployment keeps the runtime simple and uses managed services
+that match the current container and script entrypoints.
+
+Planned targets:
+
+- Frontend: GitHub Pages.
+- API runtime: Render web service.
+- Pipeline and scraper runner: GitHub Actions manual workflow.
+- Database: Render PostgreSQL.
+- Secrets: Render environment variables for the API and database connection;
+  GitHub Actions secrets for manual pipeline and deployment workflows.
+- Migrations: manual release step from a controlled local environment first;
+  a GitHub Actions migration workflow can be added later.
+
+No custom domain is planned for the first deploy. The frontend should use the
+default GitHub Pages URL, and the API CORS allowlist should include the GitHub
+Pages origin. For a project page such as
+`https://dardenkyle.github.io/CS2-analytics`, the browser origin is
+`https://dardenkyle.github.io`.
+
+## First Cloud Topology
+
+The first deploy should use separate runtimes for reads and ingestion:
+
+```text
+GitHub Pages frontend
+-> Render API web service
+-> Render PostgreSQL
+
+GitHub Actions manual pipeline workflow
+-> build/run the application Docker image
+-> execute python main.py inside the container
+-> Render PostgreSQL
+-> HLTV fetches through the containerized Chromium/Selenium runtime
+```
+
+The API and pipeline should continue using the existing entrypoints:
+
+- API: `python run_api.py`
+- migrations: `alembic -c cs2_analytics/alembic.ini upgrade head`
+- pipeline: `python main.py`
+
+The GitHub Actions pipeline workflow should run the same application image used
+by the local container runtime, so scraper dependencies such as Chromium,
+ChromiumDriver, SeleniumBase, and Python packages are supplied by the Docker
+image rather than by the host runner.
+
+GitHub Actions should be manual-only at first. Scheduled scraper runs are
+deferred until the match and map batch behavior is validated, especially the
+handoff from a fetched match batch to the number of discovered maps that still
+need processing.
+
+## Cloud Environment And Secrets
+
+Render API environment variables:
+
+| Variable | Source |
+| --- | --- |
+| `ENVIRONMENT=production` | Render environment variable |
+| `DEBUG_MODE=false` | Render environment variable |
+| `API_HOST=0.0.0.0` | Render environment variable |
+| `API_PORT` | Must resolve to Render's web service `PORT` value |
+| `API_CORS_ORIGINS` | Render environment variable containing the GitHub Pages origin |
+| `DB_NAME` | Render PostgreSQL connection setting |
+| `DB_USER` | Render PostgreSQL connection setting |
+| `DB_PASS` | Render secret |
+| `DB_HOST` | Render PostgreSQL connection setting |
+| `DB_PORT` | Render PostgreSQL connection setting |
+
+Render provides the port a web service must bind to through `PORT`. The app
+reads `API_PORT`, so the Render start command should map `PORT` explicitly:
+
+```sh
+API_PORT=$PORT python run_api.py
+```
+
+Keep `API_HOST=0.0.0.0` so the service binds on the container interface Render
+can route to.
+
+GitHub Actions pipeline secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `DB_NAME` | Pipeline database name |
+| `DB_USER` | Pipeline database user |
+| `DB_PASS` | Pipeline database password |
+| `DB_HOST` | Pipeline database host |
+| `DB_PORT` | Pipeline database port |
+
+Secret values must stay out of the repository, docs, logs, and committed
+configuration files. `.env.example` should keep placeholder values only.
+
+## Migration Order
+
+For the first cloud deploy, migrations are a manual release step:
+
+1. Confirm the target database is the intended Render PostgreSQL instance.
+2. Confirm or create a Render PostgreSQL recovery point where the database plan
+   supports it, or take an exported logical backup before continuing.
+3. Apply migrations from a controlled local environment:
+
+   ```sh
+   alembic -c cs2_analytics/alembic.ini upgrade head
+   ```
+
+4. Confirm the database revision is current:
+
+   ```sh
+   alembic -c cs2_analytics/alembic.ini current
+   ```
+
+5. Deploy or restart the Render API service.
+6. Run read-only production validation checks.
+
+Write-based deterministic smoke tests should not run against the production
+analytics database.
+
+## Validation Policy
+
+Use separate validation paths for smoke/staging and production.
+
+Smoke or staging validation may write fixed-ID synthetic rows, but it must run
+against a separate minimal Render PostgreSQL database or another disposable
+deployment-validation database. That database does not need to stay running all
+the time.
+
+Production validation must be read-only:
+
+1. Confirm Alembic reports the expected current revision.
+2. Call the API health endpoint:
+
+   ```sh
+   curl https://<render-api-host>/health
+   ```
+
+3. Call a DB-backed read endpoint without inserting synthetic rows, such as:
+
+   ```sh
+   curl "https://<render-api-host>/api/top_players?min_maps=1&limit=10"
+   ```
+
+4. Confirm API logs do not show startup, configuration, database, or CORS
+   errors.
+
+## Rollback And Recovery
+
+The first deployment should prefer controlled recovery over automatic downgrade
+migrations.
+
+- Before manual migrations, confirm a Render PostgreSQL recovery point or
+  exported logical backup exists.
+- If the API deploy fails before migrations run, roll back the Render web
+  service to the previous deploy.
+- If migrations fail partway, stop the deploy, do not run the pipeline, inspect
+  database state, then restore the pre-migration backup or apply a forward fix
+  migration.
+- If migrations succeed but application behavior fails, roll back the API
+  runtime when the schema remains backward-compatible. Otherwise, apply a
+  forward fix.
+- If the pipeline run fails, treat it as ingestion recovery rather than schema
+  rollback. Inspect lifecycle state, fix code or configuration, and retry
+  manually.
+
+The follow-up implementation branch is `phase3.75-first-cloud-deploy`, tracked
+by issue #55.
+
 ## Environment
 
 Compose provides container-safe defaults for local development. Override these
