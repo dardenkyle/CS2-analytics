@@ -140,6 +140,25 @@ against the configured PostgreSQL database. It is manual-only and serialized so
 scheduled ingestion remains deferred until live match/map batch behavior is
 validated.
 
+The first Render API deployment is reachable at
+`https://cs2-analytics.onrender.com`. Production `/health` and DB-backed
+`/api/top_players` validation have passed against Render PostgreSQL, and local
+Docker worker validation has proven that Selenium/Chromium can start inside the
+same application image used by the manual worker path.
+
+Local Docker live pipeline execution also completed in the worker image against
+Render PostgreSQL and reached map processing. The run exposed a map scraper
+validation gap: fetched map HTML can lack the expected `match-info-box` page
+content, after which the parser raises `MapParseError` and the controller marks
+the row failed. This is tracked in issue #57 and should be handled as retryable
+fetch/session hardening, not as a deployment/runtime boundary change.
+
+Write-based deterministic smoke checks are intentionally not run against the
+production Render PostgreSQL database. A separate smoke/staging database is
+deferred until recurring deployment validation needs one; until then,
+production validation stays read-only and limited live ingestion validation is
+used to prove the deployed pipeline path.
+
 dbt will be added after the deployment baseline and must remain downstream of
 ingestion. It should transform stable source tables, not own ingestion logic or
 application/source schema.

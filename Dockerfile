@@ -26,7 +26,10 @@ COPY main.py manage_db.py run_api.py ./
 
 RUN useradd --create-home --uid 10001 appuser \
     && mkdir -p /app/logs /app/demos /app/parsed_data \
-    && chown -R appuser:appuser /app
+    && mkdir -p /usr/local/lib/python3.14/site-packages/seleniumbase/drivers \
+    && chown -R appuser:appuser \
+        /app \
+        /usr/local/lib/python3.14/site-packages/seleniumbase/drivers
 
 USER appuser
 

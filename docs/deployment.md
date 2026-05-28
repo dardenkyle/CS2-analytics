@@ -111,6 +111,83 @@ Pages origin. For a project page such as
 `https://dardenkyle.github.io/CS2-analytics`, the browser origin is
 `https://dardenkyle.github.io`.
 
+## First Cloud Deployment Status
+
+The first Render API deployment is available at:
+
+```text
+https://cs2-analytics.onrender.com
+```
+
+Validated production checks:
+
+- `GET https://cs2-analytics.onrender.com/health` returns
+  `{"status":"ok","service":"cs2-analytics-api"}`.
+- `GET https://cs2-analytics.onrender.com/` returns the same compatibility
+  health payload.
+- Alembic migrations have been applied to the Render PostgreSQL database.
+- `GET https://cs2-analytics.onrender.com/api/top_players?min_maps=1&limit=10`
+  returns DB-backed player rows from Render PostgreSQL.
+- Local live ingestion has written real player data to Render PostgreSQL.
+- The Docker worker image builds locally and can start Selenium/Chromium inside
+  the container after the image grants the non-root app user ownership of
+  SeleniumBase's driver scratch directory.
+- Local Docker live pipeline execution completed in the worker image and
+  reached the map stage against Render PostgreSQL. The map stage selected 50
+  pending maps, but the fetched HTML lacked the expected `match-info-box`
+  content and those rows failed with `MapParseError: Failed to extract map name
+  from map stats page.` This confirms the deployment worker path while leaving
+  map fetch validation and retry hardening as follow-up issue #57 before
+  recurring worker runs.
+
+Local worker validation commands:
+
+```powershell
+docker build -t cs2-analytics:manual-worker .
+docker run --rm --shm-size=2g --env-file .env.render `
+  -e ENVIRONMENT=production `
+  -e DEBUG_MODE=false `
+  -e API_HOST=0.0.0.0 `
+  -e API_PORT=8000 `
+  -e API_CORS_ORIGINS=https://dardenkyle.github.io `
+  cs2-analytics:manual-worker `
+  python scripts/validate_worker_browser.py
+```
+
+Run the live pipeline through the same container with:
+
+```powershell
+docker run --rm --shm-size=2g --env-file .env.render `
+  -e ENVIRONMENT=production `
+  -e DEBUG_MODE=false `
+  -e API_HOST=0.0.0.0 `
+  -e API_PORT=8000 `
+  -e API_CORS_ORIGINS=https://dardenkyle.github.io `
+  cs2-analytics:manual-worker `
+  python main.py
+```
+
+Observed local Docker worker result:
+
+```text
+MapController summary: selected=50 succeeded=0 failed=50 retries=0
+CS2 Analytics Pipeline complete.
+```
+
+The manual GitHub Actions workflow is defined in the repository, but it will
+only become runnable from GitHub Actions after the workflow file is pushed and
+available to GitHub. Deterministic write-based smoke remains restricted to a
+separate smoke/staging database and must not be run against the production
+Render PostgreSQL analytics database.
+
+For the first cloud branch, creating a separate Render smoke/staging database is
+deferred to a follow-up because it would add cost and secret/configuration
+maintenance before recurring deployment validation needs it. The deterministic
+smoke script remains the accepted write-based validation path, but cloud smoke
+execution should wait until a disposable validation database exists. Production
+validation remains read-only, and live ingestion validation uses real pipeline
+execution rather than synthetic smoke rows.
+
 ## First Cloud Topology
 
 The first deploy should use separate runtimes for reads and ingestion:
@@ -236,19 +313,24 @@ against a separate minimal Render PostgreSQL database or another disposable
 deployment-validation database. That database does not need to stay running all
 the time.
 
+No write-based deterministic smoke check should run against the first production
+Render PostgreSQL database. Until a separate smoke/staging database exists,
+record the smoke result as deferred by policy and use read-only production
+validation plus limited live ingestion validation for deployment confidence.
+
 Production validation must be read-only:
 
 1. Confirm Alembic reports the expected current revision.
 2. Call the API health endpoint:
 
    ```sh
-   curl https://<render-api-host>/health
+   curl https://cs2-analytics.onrender.com/health
    ```
 
 3. Call a DB-backed read endpoint without inserting synthetic rows, such as:
 
    ```sh
-   curl "https://<render-api-host>/api/top_players?min_maps=1&limit=10"
+   curl "https://cs2-analytics.onrender.com/api/top_players?min_maps=1&limit=10"
    ```
 
 4. Confirm API logs do not show startup, configuration, database, or CORS
