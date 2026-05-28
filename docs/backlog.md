@@ -514,6 +514,26 @@ assumptions work outside the local development machine.
        Selenium/Chromium works in the worker environment, and run one limited
        live ingestion validation in staging/smoke. Do not add Airflow yet.
 
+   In progress: the Render API and Render PostgreSQL deployment are reachable,
+   Alembic migrations have run, the production `/health` endpoint returns the
+   expected payload, and the DB-backed top players API returns real ingested
+   player data from Render PostgreSQL. A manual GitHub Actions worker workflow
+   now builds the application Docker image, validates containerized
+   Selenium/Chromium, and can run `python main.py` against the configured
+   PostgreSQL database. Local Docker worker validation passed after granting
+   the non-root app user access to SeleniumBase's driver scratch directory in
+   the image. Deterministic write-based cloud smoke is deferred until a
+   separate disposable smoke/staging database exists; production validation
+   remains read-only by policy. Local Docker live pipeline execution completed
+   in the worker image and reached map processing against Render PostgreSQL.
+   The run exposed a map scraper validation gap: selected map pages can return
+   HTML without the expected `match-info-box`, and the parser currently marks
+   those rows failed instead of treating the fetch as retryable. Remaining
+   closeout work is to track or fix that fetch-validation/retry hardening in
+   issue #57 before recurring worker runs, run the workflow in GitHub Actions
+   after it is available on GitHub, rotate exposed database credentials, and
+   finalize the deployment documentation.
+
 ### Phase 3.75 exit criteria
 
 - [x] Fresh clone can run through Docker without manual local setup
@@ -532,8 +552,8 @@ assumptions work outside the local development machine.
 - [x] Deployment migration order is documented
 - [x] Smoke/staging database policy is documented for write-based smoke tests
 - [x] Read-only production validation checks are defined
-- [ ] Containerized Selenium/Chromium works in the chosen worker environment
-- [ ] Runtime artifacts do not rely on local machine state
+- [x] Containerized Selenium/Chromium works in the chosen worker environment
+- [x] Runtime artifacts do not rely on local machine state
 - [x] Rollback/recovery expectations are documented
 - [x] There is a temporary scheduled/manual runner path before Airflow
 - [ ] One limited live ingestion validation passes in staging/smoke
