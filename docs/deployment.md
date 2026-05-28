@@ -229,8 +229,9 @@ Run the manual worker from GitHub:
 2. Go to Actions.
 3. Select `Manual Pipeline Worker`.
 4. Choose `Run workflow`.
-5. Keep `run_pipeline` enabled to validate the browser and run ingestion, or
-   disable it to validate only the containerized Selenium/Chromium runtime.
+5. Leave `run_pipeline` disabled to validate only the containerized
+   Selenium/Chromium runtime. Enable it only when intentionally running live
+   ingestion against the configured PostgreSQL database.
 
 The workflow uses a concurrency group so only one manual pipeline worker run
 executes at a time.

@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       run_pipeline:
-        description: Run the ingestion pipeline after browser validation.
+        description: Explicitly run ingestion after browser validation.
         required: true
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
