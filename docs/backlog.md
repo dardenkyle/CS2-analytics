@@ -527,12 +527,30 @@ assumptions work outside the local development machine.
    remains read-only by policy. Local Docker live pipeline execution completed
    in the worker image and reached map processing against Render PostgreSQL.
    The run exposed a map scraper validation gap: selected map pages can return
-   HTML without the expected `match-info-box`, and the parser currently marks
-   those rows failed instead of treating the fetch as retryable. Remaining
-   closeout work is to track or fix that fetch-validation/retry hardening in
-   issue #57 before recurring worker runs, run the workflow in GitHub Actions
-   after it is available on GitHub, rotate exposed database credentials, and
-   finalize the deployment documentation.
+   HTML without the expected `match-info-box`. The
+   `fix-map-fetch-validation-retry` branch hardened map fetch validation so
+   missing, incomplete, blocked, or challenged map stats HTML is classified as
+   retryable scraper/session failure before parser handling. Remaining closeout
+   work is to run the workflow in GitHub Actions after it is available on
+   GitHub, rotate exposed database credentials, and finalize the deployment
+   documentation.
+
+8. [x] `fix-map-fetch-validation-retry`
+       Fix issue #57 by hardening map fetch validation when HLTV returns
+       incomplete, challenged, redirected, or otherwise non-stats map HTML.
+       Missing required map page selectors should be classified as retryable
+       scraper/session failures with useful diagnostics, while real parser
+       failures should remain parser failures. Previously failed map rows can be
+       handled by later recovery/reset work; this branch should use the manual
+       worker path to validate map processing before recurring worker runs.
+
+   Map fetch validation now waits for the required map stats selector and logs
+   requested URL, browser URL, title, page-source length, challenge marker
+   flags, and a short page snippet when validation fails. Cloudflare/challenge
+   pages are surfaced as retryable blocked/challenged session failures rather
+   than map parser failures. A limited validation run against Render PostgreSQL
+   confirmed the affected rows no longer use the old map-name parser failure
+   path.
 
 ### Phase 3.75 exit criteria
 

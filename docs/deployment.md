@@ -134,11 +134,12 @@ Validated production checks:
   SeleniumBase's driver scratch directory.
 - Local Docker live pipeline execution completed in the worker image and
   reached the map stage against Render PostgreSQL. The map stage selected 50
-  pending maps, but the fetched HTML lacked the expected `match-info-box`
-  content and those rows failed with `MapParseError: Failed to extract map name
-  from map stats page.` This confirms the deployment worker path while leaving
-  map fetch validation and retry hardening as follow-up issue #57 before
-  recurring worker runs.
+  pending maps, but some fetched HTML lacked the expected `match-info-box`
+  content. Issue #57 hardened map fetch validation so incomplete, blocked, or
+  challenged map stats HTML is classified as a retryable scraper/session
+  failure with diagnostics before parser handling. This confirms the deployment
+  worker path while keeping recurring worker runs paused until broader live
+  ingestion behavior and operations are intentionally resumed.
 
 Local worker validation commands:
 

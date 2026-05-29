@@ -147,11 +147,14 @@ Docker worker validation has proven that Selenium/Chromium can start inside the
 same application image used by the manual worker path.
 
 Local Docker live pipeline execution also completed in the worker image against
-Render PostgreSQL and reached map processing. The run exposed a map scraper
-validation gap: fetched map HTML can lack the expected `match-info-box` page
-content, after which the parser raises `MapParseError` and the controller marks
-the row failed. This is tracked in issue #57 and should be handled as retryable
-fetch/session hardening, not as a deployment/runtime boundary change.
+Render PostgreSQL and reached map processing. That run exposed a map scraper
+validation gap where fetched map HTML could lack the expected
+`match-info-box` page content. Issue #57 hardened the map scraper so missing,
+incomplete, blocked, or challenged map stats HTML is classified as a retryable
+scraper/session failure before parser handling, with diagnostics for the
+requested URL, current browser URL, page title, source length, challenge marker
+flags, and a short page snippet. Real map parser failures remain parser
+failures.
 
 Write-based deterministic smoke checks are intentionally not run against the
 production Render PostgreSQL database. A separate smoke/staging database is
