@@ -17,9 +17,37 @@
   color: "0052cc"
   description: "Airflow orchestration work."
 
+- name: "phase: A"
+  color: "0e8a16"
+  description: "Frontend Phase A public top players demo work."
+
+- name: "phase: B"
+  color: "1d76db"
+  description: "Frontend Phase B expansion candidate work."
+
 - name: "phase: deferred"
   color: "bfdadc"
   description: "Deferred work such as demo expansion, API expansion, or later orchestration."
+
+- name: "area: frontend"
+  color: "c5def5"
+  description: "React SPA, GitHub Pages UI, and frontend product experience work."
+
+- name: "area: backend"
+  color: "bfd4f2"
+  description: "Python backend, server-side runtime, and backend integration work."
+
+- name: "area: api"
+  color: "a2eeef"
+  description: "FastAPI routes, schemas, services, and API read behavior."
+
+- name: "area: ingestion"
+  color: "fef2c0"
+  description: "Scrapers, parsers, controllers, stage services, and ingestion lifecycle work."
+
+- name: "area: data"
+  color: "d4c5f9"
+  description: "Database schema, migrations, storage contracts, dbt models, and analytics data shape."
 
 - name: "type: implementation"
   color: "0e8a16"

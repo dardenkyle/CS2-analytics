@@ -59,7 +59,17 @@ Use exactly one phase label when possible:
 - `phase: 3.75`
 - `phase: 4`
 - `phase: 5`
+- `phase: A`
+- `phase: B`
 - `phase: deferred`
+
+Use one or more area labels when they add useful routing context:
+
+- `area: frontend`
+- `area: backend`
+- `area: api`
+- `area: ingestion`
+- `area: data`
 
 Use type labels to describe the main kind of work:
 
