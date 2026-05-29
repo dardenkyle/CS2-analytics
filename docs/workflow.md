@@ -51,7 +51,7 @@ Bugfix branches may use:
 
 ## Labels
 
-Apply labels that describe phase, type, priority, and risk.
+Apply labels that describe phase, area, type, priority, and risk.
 
 Use exactly one phase label when possible:
 
