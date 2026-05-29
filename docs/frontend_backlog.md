@@ -23,7 +23,10 @@ the deployed API can serve current database-backed player data.
 
 Initial constraints:
 
-- the frontend is a React SPA in `frontend/`
+- the public frontend target is a React SPA under `frontend/`
+- `frontend/` currently contains a Streamlit debug app at `frontend/app.py`;
+  Phase A should decide whether to replace it, move it, or retire it before
+  adding the React app scaffold
 - the app is hosted on GitHub Pages
 - deployment runs from `main`
 - the app is fully public
@@ -45,6 +48,7 @@ Planned.
 ### Planned work
 
 - [ ] Create the frontend app shell in `frontend/`
+- [ ] Decide how to handle the existing `frontend/app.py` Streamlit debug app
 - [ ] Add public project introduction content for portfolio review
 - [ ] Add a top players data view using the Render-hosted API
 - [ ] Add loading, empty, and error states for the API call
@@ -56,8 +60,9 @@ Planned.
 ### Suggested branch sequence
 
 1. [ ] `phasea-frontend-project-shell`
-       Create the React SPA foundation in `frontend/` with the first public page
-       structure, project introduction, and basic responsive styling.
+       Decide how to handle the existing Streamlit debug app, then create the
+       React SPA foundation in `frontend/` with the first public page structure,
+       project introduction, and basic responsive styling.
 
    Proposed issue:
    **Frontend A1: Create public project shell**
@@ -67,7 +72,9 @@ Planned.
    `priority: medium`, `risk: medium`
 
    Acceptance criteria:
-   - `frontend/` contains the React SPA foundation
+   - The branch explicitly replaces, moves, or retires the existing
+     `frontend/app.py` Streamlit debug app
+   - `frontend/` contains the React SPA foundation after that decision
    - the first screen introduces CS2 Analytics clearly
    - the page looks presentable on desktop and mobile
    - no API integration is required in this branch
