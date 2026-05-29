@@ -20,6 +20,17 @@ Current priorities:
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
   source schema normalization
 - defer demo expansion and Airflow until after the initial dbt layer exists
+- keep frontend product planning in `docs/frontend_backlog.md` so the public
+  GitHub Pages SPA can progress without renumbering backend/data phases
+
+---
+
+## Parallel Product Tracks
+
+Frontend product work uses a lettered phase strategy in
+`docs/frontend_backlog.md`. Phase A starts with a public React SPA demo that
+introduces the project and shows the existing top players API from the
+Render-hosted backend.
 
 ---
 
