@@ -40,7 +40,7 @@ class MapScraper:
         self.driver = Driver(uc=True, headless=True)
         self.content_wait_seconds = content_wait_seconds
 
-    def __enter__(self) -> MapScraper:
+    def __enter__(self) -> "MapScraper":  # noqa: UP037
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
