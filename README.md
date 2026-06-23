@@ -97,9 +97,17 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 uv sync --extra dev
 ```
 
-This installs all runtime and development dependencies from the committed
-`uv.lock` lockfile. Once dev dependencies move to `[dependency-groups]`
-(issue #69), this becomes `uv sync`.
+This creates a `.venv` virtual environment and installs all runtime and
+development dependencies from the committed `uv.lock` lockfile. Once
+dev dependencies move to `[dependency-groups]` (issue #69), this
+becomes `uv sync`.
+
+Activate the virtual environment before running subsequent `python`
+commands:
+
+```sh
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
 
 ### 4. Configure Environment Variables
 
