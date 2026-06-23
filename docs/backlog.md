@@ -597,7 +597,9 @@ installs, and consolidate lint/format tooling on ruff before the public frontend
 deploy (A3, #62) and Phase 4 orchestration work begin.
 
 Status:
-Planned. This phase gates Frontend A3 (#62): the GitHub Actions CI path for the
+In progress. The `phase3.9-tooling-version-align` branch aligned all tooling
+targets to Python 3.12 and added missing labels to the tracked taxonomy.
+This phase gates Frontend A3 (#62): the GitHub Actions CI path for the
 frontend requires the install and tooling story to be clean and reproducible
 first.
 
