@@ -76,19 +76,30 @@ git clone https://github.com/dardenkyle/CS2-analytics.git
 cd CS2-Analytics
 ```
 
-### 2. Create a Virtual Environment
+### 2. Install uv
+
+If you do not have uv installed, pick one of:
 
 ```sh
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# via pip
+pip install uv
+
+# via the official installer (macOS/Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# via the official installer (Windows)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 ### 3. Install Dependencies
 
 ```sh
-pip install -e .
-pip install -e ".[dev]"
+uv sync --extra dev
 ```
+
+This installs all runtime and development dependencies from the committed
+`uv.lock` lockfile. Once dev dependencies move to `[dependency-groups]`
+(issue #69), this becomes `uv sync`.
 
 ### 4. Configure Environment Variables
 

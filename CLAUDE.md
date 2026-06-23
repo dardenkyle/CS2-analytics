@@ -112,7 +112,7 @@ PR marked medium or high risk.
 
 ## Local Development Notes
 
-- Install development dependencies with `pip install -e ".[dev]"`.
+- Install development dependencies with `uv sync --extra dev`.
 - Use `python -m cs2_analytics.storage.initialize_db` or
   `alembic -c cs2_analytics/alembic.ini upgrade head` to initialize or upgrade
   the local database schema when needed.
