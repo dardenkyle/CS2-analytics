@@ -9,6 +9,10 @@
   color: "6f42c1"
   description: "Deployment baseline work before dbt."
 
+- name: "phase: 3.9"
+  color: "bfd4f2"
+  description: "Environment and tooling hardening before Phase 4."
+
 - name: "phase: 4"
   color: "1d76db"
   description: "dbt transformation layer work."
@@ -49,6 +53,10 @@
   color: "d4c5f9"
   description: "Database schema, migrations, storage contracts, dbt models, and analytics data shape."
 
+- name: "area: tooling"
+  color: "d4c5f9"
+  description: "Build, packaging, dev-infra, and developer tooling work."
+
 - name: "type: implementation"
   color: "0e8a16"
   description: "Planned code, schema, workflow, or feature implementation."
@@ -72,6 +80,10 @@
 - name: "type: deployment"
   color: "a2eeef"
   description: "Deployment, runtime, container, migration, CI, or release-readiness work."
+
+- name: "priority: critical"
+  color: "b60205"
+  description: "Drop-everything blocker that gates the current phase or a cross-axis dependency."
 
 - name: "priority: high"
   color: "b60205"

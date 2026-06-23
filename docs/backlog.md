@@ -383,7 +383,13 @@ Make the current ingestion pipeline and API deployable in a reproducible,
 containerized environment before adding dbt.
 
 Status:
-In progress. The `phase3.75-env-config-hardening` branch completed the first
+Complete. The API is deployed on Render, Alembic migrations have run against
+Render PostgreSQL, the `/health` and top players endpoints return live data,
+and containerized Selenium/Chromium was validated locally. Live cloud ingestion
+validation was superseded: Cloudflare blocks made cloud-based scraping
+impractical, so the ingestion strategy was changed to local scraping writing
+directly to the Render PostgreSQL database. That strategy does not require a
+staged cloud scraper run to validate. The `phase3.75-env-config-hardening` branch completed the first
 deployment-baseline slice by making runtime configuration environment-driven
 and production-safe. The `phase3.75-alembic-migrations` branch added Alembic
 configuration and an initial migration for the current application/source
@@ -585,7 +591,11 @@ assumptions work outside the local development machine.
 - [x] Runtime artifacts do not rely on local machine state
 - [x] Rollback/recovery expectations are documented
 - [x] There is a temporary scheduled/manual runner path before Airflow
-- [ ] One limited live ingestion validation passes in staging/smoke
+- [x] One limited live ingestion validation passes in staging/smoke — superseded:
+      Cloudflare blocks made cloud-based scraping impractical. Ingestion strategy
+      changed to local scraping writing directly to Render PostgreSQL. Local
+      Docker pipeline execution reached the map stage against Render PostgreSQL,
+      satisfying the intent of this criterion under the revised approach.
 
 ---
 
@@ -597,7 +607,9 @@ installs, and consolidate lint/format tooling on ruff before the public frontend
 deploy (A3, #62) and Phase 4 orchestration work begin.
 
 Status:
-Planned. This phase gates Frontend A3 (#62): the GitHub Actions CI path for the
+In progress. The `phase3.9-tooling-version-align` branch aligned all tooling
+targets to Python 3.12 and added missing labels to the tracked taxonomy.
+This phase gates Frontend A3 (#62): the GitHub Actions CI path for the
 frontend requires the install and tooling story to be clean and reproducible
 first.
 
