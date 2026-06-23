@@ -57,6 +57,7 @@ Use exactly one phase label when possible:
 
 - `phase: 3.6`
 - `phase: 3.75`
+- `phase: 3.9`
 - `phase: 4`
 - `phase: 5`
 - `phase: A`
@@ -70,6 +71,7 @@ Use one or more area labels when they add useful routing context:
 - `area: api`
 - `area: ingestion`
 - `area: data`
+- `area: tooling`
 
 Use type labels to describe the main kind of work:
 
@@ -82,7 +84,7 @@ Use type labels to describe the main kind of work:
 
 Use one priority label and one risk label:
 
-- `priority: high`, `priority: medium`, or `priority: low`
+- `priority: critical`, `priority: high`, `priority: medium`, or `priority: low`
 - `risk: high`, `risk: medium`, or `risk: low`
 
 ## Risk Levels

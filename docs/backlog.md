@@ -589,6 +589,52 @@ assumptions work outside the local development machine.
 
 ---
 
+## Phase 3.9: Environment and Tooling Hardening
+
+Goal:
+Align the Python version targets across all tooling, adopt uv for reproducible
+installs, and consolidate lint/format tooling on ruff before the public frontend
+deploy (A3, #62) and Phase 4 orchestration work begin.
+
+Status:
+Planned. This phase gates Frontend A3 (#62): the GitHub Actions CI path for the
+frontend requires the install and tooling story to be clean and reproducible
+first.
+
+Convention: numeric phases track backend/pipeline/infra; letter phases track the
+frontend. Phase 3.9 is the only cross-axis dependency — A3 is blocked by #67
+and #68.
+
+### Planned work
+
+- [ ] Align tooling config to Python 3.12 — fix stale 3.14 targets in mypy,
+      ruff, black, and classifiers (#67)
+- [ ] Adopt uv + commit `uv.lock` for reproducible installs (#68)
+- [ ] Move dev/test tooling to `[dependency-groups]` so `uv sync` installs them
+      by default (#69)
+- [ ] Consolidate lint/format on ruff — remove black and isort from dev deps
+      (#70)
+
+### Suggested branch sequence
+
+1. [ ] `phase3.9-tooling-version-align` — resolves #67
+2. [ ] `phase3.9-uv-adoption` — resolves #68
+3. [ ] `phase3.9-dependency-groups` — resolves #69
+4. [ ] `phase3.9-ruff-consolidation` — resolves #70
+
+Do #67 and #68 first — they are the actual gate for A3. #69 and #70 are
+same-pass cleanup that can follow immediately after.
+
+### Phase 3.9 exit criteria
+
+- [ ] All tooling targets Python 3.12
+- [ ] `uv.lock` is committed and CI uses `uv sync`
+- [ ] Dev/test deps install via `uv sync` without extra flags
+- [ ] ruff is the sole formatter and import sorter
+- [ ] CI passes
+
+---
+
 ## Phase 4: dbt Transformation Layer
 
 Goal:
