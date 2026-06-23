@@ -1,4 +1,4 @@
-# AGENTS.md
+# CLAUDE.md
 
 Guidance for coding agents working in this repository.
 
@@ -12,9 +12,10 @@ Guidance for coding agents working in this repository.
   `cs2_analytics/storage/schema.sql` aligned as the readable schema reference
   during the migration ownership transition.
 - Prefer the existing architecture over new abstractions.
-- Keep changes aligned with the current roadmap: Phase 3 and Phase 3.5 are
-  complete, Phase 3.6 is workflow hardening, Phase 3.75 deployment baseline
-  comes before dbt, demo expansion is deferred, and Airflow comes after dbt.
+- Keep changes aligned with the current roadmap: Phases 3, 3.5, 3.6, and 3.75
+  are complete. Phase 3.9 is environment and tooling hardening. Phase 4 entry
+  criteria include the v1.0 hardening items (#71–#74). dbt comes after Phase
+  3.9, demo expansion is deferred, and Airflow comes after dbt.
 
 ## Python Coding Standards
 

@@ -262,12 +262,10 @@ See `docs/` for architecture and roadmap details.
 
 Current architecture direction:
 
-- Phase 2 ingestion-state migration is complete.
-- Phase 3 controller thinning is complete.
-- Phase 3.5 dbt readiness is complete for the active `matches`, `maps`, and
-  `players` grains.
-- The next major architecture phase is the Phase 3.75 deployment baseline.
-- dbt scaffolding and staging models follow after the deployment baseline.
+- Phases 2, 3, 3.5, 3.6, and 3.75 are complete.
+- Phase 3.9 (environment and tooling hardening) is in progress.
+- Phase 4 (dbt transformation layer) follows Phase 3.9. Entry criteria include
+  v1.0 hardening items for ingestion layer correctness and atomic writes.
 - Demo pipeline implementation remains deferred.
 - Airflow comes after dbt and clean transformation boundaries.
 

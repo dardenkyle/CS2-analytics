@@ -310,11 +310,11 @@ into small GitHub issues.
 - [x] Add GitHub issue templates
 - [x] Add pull request template
 - [x] Add labels for phase, type, priority, and risk
-- [x] Ensure `AGENTS.md` complies with repo rules and coding standards
+- [x] Ensure `CLAUDE.md` complies with repo rules and coding standards
 - [x] Add `docs/workflow.md` describing issue -> branch -> PR -> merge flow
 - [x] Add `docs/architecture/current_state.md` summarizing the active architecture
 - [x] Add `docs/architecture/decision_log.md` for project decisions
-- [x] Add documentation maintenance rules to `AGENTS.md`, `docs/workflow.md`,
+- [x] Add documentation maintenance rules to `CLAUDE.md`, `docs/workflow.md`,
       and the pull request template
 - [x] Convert Phase 3.75 deployment tasks into GitHub issues
 - [x] Create small acceptance criteria for each issue
@@ -342,15 +342,15 @@ into small GitHub issues.
    - risk labels
 
 3. [x] `phase3.6-agent-docs`
-       Add `AGENTS.md`, workflow docs, current architecture summary, decision
+       Add `CLAUDE.md`, workflow docs, current architecture summary, decision
        log, and agent/human review policy.
 
    Covers:
-   - `AGENTS.md` repo rules and coding standards
+   - `CLAUDE.md` repo rules and coding standards
    - `docs/workflow.md` issue -> branch -> PR -> merge flow
    - `docs/architecture/current_state.md`
    - `docs/architecture/decision_log.md`
-   - documentation maintenance rules in `AGENTS.md` and `docs/workflow.md`
+   - documentation maintenance rules in `CLAUDE.md` and `docs/workflow.md`
    - branch naming conventions
    - what agents may change without approval
    - what requires human review before merge
@@ -368,8 +368,8 @@ into small GitHub issues.
 - [x] GitHub issues can be created from templates
 - [x] Pull requests have a consistent review checklist
 - [x] Pull requests include a documentation check
-- [x] `AGENTS.md` explains repo architecture, coding standards, and no-touch areas
-- [x] `AGENTS.md` explains documentation responsibilities
+- [x] `CLAUDE.md` explains repo architecture, coding standards, and no-touch areas
+- [x] `CLAUDE.md` explains documentation responsibilities
 - [x] `docs/workflow.md` explains documentation expectations
 - [x] Deployment baseline work is represented as small, reviewable issues
 - [x] Branch naming and issue-to-PR workflow are documented
@@ -648,6 +648,10 @@ reproducible deployment baseline.
 - [ ] Current ingestion pipeline can run outside the local dev machine
 - [x] Application/source tables are managed by Alembic migrations
 - [ ] dbt will be additive and downstream of ingestion, not a replacement for ingestion logic
+- [ ] Scraper boundary leak resolved — no scraper module writes DB or ingestion-state rows (#71)
+- [ ] Manual scripts removed from `tests/` so pytest collects only real automated tests (#72)
+- [ ] `.coverage` artifact removed from git and ignored (#73)
+- [ ] Data write and ingestion-state transition are atomic — approach agreed and implemented (#74)
 
 ### Database ownership boundary
 
@@ -729,3 +733,17 @@ deployment baseline work, and dbt.
 
 - [ ] Keep temporary/manual scraper scheduling in Phase 3.75
 - [ ] Keep Airflow as Phase 5 after dbt exists
+
+### v1.0 Polish
+
+These are correctness and readability improvements that do not gate Phase 4 but
+should be addressed before the repo is considered v1.0.
+
+- [ ] Stop silently coercing parse failures to `0` — log or route to explicit failure path (`map_parser.py:329`, `:347`, `:365`, `:247`)
+- [ ] Add a coverage `fail-under` threshold and wire it into CI so the floor is enforced
+- [ ] Test untested failure branches: date-parse warning, scraper close-failure, parser fallback paths
+- [ ] Batch N+1 storage writes using `executemany` (`match_storage.py`, `map_storage.py`, `player_storage.py`)
+- [ ] Widen mypy CI target to cover `cs2_analytics` ingestion core, not just the API layer
+- [ ] Break up overlong controller and utility functions (`match_controller.py`, `map_controller.py`, `results_controller.py`, `retry_utils.py`)
+- [ ] Move non-working demo subsystem to a `feature/demo-parsing` branch; add deferral note to README
+- [ ] Add a "Design decisions & tradeoffs" section to the README explaining key architectural choices
