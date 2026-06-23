@@ -57,7 +57,7 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: uv sync --frozen --extra dev
 
       - name: Lint
         run: uv run ruff check cs2_analytics api main.py run_api.py manage_db.py --select E,F --ignore E501
