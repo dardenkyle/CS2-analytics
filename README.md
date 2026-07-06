@@ -318,18 +318,33 @@ more lifecycle discipline than a queue requires — every outcome must be
 recorded explicitly — in exchange for an ingestion run that is resumable,
 idempotent, and observable.
 
-### One source, no pluggable-source abstraction
+### Stable grains and idempotent writes before analytics
 
-The pipeline ingests from a single upstream site, and there is deliberately
-no generic "source adapter" interface. An abstraction over one
-implementation would be speculative complexity: it could not be validated
-against a second source and would slow down changes to the only source that
-exists. The existing layer boundaries already isolate site-specific logic —
-scrapers and parsers are the only layers that know about the upstream
-markup — so supporting a second source later means adding a scraper and a
-parser, not restructuring the pipeline. The accepted cost is that
-site-specific assumptions live in those two layers rather than behind a
-formal interface.
+The parsed source tables were locked to explicit grains before any
+analytics work: `matches` is one row per match, `maps` one row per played
+map, `players` one row per player per map. Storage writes are upserts that
+refresh trusted fields, so re-running ingestion over the same matches never
+duplicates rows. This was done ahead of the planned dbt layer because
+transformation models are only as trustworthy as their sources — building
+dbt on tables that could drift or duplicate would push data-quality
+firefighting downstream where it is hardest to debug. The tradeoff is
+slower feature delivery up front: schema and write-path discipline landed
+before any user-visible analytics did.
+
+### Simple, managed deployment first
+
+The first cloud deployment uses deliberately simple, proven parts: Render
+for the API and PostgreSQL, GitHub Pages for the frontend, and a manual
+GitHub Actions workflow as the scraper runner — no Kubernetes, no Airflow, no
+custom domain. Render builds the repository's own Dockerfile, so production
+runs the same container image and the same entrypoints used locally through
+Docker Compose (`python run_api.py` for the API, `python main.py` for the
+pipeline) — one runtime to debug instead of a separate cloud configuration.
+Production validation is read-only by policy: health checks and DB-backed
+reads, with write-based smoke tests restricted to disposable databases. The tradeoff is fewer operational
+capabilities (no scheduling, manual migrations) in exchange for a
+deployment simple enough to reason about while the data layer is still
+evolving.
 
 ### Demo parsing deferred behind a preserved boundary
 
