@@ -1,4 +1,7 @@
-"""Manually tests MapParser from pending map ingestion-state rows.
+"""Manual debug script: run scrape -> parse -> store for pending maps.
+
+Usage: python scripts/debug_map_ingestion.py (requires a configured database
+and browser dependencies).
 
 This helper bypasses controllers intentionally and is only for manual debugging.
 """
