@@ -72,6 +72,7 @@ A1 implementation notes:
 - [ ] Add a top players data view using the Render-hosted API
 - [ ] Add loading, empty, and error states for the API call
 - [x] Add responsive styling for desktop and mobile review
+- [x] Add a frontend build and lint CI job for pull requests (#88)
 - [ ] Add GitHub Pages deployment from `main`
 - [ ] Document how to configure the frontend API base URL
 - [x] Add a lightweight frontend verification path
@@ -104,7 +105,32 @@ A1 implementation notes:
    - new backend endpoints
    - charts or deeper analytics
 
-2. [ ] `phasea-top-players-api-view`
+2. [x] `phasea-frontend-ci`
+       Add a frontend build and lint job to the CI gate before the first
+       frontend logic lands, so A2 and later branches merge under automated
+       verification. Tracked by issue #88.
+
+   Proposed issue:
+   **[Task]: Add frontend build and lint job to CI** (#88)
+
+   Suggested labels:
+   `phase: A`, `area: frontend`, `area: tooling`, `type: implementation`,
+   `priority: medium`, `risk: medium`
+
+   Acceptance criteria:
+   - pull requests touching `frontend/**` run `npm ci`, `npm run build`, and
+     `npm run lint`
+   - pull requests that do not touch `frontend/**` do not trigger the
+     frontend workflow
+   - the job fails the PR gate on TypeScript, build, or lint errors
+   - `docs/workflow.md` documents the frontend CI gate
+
+   Out of scope:
+   - GitHub Pages deployment (A3)
+   - frontend unit tests or a test runner
+   - changes to the Python CI jobs
+
+3. [ ] `phasea-top-players-api-view`
        Add the first live data surface by calling the existing top players API
        and rendering a simple list of players.
 
@@ -128,7 +154,7 @@ A1 implementation notes:
    - sorting/filtering beyond what the API already supports
    - new API endpoints
 
-3. [ ] `phasea-github-pages-deploy`
+4. [ ] `phasea-github-pages-deploy`
        Add the GitHub Pages deployment path so the SPA builds and publishes from
        `main`.
 
@@ -159,7 +185,7 @@ A1 implementation notes:
    - no backend CORS change is needed; production already allows the
      `https://dardenkyle.github.io` origin
 
-4. [ ] `phasea-frontend-demo-polish`
+5. [ ] `phasea-frontend-demo-polish`
        Polish the first demo so it is portfolio-ready and comfortable for
        potential employers to review quickly.
 
