@@ -175,6 +175,103 @@ main {
   margin-bottom: 12px;
 }
 
+/* Top players */
+
+.players-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.players-status p {
+  font-size: 15px;
+}
+
+.players-error {
+  border-color: rgba(240, 82, 82, 0.4);
+}
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+.players-table-wrap {
+  margin-top: 24px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.players-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.players-table th,
+.players-table td {
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.players-table thead th {
+  font-family: var(--mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text);
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+}
+
+.players-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--border);
+}
+
+.players-table .rank-col {
+  width: 48px;
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+.players-table .num-col {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.players-table .player-name {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.players-table .rating {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* Highlights */
 
 .highlights {

@@ -1,7 +1,8 @@
 import './App.css'
+import { API_BASE_URL } from './config'
+import { TopPlayersSection } from './components/TopPlayers'
 
 const GITHUB_URL = 'https://github.com/dardenkyle/CS2-analytics'
-const API_BASE_URL = 'https://cs2-analytics.onrender.com'
 
 interface PipelineStage {
   step: string
@@ -38,7 +39,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
     step: '05',
     title: 'Present',
     description:
-      'This site is the public face of the system. A live top-players leaderboard backed by the API lands here next.',
+      'This site is the public face of the system. The top players table above is fetched live from the production database through that API.',
   },
 ]
 
@@ -224,6 +225,7 @@ function App() {
       <Header />
       <main>
         <Hero />
+        <TopPlayersSection />
         <PipelineSection />
         <HighlightsSection />
         <TechStackSection />
