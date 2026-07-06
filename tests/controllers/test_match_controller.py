@@ -66,16 +66,12 @@ class _SuccessfulScraper(_PassiveScraper):
 
 
 class _ParseFailureParser:
-    def parse_match(
-        self, _soup: object, _match_url: str
-    ) -> tuple[object, list, list]:
+    def parse_match(self, _soup: object, _match_url: str) -> tuple[object, list, list]:
         raise MatchParseError("Missing team names on match page.")
 
 
 class _SuccessfulParser:
-    def parse_match(
-        self, _soup: object, _match_url: str
-    ) -> tuple[object, list, list]:
+    def parse_match(self, _soup: object, _match_url: str) -> tuple[object, list, list]:
         return object(), [], []
 
 
@@ -83,9 +79,7 @@ class _FailOnceThenSucceedParser:
     def __init__(self) -> None:
         self.calls = 0
 
-    def parse_match(
-        self, _soup: object, _match_url: str
-    ) -> tuple[object, list, list]:
+    def parse_match(self, _soup: object, _match_url: str) -> tuple[object, list, list]:
         self.calls += 1
         if self.calls == 1:
             raise MatchParseError("Missing team names on match page.")
@@ -130,9 +124,7 @@ def test_match_controller_marks_non_retryable_parse_error_failed_immediately(
 
     controller.run(batch_size=1)
 
-    assert controller.match_state.failed == [
-        (1, "Missing team names on match page.")
-    ]
+    assert controller.match_state.failed == [(1, "Missing team names on match page.")]
     assert controller.match_state.processed == []
     assert controller.match_state.processing == [1]
     assert len(exception_calls) == 1
@@ -234,9 +226,7 @@ def test_match_controller_continues_after_item_failure(
 
     controller.run(batch_size=2)
 
-    assert controller.match_state.failed == [
-        (1, "Missing team names on match page.")
-    ]
+    assert controller.match_state.failed == [(1, "Missing team names on match page.")]
     assert controller.match_state.processed == [2]
     assert controller.match_state.processing == [1, 2]
     assert len(stored_matches) == 1

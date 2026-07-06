@@ -188,4 +188,3 @@ class MatchController:
         except Exception as e:
             logger.warning("Scraper session health check failed: %s", e)
             return False
-

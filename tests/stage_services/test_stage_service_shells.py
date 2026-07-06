@@ -104,4 +104,3 @@ def test_demo_stage_service_records_constructor_dependencies() -> None:
     assert service.parser is parser
     assert service.store_demo_file is _store_stub
     assert service.demo_state is demo_state
-

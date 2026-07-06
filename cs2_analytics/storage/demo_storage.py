@@ -65,4 +65,3 @@ def store_demo_file(
             logger.info("📥 Stored demo file for map_id: %s", map_id)
     except Exception as e:
         raise DemoStorageError("Failed to store demo file.") from e
-

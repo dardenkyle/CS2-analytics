@@ -1,5 +1,5 @@
-from datetime import UTC
 from contextlib import contextmanager
+from datetime import UTC
 
 import pytest
 

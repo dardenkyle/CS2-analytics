@@ -1,5 +1,5 @@
-from bs4 import BeautifulSoup
 import pytest
+from bs4 import BeautifulSoup
 
 from cs2_analytics.exceptions import MapParseError, MatchParseError
 from cs2_analytics.parsers.map_parser import MapParser
@@ -91,7 +91,9 @@ def test_match_parser_raises_typed_error_for_missing_team_names() -> None:
     parser = MatchParser()
     soup = BeautifulSoup("<html><body></body></html>", "html.parser")
 
-    with pytest.raises(MatchParseError, match="Missing team names on match page.") as exc_info:
+    with pytest.raises(
+        MatchParseError, match="Missing team names on match page."
+    ) as exc_info:
         parser.parse_match(soup, "https://www.hltv.org/matches/1/test-match")
 
     assert isinstance(exc_info.value.__cause__, ValueError)
@@ -107,7 +109,9 @@ def test_match_parser_returns_numeric_match_id() -> None:
 
     assert match.match_id == 123456
     assert isinstance(match.match_id, int)
-    assert map_links == [(2, "https://www.hltv.org/stats/matches/mapstatsid/2/test-map")]
+    assert map_links == [
+        (2, "https://www.hltv.org/stats/matches/mapstatsid/2/test-map")
+    ]
     assert demo_links == []
 
 

@@ -3,9 +3,9 @@ Service layer for retrieving player-related data from the database.
 Implements business logic separate from route handlers.
 """
 
-from typing import List
-from ..schemas.player import PlayerStats
 from cs2_analytics.storage.database import Database
+
+from ..schemas.player import PlayerStats
 
 
 class PlayerService:
@@ -16,7 +16,7 @@ class PlayerService:
     def __init__(self) -> None:
         self.db: Database = Database()
 
-    def fetch_top_players(self, min_maps: int, limit: int) -> List[PlayerStats]:
+    def fetch_top_players(self, min_maps: int, limit: int) -> list[PlayerStats]:
         """
         Fetches top players based on average rating, filtered by minimum maps played.
 
@@ -25,7 +25,7 @@ class PlayerService:
             limit (int): Number of players to return.
 
         Returns:
-            List[PlayerStats]: List of top players with their stats.
+            list[PlayerStats]: List of top players with their stats.
         """
         sql: str = """
             SELECT

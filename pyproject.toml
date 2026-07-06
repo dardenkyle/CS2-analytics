@@ -51,8 +51,6 @@ dev = [
     "pytest-cov",
     "mypy>=1.19.0",
     "ruff>=0.3.0",
-    "black>=24.0.0",
-    "isort>=5.13.0",
 ]
 test = [
     "pytest>=9.0.0",
@@ -141,25 +139,6 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["cs2_analytics", "api"]
-
-# Black Configuration (Code Formatter)
-[tool.black]
-line-length = 88
-target-version = ["py312"]
-extend-exclude = '''
-/(
-  # Directories
-  \.git
-  | \.venv
-  | venv
-  | env
-  | __pycache__
-  | build
-  | dist
-  | \.pytest_cache
-  | \.mypy_cache
-)/
-'''
 
 # Pytest Configuration
 [tool.pytest.ini_options]

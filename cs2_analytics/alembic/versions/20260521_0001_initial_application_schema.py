@@ -7,8 +7,8 @@ Create Date: 2026-05-21
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision: str = "20260521_0001"
 down_revision: str | None = None
@@ -23,7 +23,9 @@ def upgrade() -> None:
         sa.Column("team_name", sa.Text(), nullable=False),
         sa.Column("team_url", sa.Text(), nullable=False),
         sa.Column("region", sa.Text()),
-        sa.Column("created_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.Column("last_scraped_at", sa.TIMESTAMP()),
         sa.Column("last_updated_at", sa.TIMESTAMP()),
         sa.Column("data_complete", sa.Boolean()),
@@ -33,9 +35,13 @@ def upgrade() -> None:
         sa.Column("player_id", sa.Integer(), primary_key=True, autoincrement=False),
         sa.Column("player_name", sa.Text(), nullable=False),
         sa.Column("player_url", sa.Text(), nullable=False),
-        sa.Column("team_id", sa.Integer(), sa.ForeignKey("teams.team_id", ondelete="SET NULL")),
+        sa.Column(
+            "team_id", sa.Integer(), sa.ForeignKey("teams.team_id", ondelete="SET NULL")
+        ),
         sa.Column("active", sa.Boolean(), server_default=sa.text("TRUE")),
-        sa.Column("created_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.Column("last_scraped_at", sa.TIMESTAMP()),
         sa.Column("last_updated_at", sa.TIMESTAMP()),
         sa.Column("data_complete", sa.Boolean()),
@@ -55,7 +61,11 @@ def upgrade() -> None:
         sa.Column("match_type", sa.Text()),
         sa.Column("forfeit", sa.Boolean(), server_default=sa.text("FALSE")),
         sa.Column("date", sa.TIMESTAMP(), nullable=False),
-        sa.Column("last_inserted_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "last_inserted_at",
+            sa.TIMESTAMP(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.Column("last_scraped_at", sa.TIMESTAMP()),
         sa.Column("last_updated_at", sa.TIMESTAMP()),
         sa.Column("data_complete", sa.Boolean()),
@@ -86,7 +96,12 @@ def upgrade() -> None:
         ),
         sa.Column("last_scraped_at", sa.TIMESTAMP(timezone=True)),
         sa.Column("last_updated_at", sa.TIMESTAMP(timezone=True)),
-        sa.Column("data_complete", sa.Boolean(), nullable=False, server_default=sa.text("FALSE")),
+        sa.Column(
+            "data_complete",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.text("FALSE"),
+        ),
         sa.CheckConstraint("map_order BETWEEN 1 AND 5"),
         sa.CheckConstraint("team1_score >= 0"),
         sa.CheckConstraint("team2_score >= 0"),
@@ -122,7 +137,11 @@ def upgrade() -> None:
         sa.Column("fk_diff", sa.Integer()),
         sa.Column("round_swing", sa.Float()),
         sa.Column("rating", sa.Float()),
-        sa.Column("last_inserted_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "last_inserted_at",
+            sa.TIMESTAMP(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.Column("last_scraped_at", sa.TIMESTAMP()),
         sa.Column("last_updated_at", sa.TIMESTAMP()),
         sa.Column("data_complete", sa.Boolean(), server_default=sa.text("TRUE")),
@@ -130,30 +149,58 @@ def upgrade() -> None:
     op.create_table(
         "player_team_history",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("player_id", sa.Integer(), sa.ForeignKey("player_info.player_id", ondelete="CASCADE")),
+        sa.Column(
+            "player_id",
+            sa.Integer(),
+            sa.ForeignKey("player_info.player_id", ondelete="CASCADE"),
+        ),
         sa.Column("player_name", sa.Text(), nullable=False),
-        sa.Column("team_id", sa.Integer(), sa.ForeignKey("teams.team_id", ondelete="SET NULL")),
+        sa.Column(
+            "team_id", sa.Integer(), sa.ForeignKey("teams.team_id", ondelete="SET NULL")
+        ),
         sa.Column("team_name", sa.Text(), nullable=False),
         sa.Column("start_date", sa.Date(), nullable=False),
         sa.Column("end_date", sa.Date()),
-        sa.Column("last_inserted_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "last_inserted_at",
+            sa.TIMESTAMP(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.UniqueConstraint("player_id", "team_id", "start_date"),
     )
     op.create_table(
         "player_aliases",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("player_id", sa.Integer(), sa.ForeignKey("player_info.player_id", ondelete="CASCADE")),
+        sa.Column(
+            "player_id",
+            sa.Integer(),
+            sa.ForeignKey("player_info.player_id", ondelete="CASCADE"),
+        ),
         sa.Column("alias", sa.Text(), nullable=False),
-        sa.Column("changed_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "changed_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
     )
     op.create_table(
         "player_transfers",
         sa.Column("transfer_id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("player_id", sa.Integer(), sa.ForeignKey("player_info.player_id", ondelete="CASCADE")),
+        sa.Column(
+            "player_id",
+            sa.Integer(),
+            sa.ForeignKey("player_info.player_id", ondelete="CASCADE"),
+        ),
         sa.Column("player_name", sa.Text(), nullable=False),
-        sa.Column("old_team_id", sa.Integer(), sa.ForeignKey("teams.team_id", ondelete="SET NULL")),
+        sa.Column(
+            "old_team_id",
+            sa.Integer(),
+            sa.ForeignKey("teams.team_id", ondelete="SET NULL"),
+        ),
         sa.Column("old_team_name", sa.Text(), nullable=False),
-        sa.Column("new_team_id", sa.Integer(), sa.ForeignKey("teams.team_id", ondelete="SET NULL")),
+        sa.Column(
+            "new_team_id",
+            sa.Integer(),
+            sa.ForeignKey("teams.team_id", ondelete="SET NULL"),
+        ),
         sa.Column("new_team_name", sa.Text(), nullable=False),
         sa.Column("transfer_date", sa.Date(), nullable=False),
     )
@@ -161,55 +208,101 @@ def upgrade() -> None:
         "match_ingestion_state",
         sa.Column("match_id", sa.Integer(), primary_key=True, autoincrement=False),
         sa.Column("match_url", sa.Text(), nullable=False),
-        sa.Column("status", sa.Text(), nullable=False, server_default=sa.text("'pending'")),
-        sa.Column("first_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.Column("last_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "status", sa.Text(), nullable=False, server_default=sa.text("'pending'")
+        ),
+        sa.Column(
+            "first_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
+        sa.Column(
+            "last_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.Column("last_attempted_at", sa.TIMESTAMP()),
         sa.Column("last_processed_at", sa.TIMESTAMP()),
         sa.Column("last_failed_at", sa.TIMESTAMP()),
-        sa.Column("failure_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
+        sa.Column(
+            "failure_count", sa.Integer(), nullable=False, server_default=sa.text("0")
+        ),
         sa.Column("last_error_message", sa.Text()),
         sa.Column("source", sa.Text()),
         sa.Column("priority", sa.Integer(), server_default=sa.text("0")),
-        sa.Column("last_updated_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.CheckConstraint("status IN ('pending', 'processing', 'processed', 'failed', 'skipped')"),
+        sa.Column(
+            "last_updated_at",
+            sa.TIMESTAMP(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
+        sa.CheckConstraint(
+            "status IN ('pending', 'processing', 'processed', 'failed', 'skipped')"
+        ),
     )
     op.create_table(
         "map_ingestion_state",
         sa.Column("map_id", sa.Integer(), primary_key=True, autoincrement=False),
         sa.Column("map_url", sa.Text(), nullable=False),
-        sa.Column("match_id", sa.Integer(), sa.ForeignKey("matches.match_id", ondelete="CASCADE")),
+        sa.Column(
+            "match_id",
+            sa.Integer(),
+            sa.ForeignKey("matches.match_id", ondelete="CASCADE"),
+        ),
         sa.Column("map_order", sa.Integer()),
-        sa.Column("status", sa.Text(), nullable=False, server_default=sa.text("'pending'")),
-        sa.Column("first_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.Column("last_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "status", sa.Text(), nullable=False, server_default=sa.text("'pending'")
+        ),
+        sa.Column(
+            "first_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
+        sa.Column(
+            "last_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.Column("last_attempted_at", sa.TIMESTAMP()),
         sa.Column("last_processed_at", sa.TIMESTAMP()),
         sa.Column("last_failed_at", sa.TIMESTAMP()),
-        sa.Column("failure_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
+        sa.Column(
+            "failure_count", sa.Integer(), nullable=False, server_default=sa.text("0")
+        ),
         sa.Column("last_error_message", sa.Text()),
         sa.Column("source", sa.Text()),
         sa.Column("priority", sa.Integer(), server_default=sa.text("0")),
-        sa.Column("last_updated_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "last_updated_at",
+            sa.TIMESTAMP(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.CheckConstraint("map_order BETWEEN 1 AND 5"),
-        sa.CheckConstraint("status IN ('pending', 'processing', 'processed', 'failed', 'skipped')"),
+        sa.CheckConstraint(
+            "status IN ('pending', 'processing', 'processed', 'failed', 'skipped')"
+        ),
     )
     op.create_table(
         "demo_ingestion_state",
         sa.Column("demo_id", sa.Text(), primary_key=True),
         sa.Column("demo_url", sa.Text(), nullable=False),
-        sa.Column("status", sa.Text(), nullable=False, server_default=sa.text("'pending'")),
-        sa.Column("first_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.Column("last_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "status", sa.Text(), nullable=False, server_default=sa.text("'pending'")
+        ),
+        sa.Column(
+            "first_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
+        sa.Column(
+            "last_seen_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.Column("last_attempted_at", sa.TIMESTAMP()),
         sa.Column("last_processed_at", sa.TIMESTAMP()),
         sa.Column("last_failed_at", sa.TIMESTAMP()),
-        sa.Column("failure_count", sa.Integer(), nullable=False, server_default=sa.text("0")),
+        sa.Column(
+            "failure_count", sa.Integer(), nullable=False, server_default=sa.text("0")
+        ),
         sa.Column("last_error_message", sa.Text()),
         sa.Column("source", sa.Text()),
         sa.Column("priority", sa.Integer(), server_default=sa.text("0")),
-        sa.Column("last_updated_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.CheckConstraint("status IN ('pending', 'processing', 'processed', 'failed', 'skipped')"),
+        sa.Column(
+            "last_updated_at",
+            sa.TIMESTAMP(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
+        sa.CheckConstraint(
+            "status IN ('pending', 'processing', 'processed', 'failed', 'skipped')"
+        ),
     )
     op.create_table(
         "demo_files",
@@ -224,14 +317,22 @@ def upgrade() -> None:
         sa.Column("local_path", sa.Text()),
         sa.Column("parsed", sa.Boolean(), server_default=sa.text("FALSE")),
         sa.Column("heatmap_done", sa.Boolean(), server_default=sa.text("FALSE")),
-        sa.Column("grenade_analysis_done", sa.Boolean(), server_default=sa.text("FALSE")),
-        sa.Column("last_inserted_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "grenade_analysis_done", sa.Boolean(), server_default=sa.text("FALSE")
+        ),
+        sa.Column(
+            "last_inserted_at",
+            sa.TIMESTAMP(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        ),
         sa.Column("last_processed_at", sa.TIMESTAMP()),
     )
     op.create_table(
         "scrape_runs",
         sa.Column("run_id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("started_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "started_at", sa.TIMESTAMP(), server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.Column("ended_at", sa.TIMESTAMP()),
         sa.Column("total_matches", sa.Integer()),
         sa.Column("matches_success", sa.Integer()),
@@ -257,7 +358,9 @@ def upgrade() -> None:
     op.create_index("idx_player_stats", "players", ["player_id", "map_id"])
     op.create_index("idx_player_info_team_id", "player_info", ["team_id"])
     op.create_index("idx_player_transfers_player_id", "player_transfers", ["player_id"])
-    op.create_index("idx_player_team_history_player_id", "player_team_history", ["player_id"])
+    op.create_index(
+        "idx_player_team_history_player_id", "player_team_history", ["player_id"]
+    )
     op.execute(
         "CREATE INDEX idx_match_ingestion_state_pending "
         "ON match_ingestion_state (status, priority DESC, first_seen_at)"

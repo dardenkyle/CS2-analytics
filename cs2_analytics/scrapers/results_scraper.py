@@ -115,7 +115,9 @@ class ResultsScraper:
             if match_date > self.end_date:
                 continue
             if match_date < self.start_date:
-                logger.info("Stopping at match date %s because it is out of range.", match_date)
+                logger.info(
+                    "Stopping at match date %s because it is out of range.", match_date
+                )
                 return matches, True
 
             for match in section.find_all("div", class_="result-con"):

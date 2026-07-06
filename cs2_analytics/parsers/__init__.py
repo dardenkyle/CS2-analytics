@@ -2,8 +2,8 @@
 
 try:
     from .demo_parser import DemoParser
-    from .match_parser import MatchParser
     from .map_parser import MapParser
+    from .match_parser import MatchParser
 
     __all__ = ["MatchParser", "MapParser", "DemoParser"]
 except ImportError as e:

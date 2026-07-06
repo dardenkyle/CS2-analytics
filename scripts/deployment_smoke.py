@@ -106,7 +106,9 @@ def seed_smoke_source_rows() -> None:
             Match(
                 match_id=SMOKE_MATCH_ID,
                 match_url=f"https://smoke.local/matches/{SMOKE_MATCH_ID}",
-                map_links=[(SMOKE_MAP_ID, f"https://smoke.local/stats/maps/{SMOKE_MAP_ID}")],
+                map_links=[
+                    (SMOKE_MAP_ID, f"https://smoke.local/stats/maps/{SMOKE_MAP_ID}")
+                ],
                 demo_links=[],
                 team1="Smoke Alpha",
                 team2="Smoke Beta",

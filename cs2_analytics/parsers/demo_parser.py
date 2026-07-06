@@ -126,4 +126,3 @@ class DemoParser:
                 f.write("Simulated demo content.")  # Placeholder content
 
             logger.info(f"✅ Downloaded: {demo_file}")
-

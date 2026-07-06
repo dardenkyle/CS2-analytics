@@ -82,4 +82,3 @@ def store_matches(matches: list[Match]) -> None:
     finally:
         if db is not None and conn is not None:
             db.release_connection(conn)
-

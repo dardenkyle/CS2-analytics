@@ -162,4 +162,3 @@ class DemoScraper:
         """Closes SeleniumBase driver."""
         self.driver.quit()
         logger.info("🚪 Selenium driver closed.")
-
