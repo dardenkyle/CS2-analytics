@@ -624,7 +624,7 @@ and #68.
 - [ ] Adopt uv + commit `uv.lock` for reproducible installs (#68)
 - [ ] Move dev/test tooling to `[dependency-groups]` so `uv sync` installs them
       by default (#69)
-- [ ] Consolidate lint/format on ruff — remove black and isort from dev deps
+- [x] Consolidate lint/format on ruff — remove black and isort from dev deps
       (#70)
 
 ### Suggested branch sequence
