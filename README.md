@@ -1,10 +1,23 @@
 # Counter-Strike 2 Pro Match Analytics Tool
 
 [![CI](https://github.com/dardenkyle/CS2-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/dardenkyle/CS2-analytics/actions/workflows/ci.yml)
+[![Frontend CI](https://github.com/dardenkyle/CS2-analytics/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/dardenkyle/CS2-analytics/actions/workflows/frontend-ci.yml)
+[![Deploy Frontend](https://github.com/dardenkyle/CS2-analytics/actions/workflows/deploy-frontend.yml/badge.svg)](https://github.com/dardenkyle/CS2-analytics/actions/workflows/deploy-frontend.yml)
+
+**Live demo:** [dardenkyle.github.io/CS2-analytics](https://dardenkyle.github.io/CS2-analytics/) —
+a public dashboard showing top players served live from the production
+database. The API behind it is also public:
+[cs2-analytics.onrender.com/docs](https://cs2-analytics.onrender.com/docs).
+(The API runs on a free tier and can take up to ~30 seconds to wake after
+idle periods.)
 
 ## Project Overview
 
 This project is a Counter-Strike 2 analytics tool focused on collecting professional match, map, and player data and turning it into reliable, queryable analytics data.
+
+The system is deployed end to end: a Python ingestion pipeline writes to
+PostgreSQL, a FastAPI service on Render serves player statistics, and a React
+SPA on GitHub Pages presents them publicly.
 
 The current ingestion architecture uses PostgreSQL-backed ingestion-state tables, thin controllers for batch orchestration, and stage services for per-item match/map/demo workflow boundaries.
 
@@ -28,11 +41,16 @@ The current ingestion architecture uses PostgreSQL-backed ingestion-state tables
 
 ## Tech Stack
 
-- Python 3.14+
+- Python 3.12
 - SeleniumBase and BeautifulSoup for web scraping
-- PostgreSQL for structured data storage
+- PostgreSQL for structured data storage, with Alembic-managed migrations
 - Pandas and NumPy for analytics/data processing
-- FastAPI for API work
+- FastAPI for the public read API (deployed on Render)
+- React, TypeScript, and Vite for the public frontend (deployed on GitHub
+  Pages)
+- Docker and Docker Compose for the container runtime
+- GitHub Actions for CI (backend and frontend gates) and deployment
+- uv with a committed lockfile for reproducible Python installs
 
 ## Project Structure
 
@@ -61,6 +79,7 @@ CS2-Analytics/
 |   `-- utils/
 |-- docs/
 |-- logs/
+|-- scripts/
 |-- tests/
 |-- demos/
 |-- parsed_data/
@@ -265,10 +284,69 @@ results discovery
 -> relational storage
 ```
 
+## Design Decisions & Tradeoffs
+
+Short reasoning behind the choices that shaped the system. Full ADR-style
+records live in `docs/architecture/decision_log.md`.
+
+### Layered pipeline boundaries
+
+Controllers, stage services, scrapers, parsers, and storage are separate
+layers with one job each: controllers own batch coordination and retry
+policy, stage services own a single item's fetch-parse-persist workflow,
+scrapers only fetch, parsers only parse, and storage centralizes writes.
+The tradeoff is more indirection than a small project strictly needs — but
+each layer is testable without the others (parsers run against saved HTML,
+no browser), scraping failures stay contained to the layer that talks to
+the network, and later stages (dbt, new sources) attach without rewrites.
+This split came from experience, not upfront design: controllers originally
+absorbed per-item work until the mixed responsibilities made retry behavior
+hard to reason about.
+
+### Ingestion state over work queues
+
+Discovered matches, maps, and demos live in PostgreSQL-backed
+ingestion-state tables (`pending`, `processing`, `processed`, `failed`,
+`skipped`) rather than a disposable work queue. Rows are keyed by source ID,
+so rediscovery refreshes existing rows instead of duplicating work, and a
+rerun after a crash resumes from state instead of starting over. The
+`skipped` versus `failed` distinction is deliberate: `skipped` records an
+intentional decision not to process (for example a forfeited match with no
+stats), while `failed` means processing was attempted and exhausted its
+retries. Collapsing the two would make failure metrics lie. The tradeoff is
+more lifecycle discipline than a queue requires — every outcome must be
+recorded explicitly — in exchange for an ingestion run that is resumable,
+idempotent, and observable.
+
+### One source, no pluggable-source abstraction
+
+The pipeline ingests from a single upstream site, and there is deliberately
+no generic "source adapter" interface. An abstraction over one
+implementation would be speculative complexity: it could not be validated
+against a second source and would slow down changes to the only source that
+exists. The existing layer boundaries already isolate site-specific logic —
+scrapers and parsers are the only layers that know about the upstream
+markup — so supporting a second source later means adding a scraper and a
+parser, not restructuring the pipeline. The accepted cost is that
+site-specific assumptions live in those two layers rather than behind a
+formal interface.
+
+### Demo parsing deferred behind a preserved boundary
+
+Demo files introduce a different workload class: large binary downloads,
+temporary-file lifecycle, long parses, and event-level extraction. Rather
+than bolt that onto the match/map surface, demo processing is deferred
+until the analytics layer (dbt) exists and downstream demo needs are
+concrete. The boundary is kept, not deleted: `DemoStageService` and the
+demo ingestion-state table preserve the stage shape, so demo expansion
+plugs into the same controller/stage-service pattern later. The tradeoff
+is no event-level stats yet, in exchange for keeping the active pipeline
+small enough to harden and deploy.
+
 ## Data Insights & Usage (planned)
 
 - Current API surface includes a player-oriented read path for top players by
-  average rating.
+  average rating, shown live on the public demo page.
 - View per-match player performance.
 - Compare teams' win rates on specific maps.
 - Identify key players in matchups.
@@ -282,6 +360,8 @@ See `docs/` for architecture and roadmap details.
 Current architecture direction:
 
 - Phases 2, 3, 3.5, 3.6, and 3.75 are complete.
+- Frontend Phase A shipped the public GitHub Pages demo backed by the live
+  API (see `docs/frontend_backlog.md`).
 - Phase 3.9 (environment and tooling hardening) is in progress.
 - Phase 4 (dbt transformation layer) follows Phase 3.9. Entry criteria include
   v1.0 hardening items for ingestion layer correctness and atomic writes.
