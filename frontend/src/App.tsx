@@ -133,7 +133,7 @@ function Hero() {
       </h1>
       <p className="hero-sub">
         CS2 Analytics collects professional match, map, and player data through a
-        resilient Python ingestion pipeline, stores it in PostgreSQL, and serves
+        resilient Python ingestion pipeline, persists it to PostgreSQL, and serves
         player statistics from a live FastAPI service.
       </p>
       <div className="hero-actions">
@@ -213,6 +213,14 @@ function Footer() {
         ·{' '}
         <a href={`${API_BASE_URL}/docs`} target="_blank" rel="noreferrer">
           Live API
+        </a>{' '}
+        ·{' '}
+        <a
+          href={`${GITHUB_URL}#design-decisions--tradeoffs`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Design decisions
         </a>
       </p>
     </footer>

@@ -278,6 +278,13 @@ main {
   font-weight: 600;
 }
 
+.data-note {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.85;
+}
+
 /* Highlights */
 
 .highlights {
