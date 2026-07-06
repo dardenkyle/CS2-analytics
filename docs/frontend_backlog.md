@@ -42,11 +42,12 @@ Create the first public frontend experience: a polished project introduction
 and a simple top players list backed by the live Render API.
 
 Status:
-In progress. A1 (project shell), the frontend CI gate, A2 (top players view),
-and A3 (GitHub Pages deploy) are complete. The public URL goes live when the
-A3 branch merges to `main` with the repository's Pages source set to GitHub
-Actions. A4 (demo polish) is next and should confirm the Phase A exit
-criteria against the live URL.
+Complete. A1 (project shell), the frontend CI gate, A2 (top players view),
+A3 (GitHub Pages deploy), and A4 (demo polish) are done. The demo is live at
+`https://dardenkyle.github.io/CS2-analytics/`, backed by the production API,
+and the exit criteria below were verified against the live URL. Phase B
+starts only after the next user goal is clear (see the decision questions
+at the bottom of this document).
 
 A1 implementation notes:
 
@@ -199,7 +200,7 @@ A2 implementation notes:
    - no backend CORS change is needed; production already allows the
      `https://dardenkyle.github.io` origin
 
-5. [ ] `phasea-frontend-demo-polish`
+5. [x] `phasea-frontend-demo-polish`
        Polish the first demo so it is portfolio-ready and comfortable for
        potential employers to review quickly.
 
@@ -225,11 +226,21 @@ A2 implementation notes:
 
 ### Phase A exit criteria
 
-- [ ] A public GitHub Pages URL is available
-- [ ] The SPA introduces the project and shows top players from the Render API
-- [ ] The app handles loading, empty, and error states gracefully
-- [ ] The app is usable on desktop and mobile
-- [ ] Deployment from `main` is documented and repeatable
+All verified against the live URL after the A3 merge:
+
+- [x] A public GitHub Pages URL is available
+      (`https://dardenkyle.github.io/CS2-analytics/`; page, hashed assets,
+      and deep-link fallback all confirmed serving)
+- [x] The SPA introduces the project and shows top players from the Render API
+      (live data confirmed in production and in headless-browser renders)
+- [x] The app handles loading, empty, and error states gracefully
+      (error and cold-start states exercised against unreachable and hanging
+      endpoints during A2)
+- [x] The app is usable on desktop and mobile
+      (verified at 1440px and 390px)
+- [x] Deployment from `main` is documented and repeatable
+      (`docs/deployment.md` Frontend GitHub Pages Deployment section;
+      redeploys run on every `main` push touching `frontend/**`)
 
 ### Related work outside the frontend
 
