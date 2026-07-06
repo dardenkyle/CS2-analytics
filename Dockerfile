@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim-trixie
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -24,12 +24,13 @@ RUN python -m pip install --upgrade pip \
 
 COPY main.py manage_db.py run_api.py ./
 
-RUN useradd --create-home --uid 10001 appuser \
+RUN site_packages="$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
+    && useradd --create-home --uid 10001 appuser \
     && mkdir -p /app/logs /app/demos /app/parsed_data \
-    && mkdir -p /usr/local/lib/python3.14/site-packages/seleniumbase/drivers \
+    && mkdir -p "${site_packages}/seleniumbase/drivers" \
     && chown -R appuser:appuser \
         /app \
-        /usr/local/lib/python3.14/site-packages/seleniumbase/drivers
+        "${site_packages}/seleniumbase/drivers"
 
 USER appuser
 
