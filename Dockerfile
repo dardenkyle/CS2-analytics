@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -26,10 +26,10 @@ COPY main.py manage_db.py run_api.py ./
 
 RUN useradd --create-home --uid 10001 appuser \
     && mkdir -p /app/logs /app/demos /app/parsed_data \
-    && mkdir -p /usr/local/lib/python3.14/site-packages/seleniumbase/drivers \
+    && mkdir -p /usr/local/lib/python3.12/site-packages/seleniumbase/drivers \
     && chown -R appuser:appuser \
         /app \
-        /usr/local/lib/python3.14/site-packages/seleniumbase/drivers
+        /usr/local/lib/python3.12/site-packages/seleniumbase/drivers
 
 USER appuser
 
