@@ -109,7 +109,7 @@ function PlayersTable({ players }: { players: TopPlayer[] }) {
           <tr>
             <th scope="col" className="rank-col">#</th>
             <th scope="col">Player</th>
-            <th scope="col" className="num-col">Maps</th>
+            <th scope="col" className="num-col">Maps played</th>
             <th scope="col" className="num-col">Avg rating</th>
           </tr>
         </thead>
@@ -146,7 +146,13 @@ export function TopPlayersSection() {
         (state.players.length === 0 ? (
           <EmptyState />
         ) : (
-          <PlayersTable players={state.players} />
+          <>
+            <PlayersTable players={state.players} />
+            <p className="data-note">
+              Rankings reflect matches ingested so far; historical backfill is
+              ongoing, so map counts are still small.
+            </p>
+          </>
         ))}
     </section>
   )
