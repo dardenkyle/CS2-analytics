@@ -151,8 +151,14 @@ over runtime code, type checks API and runner entrypoints with
 `python -m mypy`, applies Alembic migrations against PostgreSQL, and runs
 `python -m pytest`.
 
-Broader Ruff rules, formatting checks, and full-package MyPy may be added later
-once the project is ready to enforce stricter gates.
+A separate frontend gate (`.github/workflows/frontend-ci.yml`) runs only when
+a pull request or push to `main` touches `frontend/**`. It installs
+dependencies with `npm ci`, then runs `npm run build` (which includes
+TypeScript checking) and `npm run lint`. Pull requests that do not touch the
+frontend skip this job.
+
+Broader Ruff rules, formatting checks, full-package MyPy, and frontend unit
+tests may be added later once the project is ready to enforce stricter gates.
 
 ## Documentation Check
 
