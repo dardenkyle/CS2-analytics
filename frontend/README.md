@@ -3,8 +3,10 @@
 Public React SPA for CS2 Analytics. Introduces the project and shows live
 top players data from the Render-hosted API.
 
-Built with React, TypeScript, and Vite. Deployment to GitHub Pages is added
-in a later Phase A branch.
+Built with React, TypeScript, and Vite. Pushes to `main` that touch
+`frontend/**` deploy to GitHub Pages at
+`https://dardenkyle.github.io/CS2-analytics/` via
+`.github/workflows/deploy-frontend.yml` (see `docs/deployment.md`).
 
 ## Requirements
 
