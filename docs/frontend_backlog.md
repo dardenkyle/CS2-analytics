@@ -24,9 +24,8 @@ the deployed API can serve current database-backed player data.
 Initial constraints:
 
 - the public frontend target is a React SPA under `frontend/`
-- `frontend/` currently contains a Streamlit debug app at `frontend/app.py`;
-  Phase A should decide whether to replace it, move it, or retire it before
-  adding the React app scaffold
+- the former Streamlit debug app at `frontend/app.py` was retired in the A1
+  project shell branch; the React SPA replaces it
 - the app is hosted on GitHub Pages
 - deployment runs from `main`
 - the app is fully public
@@ -43,23 +42,44 @@ Create the first public frontend experience: a polished project introduction
 and a simple top players list backed by the live Render API.
 
 Status:
-Planned.
+In progress. The A1 project shell is complete: the Streamlit debug app is
+retired and `frontend/` now contains the React + TypeScript + Vite SPA with
+the public introduction page. A2 (top players view) is next.
+
+A1 implementation notes:
+
+- Branch `phasea-frontend-project-shell` landed as three focused commits:
+  retire the Streamlit debug app (`f678196`), scaffold the React + TypeScript
+  + Vite toolchain (`08b1564`), and add the public introduction landing page
+  (`5c7d3dd`).
+- The intro page has no API integration; A2 adds the `top_players` call with
+  loading, empty, and error states, including cold-start messaging for the
+  Render free-tier API wake-up delay.
+- Verification for A1 was `npm run build` (includes TypeScript checking),
+  `npm run lint` (oxlint), and manual responsive review at 1440px and 390px.
+  The commands are documented in `frontend/README.md`.
+- The frontend toolchain requires Node.js (24 LTS used for A1).
+- The production API already allows the GitHub Pages origin: live checks show
+  `access-control-allow-origin: https://dardenkyle.github.io`, so A3 needs no
+  backend CORS change.
 
 ### Planned work
 
-- [ ] Create the frontend app shell in `frontend/`
-- [ ] Decide how to handle the existing `frontend/app.py` Streamlit debug app
-- [ ] Add public project introduction content for portfolio review
+- [x] Create the frontend app shell in `frontend/`
+- [x] Decide how to handle the existing `frontend/app.py` Streamlit debug app
+      (retired; the React SPA replaces it)
+- [x] Add public project introduction content for portfolio review
 - [ ] Add a top players data view using the Render-hosted API
 - [ ] Add loading, empty, and error states for the API call
-- [ ] Add responsive styling for desktop and mobile review
+- [x] Add responsive styling for desktop and mobile review
 - [ ] Add GitHub Pages deployment from `main`
 - [ ] Document how to configure the frontend API base URL
-- [ ] Add a lightweight frontend verification path
+- [x] Add a lightweight frontend verification path
+      (`npm run build` and `npm run lint`, documented in `frontend/README.md`)
 
 ### Suggested branch sequence
 
-1. [ ] `phasea-frontend-project-shell`
+1. [x] `phasea-frontend-project-shell`
        Decide how to handle the existing Streamlit debug app, then create the
        React SPA foundation in `frontend/` with the first public page structure,
        project introduction, and basic responsive styling.
@@ -131,6 +151,14 @@ Planned.
    - custom domain setup
    - private previews or environment-specific deployments
 
+   Implementation notes:
+   - set the Vite `base` to `/CS2-analytics/` because GitHub Pages serves the
+     app as a project page, not from the domain root
+   - prefer hash routing (or no router while the app is a single page) so
+     refreshes do not 404 on GitHub Pages
+   - no backend CORS change is needed; production already allows the
+     `https://dardenkyle.github.io` origin
+
 4. [ ] `phasea-frontend-demo-polish`
        Polish the first demo so it is portfolio-ready and comfortable for
        potential employers to review quickly.
@@ -162,6 +190,20 @@ Planned.
 - [ ] The app handles loading, empty, and error states gracefully
 - [ ] The app is usable on desktop and mobile
 - [ ] Deployment from `main` is documented and repeatable
+
+### Related work outside the frontend
+
+Phase A is aimed at employer review, so a few backend-repo presentability
+issues are good interleave candidates while frontend branches are in review:
+README design decisions (#82), untracking the `.coverage` artifact (#73),
+moving manual scripts out of `tests/` (#72), and optionally moving the
+non-working demo subsystem off `main` (#81).
+
+Phase A is not gated by the open ingestion work: the high-priority ingestion
+bugs (#71, #74) are Phase 4 entry criteria, the blocked cloud runner issue
+(#66) stays deferred because local ingestion against the production database
+covers demo data refreshes, and the Phase 3.9 tooling issues (#69, #70, #86)
+are independent of this track.
 
 ---
 
