@@ -25,7 +25,7 @@ class PlayerService:
             limit (int): Number of players to return.
 
         Returns:
-            List[PlayerStats]: List of top players with their stats.
+            list[PlayerStats]: List of top players with their stats.
         """
         sql: str = """
             SELECT
