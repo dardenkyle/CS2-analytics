@@ -10,5 +10,10 @@ const DEFAULT_API_BASE_URL = 'https://cs2-analytics.onrender.com'
  *
  *   VITE_API_BASE_URL=http://localhost:8000
  */
-export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL
+const configured: string | undefined = import.meta.env.VITE_API_BASE_URL
+
+export const API_BASE_URL: string = (
+  configured === undefined || configured === ''
+    ? DEFAULT_API_BASE_URL
+    : configured
+).replace(/\/+$/, '')

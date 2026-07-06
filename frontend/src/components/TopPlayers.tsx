@@ -101,7 +101,10 @@ function EmptyState() {
 function PlayersTable({ players }: { players: TopPlayer[] }) {
   return (
     <div className="players-table-wrap">
-      <table className="players-table">
+      <table
+        className="players-table"
+        aria-label="Top players by average rating"
+      >
         <thead>
           <tr>
             <th scope="col" className="rank-col">#</th>

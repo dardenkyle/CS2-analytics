@@ -218,6 +218,12 @@ main {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot {
+    animation: none;
+  }
+}
+
 .players-table-wrap {
   margin-top: 24px;
   border: 1px solid var(--border);
