@@ -67,7 +67,7 @@ A1 implementation notes:
 
 - [x] Create the frontend app shell in `frontend/`
 - [x] Decide how to handle the existing `frontend/app.py` Streamlit debug app
-      (retired; the React SPA replaces it)
+  (retired; the React SPA replaces it)
 - [x] Add public project introduction content for portfolio review
 - [ ] Add a top players data view using the Render-hosted API
 - [ ] Add loading, empty, and error states for the API call
@@ -75,7 +75,7 @@ A1 implementation notes:
 - [ ] Add GitHub Pages deployment from `main`
 - [ ] Document how to configure the frontend API base URL
 - [x] Add a lightweight frontend verification path
-      (`npm run build` and `npm run lint`, documented in `frontend/README.md`)
+  (`npm run build` and `npm run lint`, documented in `frontend/README.md`)
 
 ### Suggested branch sequence
 
