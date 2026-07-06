@@ -42,9 +42,8 @@ Create the first public frontend experience: a polished project introduction
 and a simple top players list backed by the live Render API.
 
 Status:
-In progress. The A1 project shell is complete: the Streamlit debug app is
-retired and `frontend/` now contains the React + TypeScript + Vite SPA with
-the public introduction page. A2 (top players view) is next.
+In progress. A1 (project shell), the frontend CI gate, and A2 (top players
+view) are complete. A3 (GitHub Pages deploy) is next.
 
 A1 implementation notes:
 
@@ -69,12 +68,13 @@ A1 implementation notes:
 - [x] Decide how to handle the existing `frontend/app.py` Streamlit debug app
   (retired; the React SPA replaces it)
 - [x] Add public project introduction content for portfolio review
-- [ ] Add a top players data view using the Render-hosted API
-- [ ] Add loading, empty, and error states for the API call
+- [x] Add a top players data view using the Render-hosted API
+- [x] Add loading, empty, and error states for the API call
 - [x] Add responsive styling for desktop and mobile review
 - [x] Add a frontend build and lint CI job for pull requests (#88)
 - [ ] Add GitHub Pages deployment from `main`
-- [ ] Document how to configure the frontend API base URL
+- [x] Document how to configure the frontend API base URL
+  (`VITE_API_BASE_URL` override with a code default; see `frontend/README.md`)
 - [x] Add a lightweight frontend verification path
   (`npm run build` and `npm run lint`, documented in `frontend/README.md`)
 
@@ -130,7 +130,7 @@ A1 implementation notes:
    - frontend unit tests or a test runner
    - changes to the Python CI jobs
 
-3. [ ] `phasea-top-players-api-view`
+3. [x] `phasea-top-players-api-view`
        Add the first live data surface by calling the existing top players API
        and rendering a simple list of players.
 
