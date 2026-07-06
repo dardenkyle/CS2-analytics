@@ -42,8 +42,11 @@ Create the first public frontend experience: a polished project introduction
 and a simple top players list backed by the live Render API.
 
 Status:
-In progress. A1 (project shell), the frontend CI gate, and A2 (top players
-view) are complete. A3 (GitHub Pages deploy) is next.
+In progress. A1 (project shell), the frontend CI gate, A2 (top players view),
+and A3 (GitHub Pages deploy) are complete. The public URL goes live when the
+A3 branch merges to `main` with the repository's Pages source set to GitHub
+Actions. A4 (demo polish) is next and should confirm the Phase A exit
+criteria against the live URL.
 
 A1 implementation notes:
 
@@ -62,6 +65,16 @@ A1 implementation notes:
   `access-control-allow-origin: https://dardenkyle.github.io`, so A3 needs no
   backend CORS change.
 
+A2 implementation notes:
+
+- The Render `API_CORS_ORIGINS` allowlist was expanded during A2 to include
+  local frontend dev origins alongside the GitHub Pages origin, because
+  browsers block responses for origins outside the allowlist. Details in
+  `frontend/README.md`; keep exact values in the Render dashboard rather than
+  docs.
+- The loading state switches to cold-start messaging after five seconds to
+  cover the Render free-tier wake-up delay.
+
 ### Planned work
 
 - [x] Create the frontend app shell in `frontend/`
@@ -72,7 +85,8 @@ A1 implementation notes:
 - [x] Add loading, empty, and error states for the API call
 - [x] Add responsive styling for desktop and mobile review
 - [x] Add a frontend build and lint CI job for pull requests (#88)
-- [ ] Add GitHub Pages deployment from `main`
+- [x] Add GitHub Pages deployment from `main`
+  (`.github/workflows/deploy-frontend.yml`; see `docs/deployment.md`)
 - [x] Document how to configure the frontend API base URL
   (`VITE_API_BASE_URL` override with a code default; see `frontend/README.md`)
 - [x] Add a lightweight frontend verification path
@@ -154,7 +168,7 @@ A1 implementation notes:
    - sorting/filtering beyond what the API already supports
    - new API endpoints
 
-4. [ ] `phasea-github-pages-deploy`
+4. [x] `phasea-github-pages-deploy`
        Add the GitHub Pages deployment path so the SPA builds and publishes from
        `main`.
 

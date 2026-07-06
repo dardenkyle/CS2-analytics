@@ -111,6 +111,30 @@ Pages origin. For a project page such as
 `https://dardenkyle.github.io/CS2-analytics`, the browser origin is
 `https://dardenkyle.github.io`.
 
+## Frontend GitHub Pages Deployment
+
+The public React SPA deploys to GitHub Pages through
+`.github/workflows/deploy-frontend.yml`. Pushes to `main` that touch
+`frontend/**` (or the workflow file) build the SPA with Node 24 (`npm ci`,
+`npm run build`) and publish `frontend/dist` to the `github-pages`
+environment. The workflow can also be run manually from the Actions tab.
+
+Deployment details:
+
+- The app is served as a project page at
+  `https://dardenkyle.github.io/CS2-analytics/`, so Vite's `base` is set to
+  `/CS2-analytics/` in `frontend/vite.config.ts`.
+- The build copies `index.html` to `404.html` so deep links and refreshes
+  serve the SPA instead of the GitHub Pages 404 page.
+- The deployed app calls the Render API using the base URL configured in
+  `frontend/src/config.ts` (see `frontend/README.md` for the
+  `VITE_API_BASE_URL` override).
+- One-time repository setup: Settings -> Pages -> Build and deployment ->
+  Source must be set to "GitHub Actions".
+
+Frontend deploys are independent of the Render API service: publishing the
+SPA never changes backend runtime, schema, or data.
+
 ## First Cloud Deployment Status
 
 The first Render API deployment is available at:
@@ -247,7 +271,7 @@ Render API environment variables:
 | `DEBUG_MODE=false` | Render environment variable |
 | `API_HOST=0.0.0.0` | Render environment variable |
 | `API_PORT` | Must resolve to Render's web service `PORT` value |
-| `API_CORS_ORIGINS` | Render environment variable containing the GitHub Pages origin |
+| `API_CORS_ORIGINS` | Render environment variable with the comma-separated browser origin allowlist: the GitHub Pages origin, plus local frontend dev origins as needed |
 | `DB_NAME` | Render PostgreSQL connection setting |
 | `DB_USER` | Render PostgreSQL connection setting |
 | `DB_PASS` | Render secret |
