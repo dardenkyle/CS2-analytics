@@ -142,12 +142,8 @@ class MapParser:
             "opkd": self._pick_column_index(column_map, ["op.k-d", "opkd", "op.kd"], 1),
             "mks": self._pick_column_index(column_map, ["mks"], 2),
             "kast": self._pick_column_index(column_map, ["kast"], 4),
-            "clutches": self._pick_column_index(
-                column_map, ["1vsx", "clutches"], 6
-            ),
-            "kills": self._pick_column_index(
-                column_map, ["k(hs)", "khs", "kills"], 7
-            ),
+            "clutches": self._pick_column_index(column_map, ["1vsx", "clutches"], 6),
+            "kills": self._pick_column_index(column_map, ["k(hs)", "khs", "kills"], 7),
             "assists": self._pick_column_index(
                 column_map, ["a(f)", "af", "assists"], 9
             ),
@@ -262,9 +258,7 @@ class MapParser:
             self._extract_metric_text(cols, column_indexes["mks"], ["st-mks"])
         )
         clutches_won = self._parse_int_value(
-            self._extract_metric_text(
-                cols, column_indexes["clutches"], ["st-clutches"]
-            )
+            self._extract_metric_text(cols, column_indexes["clutches"], ["st-clutches"])
         )
         round_swing = self._parse_percent_value(
             self._extract_metric_text(
@@ -360,7 +354,9 @@ class MapParser:
                 ["st-rating"],
                 prefer_hidden=False,
             )
-            rating_clean = rating_text.replace("+", "").replace("-", "").replace("%", "")
+            rating_clean = (
+                rating_text.replace("+", "").replace("-", "").replace("%", "")
+            )
             return float(rating_clean)
         except (ValueError, IndexError):
             logger.warning(
@@ -447,7 +443,9 @@ class MapParser:
                     tz=dt.UTC,
                 ).strftime("%Y-%m-%d %H:%M:%S")
             except (TypeError, ValueError, OSError, OverflowError) as e:
-                raise MapParseError("Failed to extract map date from map stats page.") from e
+                raise MapParseError(
+                    "Failed to extract map date from map stats page."
+                ) from e
 
         page_text = soup.get_text(" ", strip=True)
         date_match = re.search(
@@ -493,7 +491,9 @@ class MapParser:
         try:
             start_index = tokens.index(team_name)
         except ValueError as e:
-            raise MapParseError("Failed to extract map scores from map stats page.") from e
+            raise MapParseError(
+                "Failed to extract map scores from map stats page."
+            ) from e
 
         for token in tokens[start_index + 1 :]:
             if re.fullmatch(r"\d+", token):

@@ -152,8 +152,9 @@ def test_map_ingestion_state_records_parent_match_context(
     assert "match_id = COALESCE(EXCLUDED.match_id, map_ingestion_state.match_id)" in (
         cursor.execute_query
     )
-    assert "map_order = COALESCE(EXCLUDED.map_order, map_ingestion_state.map_order)" in (
-        cursor.execute_query
+    assert (
+        "map_order = COALESCE(EXCLUDED.map_order, map_ingestion_state.map_order)"
+        in (cursor.execute_query)
     )
     assert cursor.execute_values is not None
     assert cursor.execute_values[:6] == (

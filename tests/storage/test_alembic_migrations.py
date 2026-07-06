@@ -1,8 +1,7 @@
 import ast
 import re
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 MIGRATION_PATH = (
     Path(__file__).parents[2]

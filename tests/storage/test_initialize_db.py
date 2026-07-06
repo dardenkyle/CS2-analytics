@@ -64,7 +64,9 @@ def _table_definition(schema_sql: str, table_name: str) -> str:
     return schema_sql[start_index:end_index]
 
 
-def test_run_migrations_invokes_alembic_upgrade(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_migrations_invokes_alembic_upgrade(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     upgrade_calls: list[tuple[object, str]] = []
     config_paths: list[str] = []
     config_options: list[tuple[str, str]] = []
@@ -352,7 +354,9 @@ def test_schema_defines_ingestion_state_tables() -> None:
 
     map_table_sql = _table_definition(schema_sql, "map_ingestion_state")
     assert "map_id INT PRIMARY KEY" in map_table_sql
-    assert "match_id INT REFERENCES matches(match_id) ON DELETE CASCADE" in map_table_sql
+    assert (
+        "match_id INT REFERENCES matches(match_id) ON DELETE CASCADE" in map_table_sql
+    )
     assert "map_order INT CHECK" in map_table_sql
 
 

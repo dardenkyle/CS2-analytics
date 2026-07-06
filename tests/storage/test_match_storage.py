@@ -72,7 +72,9 @@ def _match() -> Match:
 
 
 def _conflict_update_clause(query: str) -> str:
-    assert "ON CONFLICT" in query, "Expected storage query to define an upsert conflict clause."
+    assert "ON CONFLICT" in query, (
+        "Expected storage query to define an upsert conflict clause."
+    )
     return query.split("ON CONFLICT", maxsplit=1)[1]
 
 

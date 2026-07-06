@@ -23,9 +23,7 @@ def main() -> int:
         driver = Driver(uc=True, headless=True)
         driver.get(CHECK_URL)
         if driver.title != EXPECTED_TITLE:
-            raise RuntimeError(
-                f"Unexpected browser check title: {driver.title!r}"
-            )
+            raise RuntimeError(f"Unexpected browser check title: {driver.title!r}")
     except Exception as exc:
         logger.exception("Worker browser validation failed: %s", exc)
         return 1

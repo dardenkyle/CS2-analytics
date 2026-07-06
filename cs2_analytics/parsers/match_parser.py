@@ -74,7 +74,9 @@ class MatchParser:
             "match_date": match_date,
         }
 
-    def _determine_winner(self, team1: str, team2: str, score1: int, score2: int) -> str:
+    def _determine_winner(
+        self, team1: str, team2: str, score1: int, score2: int
+    ) -> str:
         """Determines the winning team name from the parsed scores."""
         winner = team1 if score1 > score2 else team2
         logger.debug("Winner: %s", winner)
@@ -180,7 +182,9 @@ class MatchParser:
             team2_gradient = soup.find("div", class_="team2-gradient")
             score2 = int(team2_gradient.a.find_next_sibling("div").text.strip())
         except (AttributeError, TypeError, ValueError) as e:
-            raise MatchParseError("Failed to extract team scores from match page.") from e
+            raise MatchParseError(
+                "Failed to extract team scores from match page."
+            ) from e
         return score1, score2
 
     def _extract_event_name(self, soup) -> str:
@@ -240,4 +244,6 @@ class MatchParser:
                 int(match_date_tag["data-unix"]) / 1000
             ).strftime("%Y-%m-%d")
         except (TypeError, ValueError, OSError, OverflowError) as e:
-            raise MatchParseError("Failed to extract match date from match page.") from e
+            raise MatchParseError(
+                "Failed to extract match date from match page."
+            ) from e

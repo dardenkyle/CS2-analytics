@@ -30,7 +30,10 @@ def test_demo_stage_service_marks_demo_ingestion_deferred() -> None:
 
     assert result.succeeded is False
     assert result.status == "skipped"
-    assert result.message == "Demo ingestion is deferred until the demo pipeline is operational"
+    assert (
+        result.message
+        == "Demo ingestion is deferred until the demo pipeline is operational"
+    )
     assert demo_state.processed == []
     assert demo_state.failed == []
     assert demo_state.skipped == [
