@@ -1,4 +1,8 @@
-"""Manually tests MapScraper by fetching pending map ingestion-state rows.
+"""Manual debug script: fetch pending map pages and report soup size.
+
+Usage: python scripts/debug_map_scraper.py (requires a configured database and
+browser dependencies). Useful when investigating blocked or empty map stats
+responses.
 
 This helper bypasses controllers intentionally and is only for manual debugging.
 """

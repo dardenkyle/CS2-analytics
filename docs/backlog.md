@@ -661,7 +661,7 @@ reproducible deployment baseline.
 - [x] Application/source tables are managed by Alembic migrations
 - [ ] dbt will be additive and downstream of ingestion, not a replacement for ingestion logic
 - [ ] Scraper boundary leak resolved — no scraper module writes DB or ingestion-state rows (#71)
-- [ ] Manual scripts removed from `tests/` so pytest collects only real automated tests (#72)
+- [x] Manual scripts removed from `tests/` so pytest collects only real automated tests (#72)
 - [x] `.coverage` artifact removed from git and ignored (#73)
 - [ ] Data write and ingestion-state transition are atomic — approach agreed and implemented (#74)
 

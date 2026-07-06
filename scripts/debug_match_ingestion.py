@@ -1,4 +1,7 @@
-"""Manually tests MatchScraper + MatchParser integration from pending matches.
+"""Manual debug script: run scrape -> parse -> store for pending matches.
+
+Usage: python scripts/debug_match_ingestion.py (requires a configured database
+and browser dependencies).
 
 This helper bypasses controllers intentionally and is only for manual debugging.
 """
