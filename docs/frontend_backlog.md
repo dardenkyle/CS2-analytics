@@ -120,7 +120,8 @@ A1 implementation notes:
    Acceptance criteria:
    - pull requests touching `frontend/**` run `npm ci`, `npm run build`, and
      `npm run lint`
-   - pull requests that do not touch `frontend/**` skip the frontend job
+   - pull requests that do not touch `frontend/**` do not trigger the
+     frontend workflow
    - the job fails the PR gate on TypeScript, build, or lint errors
    - `docs/workflow.md` documents the frontend CI gate
 

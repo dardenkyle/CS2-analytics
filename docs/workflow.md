@@ -155,7 +155,10 @@ A separate frontend gate (`.github/workflows/frontend-ci.yml`) runs only when
 a pull request or push to `main` touches `frontend/**`. It installs
 dependencies with `npm ci`, then runs `npm run build` (which includes
 TypeScript checking) and `npm run lint`. Pull requests that do not touch the
-frontend skip this job.
+frontend do not trigger this workflow at all, so no frontend check appears on
+them. If the frontend check is ever made a required status check, this
+path-filtered behavior needs to be revisited, because required checks that
+never run block merging.
 
 Broader Ruff rules, formatting checks, full-package MyPy, and frontend unit
 tests may be added later once the project is ready to enforce stricter gates.
