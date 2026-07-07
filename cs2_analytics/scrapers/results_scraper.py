@@ -1,17 +1,21 @@
-"""Scrapes HLTV results pages and records discovered match links."""
+"""Scrapes HLTV results pages and yields discovered match links.
+
+Fetch-only by contract: this module performs no database or ingestion-state
+writes. Discovered matches are yielded to the caller, and
+ResultsStageService owns recording them.
+"""
 
 import datetime as dt
 import random
 import re
 import time
+from collections.abc import Iterator
 
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
 
 from cs2_analytics.config.config import END_DATE, HLTV_URL, MAX_MATCHES, START_DATE
 from cs2_analytics.exceptions import ResultsScrapeError, SessionScrapeError
-from cs2_analytics.ingestion_state import MatchIngestionState
-from cs2_analytics.utils.ingestion_state_helpers import chunk_and_record
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -19,7 +23,7 @@ logger = get_logger(__name__)
 
 class ResultsScraper:
     """
-    Scrapes HLTV results and records match links in match_ingestion_state.
+    Scrapes HLTV results pages and yields discovered match links.
 
     Designed to be used as a context manager to ensure the browser is closed.
     """
@@ -28,8 +32,6 @@ class ResultsScraper:
         """Initializes the scraper with a SeleniumBase driver and config params."""
         self.driver = Driver(uc=True, headless=True)
         self.base_url = HLTV_URL
-        self.match_state = MatchIngestionState()
-        self.source: str = "results_scraper"
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
 
@@ -41,42 +43,45 @@ class ResultsScraper:
         """Ensures the Selenium driver is closed on exit."""
         self.close()
 
-    def run(self, max_matches: int = MAX_MATCHES) -> None:
+    def iter_match_batches(
+        self, max_matches: int = MAX_MATCHES
+    ) -> Iterator[list[tuple[int, str]]]:
         """
-        Scrapes HLTV results and records match links in ingestion state.
+        Scrapes HLTV results pages and yields discovered matches per page.
 
         Args:
-            max_matches (int): Maximum number of matches to record.
+            max_matches (int): Maximum number of matches to discover.
+
+        Yields:
+            One list of (match_id, match_url) tuples per results page.
         """
         offset = 0
-        total_recorded = 0
+        total_discovered = 0
 
-        while total_recorded < max_matches:
+        while total_discovered < max_matches:
             page_url = f"{self.base_url}?offset={offset}&gameType=CS2"
             logger.info("Scraping page: %s", page_url)
 
             match_urls, stop = self._extract_matches_from_page(page_url)
             batch = []
             for full_url in match_urls:  # already starts with https://www.hltv.org
+                if total_discovered >= max_matches:
+                    break
                 match_id = self._extract_match_id(full_url)
                 if match_id:
                     batch.append((match_id, full_url))
-                    total_recorded += 1
+                    total_discovered += 1
 
-            chunk_and_record(
-                items=batch,
-                state_obj=self.match_state,
-                chunk_size=1000,
-                source=self.source,
-            )
+            if batch:
+                yield batch
 
-            if stop or not match_urls:
+            if total_discovered >= max_matches or stop or not match_urls:
                 break
 
             offset += 100
             time.sleep(random.uniform(1.0, 2.0))
 
-        logger.info("Recorded %s discovered matches total.", total_recorded)
+        logger.info("Discovered %s matches total.", total_discovered)
 
     def _extract_matches_from_page(self, url: str) -> tuple[list[str], bool]:
         """
@@ -149,8 +154,3 @@ class ResultsScraper:
             logger.info("Selenium driver closed.")
         except Exception as e:
             raise ResultsScrapeError("Failed to close results scraper driver.") from e
-
-
-if __name__ == "__main__":
-    with ResultsScraper() as scraper:
-        scraper.run(max_matches=50)

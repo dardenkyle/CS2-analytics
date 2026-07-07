@@ -4,15 +4,26 @@ from cs2_analytics.controllers import results_controller as results_module
 from cs2_analytics.exceptions import PipelineError, SessionScrapeError
 
 
+class _FakeStageService:
+    def __init__(self) -> None:
+        self.batches: list[list[tuple[int, str]]] = []
+
+    def record_batch(self, batch: list[tuple[int, str]]) -> int:
+        self.batches.append(list(batch))
+        return len(batch)
+
+
 class _RetryThenSucceedScraper:
     def __init__(self) -> None:
         self.run_calls = 0
         self.close_calls = 0
 
-    def run(self, max_matches: int = 50) -> None:
+    def iter_match_batches(self, max_matches: int = 50):
         self.run_calls += 1
         if self.run_calls == 1:
             raise SessionScrapeError("Session dropped while fetching results page.")
+        yield [(111, "https://www.hltv.org/matches/111/a-vs-b")]
+        yield [(222, "https://www.hltv.org/matches/222/c-vs-d")]
 
     def close(self) -> None:
         self.close_calls += 1
@@ -23,9 +34,10 @@ class _AlwaysFailingRetryableScraper:
         self.run_calls = 0
         self.close_calls = 0
 
-    def run(self, max_matches: int = 50) -> None:
+    def iter_match_batches(self, max_matches: int = 50):
         self.run_calls += 1
         raise SessionScrapeError("Session dropped while fetching results page.")
+        yield  # pragma: no cover - makes this a generator like the real scraper
 
     def close(self) -> None:
         self.close_calls += 1
@@ -36,9 +48,10 @@ class _NonRetryableFailingScraper:
         self.run_calls = 0
         self.close_calls = 0
 
-    def run(self, max_matches: int = 50) -> None:
+    def iter_match_batches(self, max_matches: int = 50):
         self.run_calls += 1
         raise RuntimeError("Unexpected parse failure")
+        yield  # pragma: no cover - makes this a generator like the real scraper
 
     def close(self) -> None:
         self.close_calls += 1
@@ -58,6 +71,7 @@ def test_results_controller_retries_retryable_scrape_error(
     )
 
     controller = results_module.ResultsController()
+    controller.stage_service = _FakeStageService()
     monkeypatch.setattr(
         controller,
         "_reset_scraper",
@@ -68,6 +82,10 @@ def test_results_controller_retries_retryable_scrape_error(
 
     assert controller.scraper.run_calls == 2
     assert len(reset_calls) == 1
+    assert controller.stage_service.batches == [
+        [(111, "https://www.hltv.org/matches/111/a-vs-b")],
+        [(222, "https://www.hltv.org/matches/222/c-vs-d")],
+    ]
     assert any(
         call_args[0]
         == "ResultsController summary: status=%s retries=%d terminal_failures=%d max_matches=%d"
@@ -106,6 +124,7 @@ def test_results_controller_raises_pipeline_error_after_exhausting_retries(
     )
 
     controller = results_module.ResultsController()
+    controller.stage_service = _FakeStageService()
     monkeypatch.setattr(
         controller,
         "_reset_scraper",
@@ -179,6 +198,7 @@ def test_results_controller_raises_pipeline_error_for_non_retryable_failure(
     )
 
     controller = results_module.ResultsController()
+    controller.stage_service = _FakeStageService()
     monkeypatch.setattr(
         controller,
         "_reset_scraper",

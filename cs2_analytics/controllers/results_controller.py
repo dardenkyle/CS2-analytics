@@ -7,7 +7,9 @@ from cs2_analytics.controllers.retry_utils import (
     reset_scraper,
 )
 from cs2_analytics.exceptions import PipelineError
+from cs2_analytics.ingestion_state import MatchIngestionState
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
+from cs2_analytics.stage_services import ResultsStageService
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger("results_controller")
@@ -18,6 +20,8 @@ class ResultsController:
 
     def __init__(self) -> None:
         self.scraper = ResultsScraper()
+        self.match_state = MatchIngestionState()
+        self.stage_service = ResultsStageService(match_state=self.match_state)
 
     def run(self, max_matches: int = 50) -> None:
         """Scrapes result pages and records match URLs for downstream stages."""
@@ -32,9 +36,11 @@ class ResultsController:
         try:
             for attempt in range(1, max_attempts + 1):
                 try:
-                    scraper.run(max_matches=max_matches)
+                    recorded = 0
+                    for batch in scraper.iter_match_batches(max_matches=max_matches):
+                        recorded += self.stage_service.record_batch(batch)
                     run_status = "succeeded"
-                    logger.info("ResultsController complete.")
+                    logger.info("ResultsController complete. recorded=%d", recorded)
                     return
                 except Exception as e:
                     is_retryable = self._is_recoverable_scraper_error(e)

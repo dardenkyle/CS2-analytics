@@ -14,6 +14,9 @@ from cs2_analytics.stage_services.map_stage_service import (
 from cs2_analytics.stage_services.match_stage_service import (
     MatchStageService as ConcreteMatchStageService,
 )
+from cs2_analytics.stage_services.results_stage_service import (
+    ResultsStageService as ConcreteResultsStageService,
+)
 from cs2_analytics.stage_services.stage_result import (
     StageItemResult as ConcreteStageItemResult,
 )
@@ -27,11 +30,13 @@ def test_stage_services_package_re_exports_concrete_classes() -> None:
     assert stage_services_package.MatchStageService is ConcreteMatchStageService
     assert stage_services_package.MapStageService is ConcreteMapStageService
     assert stage_services_package.DemoStageService is ConcreteDemoStageService
+    assert stage_services_package.ResultsStageService is ConcreteResultsStageService
     assert stage_services_package.StageItemResult is ConcreteStageItemResult
     assert stage_services_package.__all__ == [
         "DemoStageService",
         "MapStageService",
         "MatchStageService",
+        "ResultsStageService",
         "StageItemResult",
     ]
 
