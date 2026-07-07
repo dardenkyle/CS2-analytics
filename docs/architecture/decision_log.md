@@ -329,3 +329,43 @@ Consequences:
   assumed from documentation.
 - Scrapers are unit-testable without a database, and results discovery
   gained its first real tests.
+
+## ADR-0013: Make Data Writes And State Transitions Atomic Via Explicit Cursor Threading
+
+Status:
+Accepted
+
+Date:
+2026-07-07
+
+Context:
+Storage writes and the ingestion-state mark-complete transition ran as
+separate transactions (#74). A failure between them left persisted data rows
+with a stale lifecycle status. Two designs were considered: an explicit
+transaction cursor passed through storage and state functions, or an ambient
+transaction joined implicitly through a context variable inside
+`get_cursor()`.
+
+Decision:
+Use explicit cursor threading. `Database.transaction()` yields a cursor that
+spans multiple statements and commits or rolls back as one unit. Storage
+functions and ingestion-state mark/queue methods accept an optional `cur`
+parameter: when provided they execute on the caller's cursor without
+committing; when omitted they keep their existing per-call transaction.
+Stage services own the transaction scope, wrapping the per-item data write,
+follow-up discovery refreshes, and the processed mark in one block. The
+ambient alternative was rejected because participation would be invisible at
+call sites, future writes inside a wrapped block would join the transaction
+silently, and wiring could not be unit-tested without a database.
+
+Consequences:
+- A failure between the data write and the state mark rolls both back; no
+  half-committed rows.
+- Network fetch and parsing stay outside the transaction, so slow upstream
+  responses never hold a pool connection.
+- `mark_as_failed` intentionally stays a separate transaction so failures
+  are recorded even when the data transaction rolls back.
+- Storage functions and state methods called without a cursor behave exactly
+  as before, so callers outside stage services are unaffected.
+- Transaction wiring is unit-testable by asserting all writes received the
+  same cursor object.
