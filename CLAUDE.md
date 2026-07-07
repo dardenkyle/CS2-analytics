@@ -19,7 +19,7 @@ Guidance for coding agents working in this repository.
 
 ## Python Coding Standards
 
-- Use Python 3.14+ syntax.
+- Use Python 3.12 syntax.
 - Use built-in generic type hints such as `list[str]`, `dict[str, int]`, and `str | None`.
 - Avoid importing from `typing` unless necessary.
 - Add module-level docstrings to new Python modules when they clarify purpose.
@@ -36,7 +36,7 @@ Guidance for coding agents working in this repository.
 
 ## Project Shape
 
-- This is a Python 3.14+ Counter-Strike 2 analytics project.
+- This is a Python 3.12 Counter-Strike 2 analytics project.
 - Ingestion currently uses PostgreSQL-backed lifecycle/state tables:
   `match_ingestion_state`, `map_ingestion_state`, and `demo_ingestion_state`.
 - The active production flow is results discovery, match processing, map

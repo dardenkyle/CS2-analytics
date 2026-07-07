@@ -1,8 +1,9 @@
 # Current Architecture State
 
-This document summarizes the active architecture as of the Phase 3.75 container
-runtime baseline. For the longer architecture overview, see
-`docs/architecture/overview.md`.
+This document summarizes the active architecture as of the first cloud
+deployment and the enforced scraper boundary (post-Phase 3.75, frontend
+Phase A complete, Phase 3.9 in progress). For the longer architecture
+overview, see `docs/architecture/overview.md`.
 
 ## Active Runtime Flow
 
@@ -79,8 +80,12 @@ Stage services own:
 - per-item fetch, parse, persist, and lifecycle outcome workflow
 - normal processed, failed, and skipped state transitions
 - returning `StageItemResult` for controller summaries
+- results discovery persistence (`ResultsStageService` records discovered
+  matches; the scraper only yields them)
 
-Scrapers fetch remote content only.
+Scrapers fetch remote content only. This is enforced by
+`tests/scrapers/test_scraper_boundaries.py`, which fails if any scraper
+module imports storage or ingestion-state modules.
 
 Parsers convert fetched content into structured outputs only.
 
@@ -99,16 +104,17 @@ clearer.
 
 ## Transformation And Orchestration Boundary
 
-Phase 3.75 deployment baseline comes before dbt. The deployment baseline should
-prove that runtime configuration, migrations, containers, CI, and smoke tests
-work outside the local development machine.
-
-The first cloud deployment plan uses GitHub Pages for the frontend, a Render
-web service for the API, Render PostgreSQL for the database, and a manual
-GitHub Actions workflow for the pipeline/scraper runner. Scheduled scraper
-runs are deferred until match and map batch behavior is validated. Manual
-migrations remain the first release path, with write-based smoke checks limited
-to separate smoke or staging databases and production validation kept read-only.
+The Phase 3.75 deployment baseline is complete and deployed: the API runs as
+a Render web service against Render PostgreSQL, the React SPA frontend
+publishes to GitHub Pages from `main`, and a manual GitHub Actions workflow
+exists for the pipeline/scraper runner (currently paused; its containerized
+browser validation is tracked by #91, and cloud scraping remains blocked by
+#66, so data refreshes run locally against the production database).
+Scheduled scraper runs stay deferred until match and map batch behavior is
+validated. Manual migrations remain the release path, with write-based smoke
+checks limited to separate smoke or staging databases and production
+validation kept read-only. dbt comes after Phase 3.9 and the Phase 4 entry
+criteria.
 
 Normal database setup applies Alembic migrations through
 `alembic -c cs2_analytics/alembic.ini upgrade head` or

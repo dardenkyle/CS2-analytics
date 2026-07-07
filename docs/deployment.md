@@ -164,6 +164,10 @@ Validated production checks:
   failure with diagnostics before parser handling. This confirms the deployment
   worker path while keeping recurring worker runs paused until broader live
   ingestion behavior and operations are intentionally resumed.
+- As of 2026-07, the worker's in-container browser validation fails on current
+  Debian Chromium (#91): the unpinned browser stack drifted past what the
+  installed SeleniumBase can drive. The image itself builds (Python 3.12 base
+  since #90), and the worker path stays paused pending #91 and #66.
 
 Local worker validation commands:
 

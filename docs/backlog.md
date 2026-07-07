@@ -6,31 +6,31 @@ This document tracks the recommended implementation order for the next architect
 
 ## Current Position
 
-Phase 3 and Phase 3.5 are complete for the active match/map/player ingestion
-surface. The active codebase now has stable stage-service boundaries,
-controller retry hardening, relational match/map/player storage contracts, and
-the focused dbt-readiness coverage needed to start dbt staging work.
+Phases 3, 3.5, 3.6, and 3.75 are complete: the active ingestion surface has
+stable stage-service boundaries, controller retry hardening, relational
+match/map/player storage contracts, Alembic-managed schema, a containerized
+runtime, CI gates for both stacks, and a first cloud deployment (Render API
+and PostgreSQL, GitHub Pages frontend). Frontend Phase A is complete and the
+public demo is live.
 
 Current priorities:
 
-- move development into an issue-driven, reviewable workflow before deployment
-  hardening begins
-- establish a reproducible deployment baseline before adding dbt
+- finish Phase 3.9 environment and tooling hardening (#69, #86)
+- close the remaining Phase 4 entry criteria in the v1.0 hardening list,
+  led by atomic data-write/state-transition behavior (#74)
 - then initialize dbt without moving ingestion responsibilities into dbt
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
   source schema normalization
 - defer demo expansion and Airflow until after the initial dbt layer exists
-- keep frontend product planning in `docs/frontend_backlog.md` so the public
-  GitHub Pages SPA can progress without renumbering backend/data phases
 
 ---
 
 ## Parallel Product Tracks
 
 Frontend product work uses a lettered phase strategy in
-`docs/frontend_backlog.md`. Phase A starts with a public React SPA demo that
-introduces the project and shows the existing top players API from the
-Render-hosted backend.
+`docs/frontend_backlog.md`. Phase A shipped the public React SPA demo backed
+by the live top players API. Phase B is a candidate backlog gated on the
+decision questions at the end of that document.
 
 ---
 

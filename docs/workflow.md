@@ -5,13 +5,15 @@ reviewable and aligned with the roadmap.
 
 ## Current Roadmap Order
 
-1. Phase 3.6: issue-driven workflow and agent readiness.
-2. Phase 3.75: deployment baseline.
-3. Phase 4: dbt transformation layer.
-4. Phase 5: Airflow orchestration.
+1. Phase 3.9: environment and tooling hardening (in progress).
+2. Phase 4: dbt transformation layer. Entry criteria include the v1.0
+   hardening items (#71–#74).
+3. Phase 5: Airflow orchestration.
 
-Demo expansion remains deferred. dbt must stay downstream of ingestion, and
-Airflow comes after dbt.
+Phases 3.6 and 3.75 are complete, and frontend Phase A shipped the public
+GitHub Pages demo (see `docs/frontend_backlog.md`; Phase B is gated on its
+decision questions). Demo expansion remains deferred. dbt must stay
+downstream of ingestion, and Airflow comes after dbt.
 
 ## Issue To Merge Flow
 

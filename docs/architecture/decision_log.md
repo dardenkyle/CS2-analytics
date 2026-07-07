@@ -215,3 +215,117 @@ Consequences:
   migration mistakes.
 - Pipeline failures are treated as ingestion recovery through lifecycle state
   inspection and manual retry, not as schema rollback events.
+
+## ADR-0009: Use A React SPA For The Public Frontend
+
+Status:
+Accepted
+
+Date:
+2026-07-05
+
+Context:
+Phase A needed a public, employer-facing demo of the deployed system.
+`frontend/` held only a localhost Streamlit debug viewer, and the deployment
+target was already GitHub Pages (ADR-0008), which serves static assets only.
+
+Decision:
+Retire the Streamlit debug app and build the public frontend as a React,
+TypeScript, and Vite SPA in `frontend/`. Keep the app router-free until a
+second view needs routing. Configure the API base URL as a code default in
+`frontend/src/config.ts` with a `VITE_API_BASE_URL` build-time override; no
+`.env` file is committed because the URL is public and ships in the bundle
+either way.
+
+Consequences:
+- The SPA builds statically and deploys to GitHub Pages from `main`, with
+  Vite `base` set to the project-page path for builds and preview only.
+- Frontend deploys cannot affect backend runtime, schema, or data.
+- Loading, empty, and error states are explicit, including cold-start
+  messaging for the free-tier API wake-up delay.
+- Local development against the production API requires the localhost
+  origins in the Render `API_CORS_ORIGINS` allowlist.
+
+## ADR-0010: Gate Each Stack With Its Own Path-Filtered Workflow
+
+Status:
+Accepted
+
+Date:
+2026-07-06
+
+Context:
+The CI gate covered only Python. Frontend changes merged with no automated
+verification, and GitHub Actions path filtering works at the workflow level,
+so a frontend job inside `ci.yml` could not skip cleanly for backend-only
+changes.
+
+Decision:
+Give the frontend its own workflow (`frontend-ci.yml`) that runs `npm ci`,
+`npm run build`, and `npm run lint` only when `frontend/**` changes, and a
+separate Pages deployment workflow (`deploy-frontend.yml`) for pushes to
+`main`. Pin all third-party actions to commit SHAs, following the existing
+`ci.yml` convention.
+
+Consequences:
+- Backend-only pull requests never pay Node setup time, and frontend pull
+  requests are machine-verified before merge.
+- Non-matching pull requests do not trigger the workflow at all, so making
+  the frontend check required would need path-aware handling.
+- New workflows cannot be manually dispatched until their file exists on the
+  default branch; first runs happen on merge.
+
+## ADR-0011: Consolidate Lint And Format Tooling On Ruff
+
+Status:
+Accepted
+
+Date:
+2026-07-06
+
+Context:
+black and isort sat in dev dependencies while ruff already owned linting
+with the `I` import rules selected, and CI invoked only ruff. Three tools
+shared two jobs, and the isort-covered files were provably never enforced.
+
+Decision:
+Remove black and isort. `ruff format` is the sole formatter and `ruff check`
+with the `I` rules is the sole import sorter. Apply the one-time
+`ruff format` and safe-fix migration in a dedicated, mechanical commit.
+
+Consequences:
+- One tool defines formatting and import order for humans, CI, and agents.
+- Remaining non-auto-fixable lint findings are deliberate future cleanup,
+  not enforced by the CI gate.
+- The committed lockfile shrinks (black, isort, and transitive pytokens
+  removed).
+
+## ADR-0012: Enforce Fetch-Only Scrapers With A Boundary Test
+
+Status:
+Accepted
+
+Date:
+2026-07-06
+
+Context:
+ADR-0002 declared scrapers fetch-only, but the results scraper still
+constructed `MatchIngestionState` and wrote discovery rows directly — debt
+documented in the conventions and overview docs. The contract lived only in
+prose, so nothing failed when code drifted from it.
+
+Decision:
+Split results discovery like the other stages: `ResultsScraper` yields
+per-page batches of discovered matches, `ResultsStageService` owns the
+ingestion-state refreshes, and `ResultsController` coordinates the two. Add
+a boundary test that walks every scraper module's imports and fails if any
+scraper imports storage or ingestion-state modules.
+
+Consequences:
+- No scraper module performs database or lifecycle writes; the discovery
+  write path preserves the existing source string, chunking, and per-page
+  timing.
+- The fetch/persist contract is enforced by the test suite instead of
+  assumed from documentation.
+- Scrapers are unit-testable without a database, and results discovery
+  gained its first real tests.

@@ -181,7 +181,9 @@ The demo processing implementation should stay deferred until:
 
 1. Keep the current `*_ingestion_state` tables stable.
 2. Keep controller/stage-service responsibilities clean as ingestion evolves.
-3. Complete the Phase 3.75 deployment baseline before adding dbt.
+3. Finish Phase 3.9 tooling hardening and the Phase 4 entry criteria
+   (v1.0 hardening items) before adding dbt; the Phase 3.75 deployment
+   baseline is complete and live.
 4. Implement dbt models over the stable `matches`, `maps`, and `players`
    parsed-source grains.
 5. Implement Airflow after dbt exists and the stage boundaries are clean.
