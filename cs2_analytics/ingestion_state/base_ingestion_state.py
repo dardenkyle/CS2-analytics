@@ -54,9 +54,19 @@ class BaseIngestionState:
             ) from e
 
     def queue(
-        self, id_value: int | str, url: str, source: str = "unknown", priority: int = 0
+        self,
+        id_value: int | str,
+        url: str,
+        source: str = "unknown",
+        priority: int = 0,
+        cur=None,
     ) -> None:
-        """Adds or refreshes a single ingestion state row."""
+        """Adds or refreshes a single ingestion state row.
+
+        When cur is provided the statement joins the caller's transaction
+        and the caller owns commit/rollback (ADR-0013); otherwise the write
+        runs in its own transaction as before.
+        """
         now = dt.datetime.now()
         query = f"""
         INSERT INTO {self.table_name} (
@@ -74,9 +84,13 @@ class BaseIngestionState:
             last_seen_at = EXCLUDED.last_seen_at,
             last_updated_at = EXCLUDED.last_updated_at;
         """
+        params = (id_value, url, source, priority, now, now, now)
         try:
-            with self.db.get_cursor() as cur:
-                cur.execute(query, (id_value, url, source, priority, now, now, now))
+            if cur is not None:
+                cur.execute(query, params)
+            else:
+                with self.db.get_cursor() as own_cur:
+                    own_cur.execute(query, params)
         except Exception as e:
             raise self.error_cls(
                 f"Failed to record ingestion state item in {self.table_name}."
@@ -145,17 +159,26 @@ class BaseIngestionState:
         """Compatibility method that marks the item as processed."""
         self.mark_as_processed(id_value)
 
-    def mark_as_processed(self, id_value: int | str) -> None:
-        """Marks the item as successfully processed."""
+    def mark_as_processed(self, id_value: int | str, cur=None) -> None:
+        """Marks the item as successfully processed.
+
+        When cur is provided the statement joins the caller's transaction
+        and the caller owns commit/rollback (ADR-0013); otherwise the write
+        runs in its own transaction as before.
+        """
         now = dt.datetime.now()
         query = f"""
         UPDATE {self.table_name}
         SET status = 'processed', last_processed_at = %s, last_updated_at = %s
         WHERE {self.id_field} = %s;
         """
+        params = (now, now, id_value)
         try:
-            with self.db.get_cursor() as cur:
-                cur.execute(query, (now, now, id_value))
+            if cur is not None:
+                cur.execute(query, params)
+            else:
+                with self.db.get_cursor() as own_cur:
+                    own_cur.execute(query, params)
         except Exception as e:
             raise self.error_cls(
                 f"Failed to mark item as processed in {self.table_name}."

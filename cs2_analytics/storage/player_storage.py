@@ -5,12 +5,7 @@ from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
-
-def store_players(players: list[Player]) -> None:
-    if not players:
-        return
-
-    insert_query = """
+INSERT_PLAYERS_QUERY = """
     INSERT INTO players (
         map_id, player_id, player_name, player_url, map_name,
         team_name, kills, headshots, assists, flash_assists, deaths, traded_deaths,
@@ -51,41 +46,58 @@ def store_players(players: list[Player]) -> None:
         data_complete = EXCLUDED.data_complete;
     """
 
+
+def store_players(players: list[Player], cur=None) -> None:
+    """Upsert player rows.
+
+    When cur is provided the statements join the caller's transaction and
+    the caller owns commit/rollback (ADR-0013); otherwise the write runs in
+    its own transaction as before.
+    """
+    if not players:
+        return
+
     try:
-        db = get_db()
-        with db.get_cursor() as cur:
-            for p in players:
-                cur.execute(
-                    insert_query,
-                    {
-                        "map_id": p.map_id,
-                        "player_id": p.player_id,
-                        "player_name": p.player_name,
-                        "player_url": p.player_url,
-                        "map_name": p.map_name,
-                        "team_name": p.team_name,
-                        "kills": p.kills,
-                        "headshots": p.headshots,
-                        "assists": p.assists,
-                        "flash_assists": p.flash_assists,
-                        "deaths": p.deaths,
-                        "traded_deaths": p.traded_deaths,
-                        "opening_kills": p.opening_kills,
-                        "opening_deaths": p.opening_deaths,
-                        "multi_kills": p.multi_kills,
-                        "clutches_won": p.clutches_won,
-                        "kast": p.kast,
-                        "kd_diff": p.kd_diff,
-                        "adr": p.adr,
-                        "fk_diff": p.fk_diff,
-                        "round_swing": p.round_swing,
-                        "rating": p.rating,
-                        "last_inserted_at": p.last_inserted_at,
-                        "last_scraped_at": p.last_scraped_at,
-                        "last_updated_at": p.last_updated_at,
-                        "data_complete": p.data_complete,
-                    },
-                )
-            logger.info("Stored %d player stat records.", len(players))
+        if cur is not None:
+            _execute_store_players(cur, players)
+        else:
+            with get_db().get_cursor() as own_cur:
+                _execute_store_players(own_cur, players)
     except Exception as e:
         raise PlayerStorageError("Failed to store player records.") from e
+
+
+def _execute_store_players(cur, players: list[Player]) -> None:
+    for p in players:
+        cur.execute(
+            INSERT_PLAYERS_QUERY,
+            {
+                "map_id": p.map_id,
+                "player_id": p.player_id,
+                "player_name": p.player_name,
+                "player_url": p.player_url,
+                "map_name": p.map_name,
+                "team_name": p.team_name,
+                "kills": p.kills,
+                "headshots": p.headshots,
+                "assists": p.assists,
+                "flash_assists": p.flash_assists,
+                "deaths": p.deaths,
+                "traded_deaths": p.traded_deaths,
+                "opening_kills": p.opening_kills,
+                "opening_deaths": p.opening_deaths,
+                "multi_kills": p.multi_kills,
+                "clutches_won": p.clutches_won,
+                "kast": p.kast,
+                "kd_diff": p.kd_diff,
+                "adr": p.adr,
+                "fk_diff": p.fk_diff,
+                "round_swing": p.round_swing,
+                "rating": p.rating,
+                "last_inserted_at": p.last_inserted_at,
+                "last_scraped_at": p.last_scraped_at,
+                "last_updated_at": p.last_updated_at,
+                "data_complete": p.data_complete,
+            },
+        )
+    logger.info("Stored %d player stat records.", len(players))

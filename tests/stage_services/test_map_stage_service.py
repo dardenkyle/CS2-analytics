@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from cs2_analytics.stage_services import MapStageService
+from tests.support import FakeTransactionDb
 
 
 @dataclass(frozen=True)
@@ -46,7 +47,7 @@ class _FakeMapState:
     def mark_as_processing(self, item_id: int) -> None:
         self.processing.append(item_id)
 
-    def mark_as_processed(self, item_id: int) -> None:
+    def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)
 
     def mark_as_failed(self, item_id: int, reason: str) -> None:
@@ -62,9 +63,12 @@ def test_map_stage_service_processes_success() -> None:
     parser = _FakeParser(players=players, map_obj=parsed_map)
     service = MapStageService(
         parser=parser,
-        store_maps=lambda maps: stored_maps.append(maps),
-        store_players=lambda parsed_players: stored_players.append(parsed_players),
+        store_maps=lambda maps, cur=None: stored_maps.append(maps),
+        store_players=lambda parsed_players, cur=None: stored_players.append(
+            parsed_players
+        ),
         map_state=map_state,
+        db=FakeTransactionDb(),
     )
 
     result = service.process_item(
@@ -93,9 +97,12 @@ def test_map_stage_service_marks_failed_when_parser_returns_no_players() -> None
     map_state = _FakeMapState()
     service = MapStageService(
         parser=_FakeParser(players=[]),
-        store_maps=lambda maps: stored_maps.append(maps),
-        store_players=lambda parsed_players: stored_players.append(parsed_players),
+        store_maps=lambda maps, cur=None: stored_maps.append(maps),
+        store_players=lambda parsed_players, cur=None: stored_players.append(
+            parsed_players
+        ),
         map_state=map_state,
+        db=FakeTransactionDb(),
     )
 
     result = service.process_item(
@@ -120,9 +127,10 @@ def test_map_stage_service_processes_with_attempt_scraper() -> None:
     attempt_scraper = _FakeScraper()
     service = MapStageService(
         parser=_FakeParser(players=[object()]),
-        store_maps=lambda _maps: None,
-        store_players=lambda _players: None,
+        store_maps=lambda _maps, cur=None: None,
+        store_players=lambda _players, cur=None: None,
         map_state=_FakeMapState(),
+        db=FakeTransactionDb(),
     )
 
     service.process_item(

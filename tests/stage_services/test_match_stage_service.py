@@ -1,4 +1,5 @@
 from cs2_analytics.stage_services import MatchStageService
+from tests.support import FakeTransactionDb
 
 
 class _FakeScraper:
@@ -38,7 +39,7 @@ class _FakeMatchState:
     def mark_as_processing(self, item_id: int) -> None:
         self.processing.append(item_id)
 
-    def mark_as_processed(self, item_id: int) -> None:
+    def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)
 
     def mark_as_failed(self, item_id: int, reason: str) -> None:
@@ -56,6 +57,7 @@ class _FakeFollowupState:
         source: str = "unknown",
         match_id: int | None = None,
         map_order: int | None = None,
+        cur=None,
     ) -> None:
         self.recorded.append((item_id, url, source, match_id, map_order))
 
@@ -72,10 +74,11 @@ def test_match_stage_service_processes_success_and_records_followups() -> None:
             map_links=[(1, "https://www.hltv.org/stats/matches/mapstatsid/1/test")],
             demo_links=[("demo-1", "https://www.hltv.org/download/demo/test")],
         ),
-        store_matches=lambda matches: stored_matches.append(matches),
+        store_matches=lambda matches, cur=None: stored_matches.append(matches),
         match_state=match_state,
         map_state=map_state,
         demo_state=demo_state,
+        db=FakeTransactionDb(),
     )
 
     result = service.process_item(
@@ -113,10 +116,11 @@ def test_match_stage_service_marks_failed_when_parser_returns_none() -> None:
     match_state = _FakeMatchState()
     service = MatchStageService(
         parser=_FakeParser(match=None),
-        store_matches=lambda matches: stored_matches.append(matches),
+        store_matches=lambda matches, cur=None: stored_matches.append(matches),
         match_state=match_state,
         map_state=_FakeFollowupState(),
         demo_state=_FakeFollowupState(),
+        db=FakeTransactionDb(),
     )
 
     result = service.process_item(
@@ -136,10 +140,11 @@ def test_match_stage_service_processes_with_attempt_scraper() -> None:
     attempt_scraper = _FakeScraper()
     service = MatchStageService(
         parser=_FakeParser(match=object()),
-        store_matches=lambda _matches: None,
+        store_matches=lambda _matches, cur=None: None,
         match_state=_FakeMatchState(),
         map_state=_FakeFollowupState(),
         demo_state=_FakeFollowupState(),
+        db=FakeTransactionDb(),
     )
 
     service.process_item(

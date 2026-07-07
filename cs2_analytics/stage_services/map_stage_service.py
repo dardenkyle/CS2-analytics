@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from cs2_analytics.stage_services.stage_result import StageItemResult
 
 if TYPE_CHECKING:
+    from typing import Protocol
+
     from cs2_analytics.ingestion_state import MapIngestionState
     from cs2_analytics.models.map import Map
     from cs2_analytics.models.player import Player
     from cs2_analytics.parsers.map_parser import MapParser
     from cs2_analytics.scrapers.map_scraper import MapScraper
+    from cs2_analytics.storage.database import Database
+
+    class MapWriter(Protocol):
+        """Persists maps, optionally joining the caller's transaction."""
+
+        def __call__(self, maps: list[Map], /, cur: object = None) -> None: ...
+
+    class PlayerWriter(Protocol):
+        """Persists player rows, optionally joining the caller's transaction."""
+
+        def __call__(self, players: list[Player], /, cur: object = None) -> None: ...
 
 
 class MapStageService:
@@ -21,14 +33,16 @@ class MapStageService:
     def __init__(
         self,
         parser: MapParser,
-        store_maps: Callable[[list[Map]], None],
-        store_players: Callable[[list[Player]], None],
+        store_maps: MapWriter,
+        store_players: PlayerWriter,
         map_state: MapIngestionState,
+        db: Database,
     ) -> None:
         self.parser = parser
         self.store_maps = store_maps
         self.store_players = store_players
         self.map_state = map_state
+        self.db = db
 
     def process_item(
         self,
@@ -60,7 +74,8 @@ class MapStageService:
             self.map_state.mark_as_failed(map_id, message)
             return StageItemResult.failed(message)
 
-        self.store_maps([parsed_map.map])
-        self.store_players(parsed_map.players)
-        self.map_state.mark_as_processed(map_id)
+        with self.db.transaction() as cur:
+            self.store_maps([parsed_map.map], cur=cur)
+            self.store_players(parsed_map.players, cur=cur)
+            self.map_state.mark_as_processed(map_id, cur=cur)
         return StageItemResult.processed()

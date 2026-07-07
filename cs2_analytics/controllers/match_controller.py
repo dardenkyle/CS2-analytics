@@ -16,6 +16,7 @@ from cs2_analytics.ingestion_state import (
 from cs2_analytics.parsers.match_parser import MatchParser
 from cs2_analytics.scrapers.match_scraper import MatchScraper
 from cs2_analytics.stage_services import MatchStageService
+from cs2_analytics.storage.db_instance import get_db
 from cs2_analytics.storage.match_storage import store_matches
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -37,6 +38,7 @@ class MatchController:
             match_state=self.match_state,
             map_state=self.map_state,
             demo_state=self.demo_state,
+            db=get_db(),
         )
 
     def run(self, batch_size: int = 25) -> None:

@@ -5,6 +5,7 @@ from cs2_analytics.models.map import Map
 from cs2_analytics.models.match import Match
 from cs2_analytics.models.player import Player
 from cs2_analytics.stage_services import MapStageService, MatchStageService
+from tests.support import FakeTransactionDb
 
 
 @dataclass(frozen=True)
@@ -83,7 +84,7 @@ class _FakeMatchState:
         self.processed: list[int] = []
         self.failed: list[tuple[int, str]] = []
 
-    def mark_as_processed(self, item_id: int) -> None:
+    def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)
 
     def mark_as_failed(self, item_id: int, reason: str) -> None:
@@ -104,6 +105,7 @@ class _FakeMapState:
         _priority: int = 0,
         match_id: int | None = None,
         map_order: int | None = None,
+        cur=None,
     ) -> None:
         self.records.append(
             _MapIngestionRecord(
@@ -115,7 +117,7 @@ class _FakeMapState:
             )
         )
 
-    def mark_as_processed(self, item_id: int) -> None:
+    def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)
 
     def mark_as_failed(self, item_id: int, reason: str) -> None:
@@ -129,6 +131,7 @@ class _FakeDemoState:
         _url: str,
         source: str = "unknown",
         _priority: int = 0,
+        cur=None,
     ) -> None:
         assert source in {"unknown", "match_parser"}
 
@@ -208,10 +211,11 @@ def test_match_to_map_to_player_flow_has_stable_dbt_ready_grains() -> None:
 
     match_service = MatchStageService(
         parser=_FakeMatchParser(match),
-        store_matches=stored_matches.extend,
+        store_matches=lambda matches, cur=None: stored_matches.extend(matches),
         match_state=match_state,
         map_state=map_state,
         demo_state=_FakeDemoState(),
+        db=FakeTransactionDb(),
     )
 
     match_result = match_service.process_item(
@@ -234,9 +238,10 @@ def test_match_to_map_to_player_flow_has_stable_dbt_ready_grains() -> None:
 
     map_service = MapStageService(
         parser=_FakeMapParser(),
-        store_maps=stored_maps.extend,
-        store_players=stored_players.extend,
+        store_maps=lambda maps, cur=None: stored_maps.extend(maps),
+        store_players=lambda players, cur=None: stored_players.extend(players),
         map_state=map_state,
+        db=FakeTransactionDb(),
     )
 
     for record in map_state.records:

@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import UTC, datetime
 
 import pytest
@@ -42,10 +43,27 @@ class _FakeDb:
     def release_connection(self, conn: _RecordingConnection) -> None:
         self.released = True
 
+    @contextmanager
+    def get_cursor(self):
+        conn = self.get_connection()
+        try:
+            yield conn.cursor()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            self.release_connection(conn)
+
 
 class _ConnectionFailingDb:
     def get_connection(self) -> None:
         raise RuntimeError("connection unavailable")
+
+    @contextmanager
+    def get_cursor(self):
+        self.get_connection()
+        yield  # pragma: no cover - get_connection always raises
 
 
 def _match() -> Match:
