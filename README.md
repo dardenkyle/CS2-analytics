@@ -242,6 +242,15 @@ website scraping.
 python main.py
 ```
 
+Or use the `cs2a` CLI installed with the package for individual stages:
+
+```sh
+cs2a ingest discover            # scrape results pages, queue new matches
+cs2a ingest discover --mode backfill
+cs2a process --batch 50         # process pending matches, then maps
+cs2a status                     # ingestion-state row counts by status
+```
+
 ### 8. Run the API
 
 ```sh
