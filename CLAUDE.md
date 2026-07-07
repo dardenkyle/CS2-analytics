@@ -112,8 +112,8 @@ PR marked medium or high risk.
 
 ## Local Development Notes
 
-- Install development dependencies with `uv sync --extra dev`. This
-  creates `.venv`. Activate it if not automatically activated
+- Install development dependencies with `uv sync`. This creates `.venv`.
+  Activate it if not automatically activated
   (`source .venv/bin/activate`), or prefix commands with `uv run`.
 - Use `python -m cs2_analytics.storage.initialize_db` or
   `alembic -c cs2_analytics/alembic.ini upgrade head` to initialize or upgrade

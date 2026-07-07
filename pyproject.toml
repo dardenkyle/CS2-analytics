@@ -26,38 +26,31 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy",
-    "pandas",
     "more-itertools",
     "seleniumbase",
     "beautifulsoup4",
-    "requests",
     "psycopg2-binary",
     "sqlalchemy",
     "alembic",
-    "loguru",
     "python-dotenv",
-    "schedule",
-    "matplotlib",
-    "seaborn",
     "fastapi",
     "uvicorn",
-    "streamlit",
 ]
 
 [project.optional-dependencies]
+demo = [
+    "rarfile",
+]
+
+[dependency-groups]
 dev = [
-    "pytest>=9.0.0",
-    "pytest-cov",
     "mypy>=1.19.0",
     "ruff>=0.3.0",
+    {include-group = "test"},
 ]
 test = [
     "pytest>=9.0.0",
     "pytest-cov",
-]
-demo = [
-    "rarfile",
 ]
 
 [project.urls]
@@ -97,8 +90,6 @@ module = [
     "seleniumbase.*",
     "bs4.*",
     "psycopg2.*",
-    "loguru.*",
-    "streamlit.*",
 ]
 ignore_missing_imports = true
 
