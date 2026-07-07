@@ -45,8 +45,14 @@ class MapIngestionState(BaseIngestionState):
         priority: int = 0,
         match_id: int | None = None,
         map_order: int | None = None,
+        cur=None,
     ) -> None:
-        """Add or refresh a map ingestion row with parent match context."""
+        """Add or refresh a map ingestion row with parent match context.
+
+        When cur is provided the statement joins the caller's transaction
+        and the caller owns commit/rollback (ADR-0013); otherwise the write
+        runs in its own transaction as before.
+        """
         now = dt.datetime.now()
         query = """
         INSERT INTO map_ingestion_state (
@@ -66,22 +72,23 @@ class MapIngestionState(BaseIngestionState):
             last_seen_at = EXCLUDED.last_seen_at,
             last_updated_at = EXCLUDED.last_updated_at;
         """
+        params = (
+            id_value,
+            url,
+            match_id,
+            map_order,
+            source,
+            priority,
+            now,
+            now,
+            now,
+        )
         try:
-            with self.db.get_cursor() as cur:
-                cur.execute(
-                    query,
-                    (
-                        id_value,
-                        url,
-                        match_id,
-                        map_order,
-                        source,
-                        priority,
-                        now,
-                        now,
-                        now,
-                    ),
-                )
+            if cur is not None:
+                cur.execute(query, params)
+            else:
+                with self.db.get_cursor() as own_cur:
+                    own_cur.execute(query, params)
         except Exception as e:
             raise self.error_cls(
                 "Failed to record ingestion state item in map_ingestion_state."

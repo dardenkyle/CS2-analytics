@@ -77,6 +77,31 @@ class Database:
             logger.info("Database connection pool closed.")
 
     @contextmanager
+    def transaction(self):
+        """Yield a cursor whose statements commit or roll back as one unit.
+
+        Unlike get_cursor, callers are expected to run multiple writes on the
+        yielded cursor (typically a data write plus an ingestion-state
+        transition) before the single commit at exit. Any exception rolls
+        back every statement issued on the cursor. See ADR-0013.
+        """
+        conn = self.get_connection()
+        if conn is None:
+            raise DatabaseConnectionError(
+                "Unable to acquire a database connection from the pool."
+            )
+
+        try:
+            cur = conn.cursor()
+            yield cur
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise DatabaseOperationError("Failed during database transaction.") from e
+        finally:
+            self.release_connection(conn)
+
+    @contextmanager
     def get_cursor(self):
         """Yield a DB cursor and handle commit, rollback, and connection release."""
         conn = self.get_connection()

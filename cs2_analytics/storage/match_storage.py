@@ -5,12 +5,7 @@ from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
-
-def store_matches(matches: list[Match]) -> None:
-    if not matches:
-        return
-
-    insert_query = """
+INSERT_MATCHES_QUERY = """
     INSERT INTO matches (
         match_id, match_url, team1, team2, score1, score2, winner,
         event, match_type, forfeit, date,
@@ -41,44 +36,50 @@ def store_matches(matches: list[Match]) -> None:
         data_complete = EXCLUDED.data_complete;
     """
 
-    db = None
-    conn = None
-    try:
-        db = get_db()
-        conn = db.get_connection()
-        if conn is None:
-            return
 
-        cur = conn.cursor()
-        for match in matches:
-            cur.execute(
-                insert_query,
-                {
-                    "match_id": match.match_id,
-                    "match_url": match.match_url,
-                    "team1": match.team1,
-                    "team2": match.team2,
-                    "score1": match.score1,
-                    "score2": match.score2,
-                    "winner": match.winner,
-                    "event": match.event,
-                    "match_type": match.match_type,
-                    "forfeit": match.forfeit,
-                    "date": match.date,
-                    "map_links": str(match.map_links),
-                    "demo_links": str(match.demo_links),
-                    "last_inserted_at": match.last_inserted_at,
-                    "last_scraped_at": match.last_scraped_at,
-                    "last_updated_at": match.last_updated_at,
-                    "data_complete": match.data_complete,
-                },
-            )
-        conn.commit()
-        logger.info("📥 Stored %d match records.", len(matches))
+def store_matches(matches: list[Match], cur=None) -> None:
+    """Upsert match rows.
+
+    When cur is provided the statements join the caller's transaction and
+    the caller owns commit/rollback (ADR-0013); otherwise the write runs in
+    its own transaction, now through the shared get_cursor path instead of
+    hand-rolled connection handling.
+    """
+    if not matches:
+        return
+
+    try:
+        if cur is not None:
+            _execute_store_matches(cur, matches)
+        else:
+            with get_db().get_cursor() as own_cur:
+                _execute_store_matches(own_cur, matches)
     except Exception as e:
-        if conn is not None:
-            conn.rollback()
         raise MatchStorageError("Failed to store match records.") from e
-    finally:
-        if db is not None and conn is not None:
-            db.release_connection(conn)
+
+
+def _execute_store_matches(cur, matches: list[Match]) -> None:
+    for match in matches:
+        cur.execute(
+            INSERT_MATCHES_QUERY,
+            {
+                "match_id": match.match_id,
+                "match_url": match.match_url,
+                "team1": match.team1,
+                "team2": match.team2,
+                "score1": match.score1,
+                "score2": match.score2,
+                "winner": match.winner,
+                "event": match.event,
+                "match_type": match.match_type,
+                "forfeit": match.forfeit,
+                "date": match.date,
+                "map_links": str(match.map_links),
+                "demo_links": str(match.demo_links),
+                "last_inserted_at": match.last_inserted_at,
+                "last_scraped_at": match.last_scraped_at,
+                "last_updated_at": match.last_updated_at,
+                "data_complete": match.data_complete,
+            },
+        )
+    logger.info("Stored %d match records.", len(matches))

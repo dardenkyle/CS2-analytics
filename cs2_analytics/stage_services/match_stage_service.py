@@ -13,9 +13,9 @@ if TYPE_CHECKING:
         MapIngestionState,
         MatchIngestionState,
     )
-    from cs2_analytics.models.match import Match
     from cs2_analytics.parsers.match_parser import MatchParser
     from cs2_analytics.scrapers.match_scraper import MatchScraper
+    from cs2_analytics.storage.database import Database
 
 
 class MatchStageService:
@@ -24,16 +24,18 @@ class MatchStageService:
     def __init__(
         self,
         parser: MatchParser,
-        store_matches: Callable[[list[Match]], None],
+        store_matches: Callable[..., None],
         match_state: MatchIngestionState,
         map_state: MapIngestionState,
         demo_state: DemoIngestionState,
+        db: Database,
     ) -> None:
         self.parser = parser
         self.store_matches = store_matches
         self.match_state = match_state
         self.map_state = map_state
         self.demo_state = demo_state
+        self.db = db
 
     def process_item(
         self, match_id: int, match_url: str, *, scraper: MatchScraper
@@ -51,9 +53,10 @@ class MatchStageService:
             self.match_state.mark_as_failed(match_id, message)
             return StageItemResult.failed(message)
 
-        self.store_matches([match])
-        self._record_followups(match_id, map_links, demo_links)
-        self.match_state.mark_as_processed(match_id)
+        with self.db.transaction() as cur:
+            self.store_matches([match], cur=cur)
+            self._record_followups(match_id, map_links, demo_links, cur=cur)
+            self.match_state.mark_as_processed(match_id, cur=cur)
         return StageItemResult.processed()
 
     def _record_followups(
@@ -61,6 +64,8 @@ class MatchStageService:
         match_id: int,
         map_links: list[tuple[int, str]],
         demo_links: list[tuple[str, str]],
+        *,
+        cur=None,
     ) -> None:
         """Record map and demo links returned by the parser."""
         for map_order, (map_id, map_url) in enumerate(map_links, start=1):
@@ -70,6 +75,7 @@ class MatchStageService:
                 source="match_parser",
                 match_id=match_id,
                 map_order=map_order,
+                cur=cur,
             )
         for demo_id, demo_url in demo_links:
-            self.demo_state.queue(demo_id, demo_url, source="match_parser")
+            self.demo_state.queue(demo_id, demo_url, source="match_parser", cur=cur)
