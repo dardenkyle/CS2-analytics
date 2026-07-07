@@ -35,7 +35,11 @@ dependencies = [
     "python-dotenv",
     "fastapi",
     "uvicorn",
+    "typer",
 ]
+
+[project.scripts]
+cs2a = "cs2_analytics.cli:app"
 
 [project.optional-dependencies]
 demo = [

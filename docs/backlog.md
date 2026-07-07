@@ -15,10 +15,12 @@ public demo is live.
 
 Current priorities:
 
-- finish Phase 3.9 environment and tooling hardening (#69, #86)
-- close the remaining Phase 4 entry criteria in the v1.0 hardening list,
-  led by atomic data-write/state-transition behavior (#74)
-- then initialize dbt without moving ingestion responsibilities into dbt
+- establish a solid ingestion baseline: run the scraper locally, persist to
+  the Render database, with controllable quantity (`cs2a` caps and batch
+  sizes) and a schedulable entry point
+- then initialize dbt (Phase 4) without moving ingestion responsibilities
+  into dbt; Phase 3.9 tooling hardening (#67-#70, #86) and the Phase 4
+  entry bugs (#71, #74) are closed
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
   source schema normalization
 - defer demo expansion and Airflow until after the initial dbt layer exists
@@ -607,11 +609,12 @@ installs, and consolidate lint/format tooling on ruff before the public frontend
 deploy (A3, #62) and Phase 4 orchestration work begin.
 
 Status:
-In progress. Tooling targets Python 3.12 (#67), uv + `uv.lock` landed (#68),
-ruff is the sole lint/format tool (#70), and dev/test tooling lives in
-`[dependency-groups]` so plain `uv sync` installs it (#69). The A3 gate this
-phase carried has been satisfied — the frontend is deployed. Remaining: the
-`cs2a` CLI entry point (#86).
+Complete. Tooling targets Python 3.12 (#67), uv + `uv.lock` landed (#68),
+ruff is the sole lint/format tool (#70), dev/test tooling lives in
+`[dependency-groups]` so plain `uv sync` installs it (#69), and the `cs2a`
+CLI entry point wraps discovery, processing, and status reporting (#86).
+The A3 gate this phase carried has been satisfied — the frontend is
+deployed.
 
 Convention: numeric phases track backend/pipeline/infra; letter phases track the
 frontend. Phase 3.9 is the only cross-axis dependency — A3 is blocked by #67
@@ -626,7 +629,7 @@ and #68.
       by default (#69)
 - [x] Consolidate lint/format on ruff — remove black and isort from dev deps
       (#70)
-- [ ] Add `cs2a` CLI entry point (#86)
+- [x] Add `cs2a` CLI entry point (#86)
 
 ### Suggested branch sequence
 
