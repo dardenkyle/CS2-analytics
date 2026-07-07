@@ -45,7 +45,7 @@ def discover(
     ] = DiscoverMode.INCREMENTAL,
     max_matches: Annotated[
         int | None,
-        typer.Option(help="Override the per-mode match cap."),
+        typer.Option(min=1, help="Override the per-mode match cap."),
     ] = None,
 ) -> None:
     """Scrape results pages and queue newly discovered matches."""
@@ -59,7 +59,7 @@ def discover(
 def process(
     batch: Annotated[
         int,
-        typer.Option(help="Items to process per stage batch."),
+        typer.Option(min=1, help="Items to process per stage batch."),
     ] = 50,
 ) -> None:
     """Process pending matches, then pending maps."""

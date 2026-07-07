@@ -89,6 +89,38 @@ def test_discover_max_matches_overrides_mode(monkeypatch) -> None:
     assert calls == [("results", {"max_matches": 7})]
 
 
+def test_discover_rejects_nonpositive_max_matches(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_controller(
+        monkeypatch,
+        "cs2_analytics.controllers.results_controller",
+        "ResultsController",
+        "results",
+        calls,
+    )
+
+    result = runner.invoke(app, ["ingest", "discover", "--max-matches", "0"])
+
+    assert result.exit_code != 0
+    assert calls == []
+
+
+def test_process_rejects_nonpositive_batch(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_controller(
+        monkeypatch,
+        "cs2_analytics.controllers.match_controller",
+        "MatchController",
+        "match",
+        calls,
+    )
+
+    result = runner.invoke(app, ["process", "--batch", "0"])
+
+    assert result.exit_code != 0
+    assert calls == []
+
+
 def test_process_runs_matches_then_maps_with_batch(monkeypatch) -> None:
     calls: list[tuple[str, dict]] = []
     _patch_controller(
