@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from cs2_analytics.stage_services.stage_result import StageItemResult
 
 if TYPE_CHECKING:
+    from typing import Protocol
+
     from cs2_analytics.ingestion_state import (
         DemoIngestionState,
         MapIngestionState,
         MatchIngestionState,
     )
+    from cs2_analytics.models.match import Match
     from cs2_analytics.parsers.match_parser import MatchParser
     from cs2_analytics.scrapers.match_scraper import MatchScraper
     from cs2_analytics.storage.database import Database
+
+    class MatchWriter(Protocol):
+        """Persists matches, optionally joining the caller's transaction."""
+
+        def __call__(self, matches: list[Match], /, cur: object = None) -> None: ...
 
 
 class MatchStageService:
@@ -24,7 +31,7 @@ class MatchStageService:
     def __init__(
         self,
         parser: MatchParser,
-        store_matches: Callable[..., None],
+        store_matches: MatchWriter,
         match_state: MatchIngestionState,
         map_state: MapIngestionState,
         demo_state: DemoIngestionState,

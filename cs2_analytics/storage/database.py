@@ -91,6 +91,7 @@ class Database:
                 "Unable to acquire a database connection from the pool."
             )
 
+        cur = None
         try:
             cur = conn.cursor()
             yield cur
@@ -99,6 +100,8 @@ class Database:
             conn.rollback()
             raise DatabaseOperationError("Failed during database transaction.") from e
         finally:
+            if cur is not None:
+                cur.close()
             self.release_connection(conn)
 
     @contextmanager
@@ -110,6 +113,7 @@ class Database:
                 "Unable to acquire a database connection from the pool."
             )
 
+        cur = None
         try:
             cur = conn.cursor()
             yield cur
@@ -118,6 +122,8 @@ class Database:
             conn.rollback()
             raise DatabaseOperationError("Failed during database operation.") from e
         finally:
+            if cur is not None:
+                cur.close()
             self.release_connection(conn)
 
     def create_indexes(self) -> bool:
