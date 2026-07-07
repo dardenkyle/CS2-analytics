@@ -3,6 +3,7 @@ import pytest
 from cs2_analytics.controllers import map_controller as map_module
 from cs2_analytics.exceptions import MapParseError, SessionScrapeError
 from cs2_analytics.stage_services import StageItemResult
+from tests.support import FakeTransactionDb
 
 
 class _FakeMapState:
@@ -22,7 +23,7 @@ class _FakeMapState:
     def mark_as_failed(self, item_id: int, reason: str) -> None:
         self.failed.append((item_id, reason))
 
-    def mark_as_processed(self, item_id: int) -> None:
+    def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)
 
     def mark_as_processing(self, item_id: int) -> None:
@@ -118,15 +119,16 @@ def _build_map_controller(
     monkeypatch.setattr(map_module, "MapScraper", scraper_cls)
     monkeypatch.setattr(map_module, "MapParser", parser_cls)
     monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapState)
+    monkeypatch.setattr(map_module, "get_db", lambda: FakeTransactionDb())
     monkeypatch.setattr(
         map_module,
         "store_maps",
-        lambda _maps: None,
+        lambda _maps, cur=None: None,
     )
     monkeypatch.setattr(
         map_module,
         "store_players",
-        lambda _players: None,
+        lambda _players, cur=None: None,
     )
     monkeypatch.setattr(map_module.time, "sleep", lambda *_args, **_kwargs: None)
     return map_module.MapController()
@@ -141,15 +143,16 @@ def test_map_controller_continues_after_item_failure(
     monkeypatch.setattr(map_module, "MapScraper", _SuccessfulScraper)
     monkeypatch.setattr(map_module, "MapParser", _FailOnceThenSucceedParser)
     monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapState)
+    monkeypatch.setattr(map_module, "get_db", lambda: FakeTransactionDb())
     monkeypatch.setattr(
         map_module,
         "store_maps",
-        lambda maps: stored_maps.append(maps),
+        lambda maps, cur=None: stored_maps.append(maps),
     )
     monkeypatch.setattr(
         map_module,
         "store_players",
-        lambda players: stored_players.append(players),
+        lambda players, cur=None: stored_players.append(players),
     )
     monkeypatch.setattr(map_module.time, "sleep", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
@@ -189,12 +192,12 @@ def test_map_controller_retries_retryable_error_before_succeeding(
     monkeypatch.setattr(
         controller.stage_service,
         "store_maps",
-        lambda maps: stored_maps.append(maps),
+        lambda maps, cur=None: stored_maps.append(maps),
     )
     monkeypatch.setattr(
         controller.stage_service,
         "store_players",
-        lambda players: stored_players.append(players),
+        lambda players, cur=None: stored_players.append(players),
     )
     monkeypatch.setattr(
         map_module.logger,

@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import UTC, datetime
 
 import pytest
@@ -36,6 +37,18 @@ class _FakeDb:
 
     def release_connection(self, conn: _FailingConnection) -> None:
         self.released = True
+
+    @contextmanager
+    def get_cursor(self):
+        conn = self.get_connection()
+        try:
+            yield conn.cursor()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            self.release_connection(conn)
 
 
 def test_store_matches_wraps_database_failures(

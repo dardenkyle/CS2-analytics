@@ -61,12 +61,15 @@ def test_match_stage_service_records_constructor_dependencies() -> None:
     map_state = object()
     demo_state = object()
 
+    db = object()
+
     service = MatchStageService(
         parser=parser,
         store_matches=_store_stub,
         match_state=match_state,
         map_state=map_state,
         demo_state=demo_state,
+        db=db,
     )
 
     assert service.parser is parser
@@ -74,23 +77,28 @@ def test_match_stage_service_records_constructor_dependencies() -> None:
     assert service.match_state is match_state
     assert service.map_state is map_state
     assert service.demo_state is demo_state
+    assert service.db is db
 
 
 def test_map_stage_service_records_constructor_dependencies() -> None:
     parser = object()
     map_state = object()
 
+    db = object()
+
     service = MapStageService(
         parser=parser,
         store_maps=_store_stub,
         store_players=_store_stub,
         map_state=map_state,
+        db=db,
     )
 
     assert service.parser is parser
     assert service.store_maps is _store_stub
     assert service.store_players is _store_stub
     assert service.map_state is map_state
+    assert service.db is db
 
 
 def test_demo_stage_service_records_constructor_dependencies() -> None:

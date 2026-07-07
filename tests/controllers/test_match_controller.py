@@ -2,6 +2,7 @@ import pytest
 
 from cs2_analytics.controllers import match_controller as match_module
 from cs2_analytics.exceptions import MatchParseError, SessionScrapeError
+from tests.support import FakeTransactionDb
 
 
 class _FakeMatchState:
@@ -17,7 +18,7 @@ class _FakeMatchState:
     def mark_as_failed(self, item_id: int, reason: str) -> None:
         self.failed.append((item_id, reason))
 
-    def mark_as_processed(self, item_id: int) -> None:
+    def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)
 
     def mark_as_processing(self, item_id: int) -> None:
@@ -34,6 +35,8 @@ class _FakeFollowupState:
         url: str,
         source: str = "unknown",
         match_id: int | None = None,
+        map_order: int | None = None,
+        cur=None,
     ) -> None:
         self.recorded.append((item_id, url, source, match_id))
 
@@ -96,7 +99,8 @@ def _build_match_controller(
     monkeypatch.setattr(match_module, "MatchIngestionState", _FakeMatchState)
     monkeypatch.setattr(match_module, "MapIngestionState", _FakeFollowupState)
     monkeypatch.setattr(match_module, "DemoIngestionState", _FakeFollowupState)
-    monkeypatch.setattr(match_module, "store_matches", lambda _matches: None)
+    monkeypatch.setattr(match_module, "store_matches", lambda _matches, cur=None: None)
+    monkeypatch.setattr(match_module, "get_db", lambda: FakeTransactionDb())
     monkeypatch.setattr(match_module.time, "sleep", lambda *_args, **_kwargs: None)
     return match_module.MatchController()
 
@@ -221,7 +225,7 @@ def test_match_controller_continues_after_item_failure(
     monkeypatch.setattr(
         controller.stage_service,
         "store_matches",
-        lambda matches: stored_matches.append(matches),
+        lambda matches, cur=None: stored_matches.append(matches),
     )
 
     controller.run(batch_size=2)
@@ -268,7 +272,7 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
     monkeypatch.setattr(
         controller.stage_service,
         "store_matches",
-        lambda matches: stored_matches.append(matches),
+        lambda matches, cur=None: stored_matches.append(matches),
     )
 
     controller.run(batch_size=1)
