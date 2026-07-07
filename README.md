@@ -44,7 +44,6 @@ The current ingestion architecture uses PostgreSQL-backed ingestion-state tables
 - Python 3.12
 - SeleniumBase and BeautifulSoup for web scraping
 - PostgreSQL for structured data storage, with Alembic-managed migrations
-- Pandas and NumPy for analytics/data processing
 - FastAPI for the public read API (deployed on Render)
 - React, TypeScript, and Vite for the public frontend (deployed on GitHub
   Pages)
@@ -113,13 +112,13 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ### 3. Install Dependencies
 
 ```sh
-uv sync --extra dev
+uv sync
 ```
 
 This creates a `.venv` virtual environment and installs all runtime and
-development dependencies from the committed `uv.lock` lockfile. Once
-dev dependencies move to `[dependency-groups]` (issue #69), this
-becomes `uv sync`.
+development dependencies from the committed `uv.lock` lockfile. Dev and
+test tooling lives in `[dependency-groups]`, which `uv sync` installs by
+default.
 
 Activate the virtual environment before running subsequent `python`
 commands:

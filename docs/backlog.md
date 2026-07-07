@@ -607,11 +607,11 @@ installs, and consolidate lint/format tooling on ruff before the public frontend
 deploy (A3, #62) and Phase 4 orchestration work begin.
 
 Status:
-In progress. The `phase3.9-tooling-version-align` branch aligned all tooling
-targets to Python 3.12 and added missing labels to the tracked taxonomy.
-This phase gates Frontend A3 (#62): the GitHub Actions CI path for the
-frontend requires the install and tooling story to be clean and reproducible
-first.
+In progress. Tooling targets Python 3.12 (#67), uv + `uv.lock` landed (#68),
+ruff is the sole lint/format tool (#70), and dev/test tooling lives in
+`[dependency-groups]` so plain `uv sync` installs it (#69). The A3 gate this
+phase carried has been satisfied — the frontend is deployed. Remaining: the
+`cs2a` CLI entry point (#86).
 
 Convention: numeric phases track backend/pipeline/infra; letter phases track the
 frontend. Phase 3.9 is the only cross-axis dependency — A3 is blocked by #67
@@ -619,31 +619,32 @@ and #68.
 
 ### Planned work
 
-- [ ] Align tooling config to Python 3.12 — fix stale 3.14 targets in mypy,
+- [x] Align tooling config to Python 3.12 — fix stale 3.14 targets in mypy,
       ruff, black, and classifiers (#67)
-- [ ] Adopt uv + commit `uv.lock` for reproducible installs (#68)
-- [ ] Move dev/test tooling to `[dependency-groups]` so `uv sync` installs them
+- [x] Adopt uv + commit `uv.lock` for reproducible installs (#68)
+- [x] Move dev/test tooling to `[dependency-groups]` so `uv sync` installs them
       by default (#69)
 - [x] Consolidate lint/format on ruff — remove black and isort from dev deps
       (#70)
+- [ ] Add `cs2a` CLI entry point (#86)
 
 ### Suggested branch sequence
 
-1. [ ] `phase3.9-tooling-version-align` — resolves #67
-2. [ ] `phase3.9-uv-adoption` — resolves #68
-3. [ ] `phase3.9-dependency-groups` — resolves #69
-4. [ ] `phase3.9-ruff-consolidation` — resolves #70
+1. [x] `phase3.9-tooling-version-align` — resolves #67
+2. [x] `phase3.9-uv-adoption` — resolves #68
+3. [x] `phase3.9-dependency-groups` — resolves #69
+4. [x] `phase3.9-ruff-consolidation` — resolves #70
 
 Do #67 and #68 first — they are the actual gate for A3. #69 and #70 are
 same-pass cleanup that can follow immediately after.
 
 ### Phase 3.9 exit criteria
 
-- [ ] All tooling targets Python 3.12
-- [ ] `uv.lock` is committed and CI uses `uv sync`
-- [ ] Dev/test deps install via `uv sync` without extra flags
-- [ ] ruff is the sole formatter and import sorter
-- [ ] CI passes
+- [x] All tooling targets Python 3.12
+- [x] `uv.lock` is committed and CI uses `uv sync`
+- [x] Dev/test deps install via `uv sync` without extra flags
+- [x] ruff is the sole formatter and import sorter
+- [x] CI passes
 
 ---
 
