@@ -65,6 +65,8 @@ class ResultsScraper:
             match_urls, stop = self._extract_matches_from_page(page_url)
             batch = []
             for full_url in match_urls:  # already starts with https://www.hltv.org
+                if total_discovered >= max_matches:
+                    break
                 match_id = self._extract_match_id(full_url)
                 if match_id:
                     batch.append((match_id, full_url))
@@ -73,7 +75,7 @@ class ResultsScraper:
             if batch:
                 yield batch
 
-            if stop or not match_urls:
+            if total_discovered >= max_matches or stop or not match_urls:
                 break
 
             offset += 100

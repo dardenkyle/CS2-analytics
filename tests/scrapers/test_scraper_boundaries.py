@@ -34,7 +34,7 @@ def _imported_module_names(source: str) -> list[str]:
 
 @pytest.mark.parametrize("module_path", SCRAPER_MODULES, ids=lambda p: p.name)
 def test_scraper_module_has_no_persistence_imports(module_path: Path) -> None:
-    imported = _imported_module_names(module_path.read_text())
+    imported = _imported_module_names(module_path.read_text(encoding="utf-8"))
 
     violations = [
         name for name in imported if name.startswith(FORBIDDEN_IMPORT_PREFIXES)

@@ -9,9 +9,10 @@
 
 Current implementation note:
 
-- `ResultsScraper` still performs discovery-time lifecycle-row refreshes in `match_ingestion_state`
-- that behavior reflects the current codebase, not the long-term target boundary
-- over time, discovery-state mutation should move out of `ResultsScraper` and into a cleaner stage-oriented boundary
+- `ResultsScraper` is fetch-only: it yields discovered match batches, and
+  `ResultsStageService` owns the `match_ingestion_state` refreshes (#71)
+- a test in `tests/scrapers/test_scraper_boundaries.py` fails if any scraper
+  module imports storage or ingestion-state modules
 
 ## Parsers
 

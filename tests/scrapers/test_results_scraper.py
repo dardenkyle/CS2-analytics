@@ -74,6 +74,30 @@ def test_iter_match_batches_stops_at_max_matches(
     assert calls == 2
 
 
+def test_iter_match_batches_caps_within_a_page(
+    scraper: ResultsScraper, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    urls = [f"https://www.hltv.org/matches/{n}/x-vs-y" for n in (101, 102, 103)]
+    calls = 0
+
+    def fake_extract(_url: str) -> tuple[list[str], bool]:
+        nonlocal calls
+        calls += 1
+        return urls, False
+
+    monkeypatch.setattr(scraper, "_extract_matches_from_page", fake_extract)
+
+    batches = list(scraper.iter_match_batches(max_matches=2))
+
+    assert batches == [
+        [
+            (101, "https://www.hltv.org/matches/101/x-vs-y"),
+            (102, "https://www.hltv.org/matches/102/x-vs-y"),
+        ]
+    ]
+    assert calls == 1
+
+
 def test_iter_match_batches_stops_on_empty_page(
     scraper: ResultsScraper, monkeypatch: pytest.MonkeyPatch
 ) -> None:

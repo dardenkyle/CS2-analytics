@@ -61,7 +61,9 @@ Primary responsibility:
 
 Current implementation note:
 
-- `ResultsScraper` currently performs discovery-time lifecycle-row refreshes in `match_ingestion_state`
+- `ResultsScraper` is fetch-only and yields discovered match batches;
+  `ResultsStageService` performs the `match_ingestion_state` lifecycle-row
+  refreshes (#71)
 - rediscovery refreshes already happen in the current implementation
 
 This stage should not parse match detail pages or write match records directly.
