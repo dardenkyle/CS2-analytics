@@ -57,15 +57,23 @@ pages:
 
 The same status model is used across match, map, and demo ingestion state:
 
-- `pending`: discovered and ready to be processed
+- `discovered`: discovered and ready to be processed
 - `processing`: actively being worked on
 - `processed`: fetched, parsed, and persisted successfully
 - `failed`: terminal failure under the current retry policy
 - `skipped`: intentionally not processed
+- `dead`: exceeded max retry attempts; excluded from the work queue without
+  filtering on `failure_count` in claim queries
+- `partial`: reserved for the match-complete processing unit; a match is
+  partial when it was processed but not all its maps reached a terminal state
 
-`pending` replaces queue-oriented language like `queued`.
+`discovered` replaces the earlier `pending`, which did not reflect the domain:
+rows are discovered matches/maps waiting to be processed, not generic pending
+work.
 `processed` replaces parser-specific language like `parsed`, because a
 successful stage includes fetch, parse, and persistence.
+Nothing writes `dead` or `partial` yet; that logic lands with the
+match-complete processing unit and retry exhaustion work.
 
 ## Shared Fields
 

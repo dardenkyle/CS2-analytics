@@ -98,7 +98,7 @@ def test_match_ingestion_state_refreshes_existing_rows_on_rediscovery(
 
     assert cursor.execute_query is not None
     assert "match_ingestion_state" in cursor.execute_query
-    assert "'pending'" in cursor.execute_query
+    assert "'discovered'" in cursor.execute_query
     assert "first_seen_at" in cursor.execute_query
     assert "last_seen_at" in cursor.execute_query
     assert "ON CONFLICT (match_id) DO UPDATE" in cursor.execute_query
@@ -128,6 +128,39 @@ def test_match_ingestion_state_marks_failures_with_lifecycle_fields(
     assert "failure_count = COALESCE(failure_count, 0) + 1" in cursor.execute_query
     assert cursor.execute_values is not None
     assert cursor.execute_values[2:] == ("boom", 1)
+
+
+def test_match_ingestion_state_marks_dead_with_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingStateDb(cursor))
+    state = MatchIngestionState()
+
+    state.mark_as_dead(1, "retries exhausted")
+
+    assert cursor.execute_query is not None
+    assert "status = 'dead'" in cursor.execute_query
+    assert "last_updated_at" in cursor.execute_query
+    assert "last_error_message" in cursor.execute_query
+    assert cursor.execute_values is not None
+    assert cursor.execute_values[1:] == ("retries exhausted", 1)
+
+
+def test_match_ingestion_state_marks_partial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _RecordingStateDb(cursor))
+    state = MatchIngestionState()
+
+    state.mark_as_partial(1)
+
+    assert cursor.execute_query is not None
+    assert "status = 'partial'" in cursor.execute_query
+    assert "last_updated_at" in cursor.execute_query
+    assert cursor.execute_values is not None
+    assert cursor.execute_values[1:] == (1,)
 
 
 def test_map_ingestion_state_records_parent_match_context(

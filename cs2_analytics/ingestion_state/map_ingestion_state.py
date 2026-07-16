@@ -20,11 +20,11 @@ class MapIngestionState(BaseIngestionState[int]):
     def fetch_with_match_context(
         self, limit: int = 25
     ) -> list[tuple[int, str, int | None, int | None]]:
-        """Fetch pending map rows with parent match and map-order context."""
+        """Fetch discovered map rows with parent match and map-order context."""
         query = """
         SELECT map_id, map_url, match_id, map_order
         FROM map_ingestion_state
-        WHERE status = 'pending'
+        WHERE status = 'discovered'
         ORDER BY priority DESC, first_seen_at ASC
         LIMIT %s;
         """
@@ -35,7 +35,7 @@ class MapIngestionState(BaseIngestionState[int]):
                 return rows
         except Exception as e:
             raise self.error_cls(
-                "Failed to fetch pending map items with match context."
+                "Failed to fetch discovered map items with match context."
             ) from e
 
     def queue(
@@ -61,7 +61,7 @@ class MapIngestionState(BaseIngestionState[int]):
             map_id, map_url, match_id, map_order, status, source, priority,
             first_seen_at, last_seen_at, last_updated_at
         )
-        VALUES (%s, %s, %s, %s, 'pending', %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, 'discovered', %s, %s, %s, %s, %s)
         ON CONFLICT (map_id) DO UPDATE
         SET map_url = EXCLUDED.map_url,
             match_id = COALESCE(EXCLUDED.match_id, map_ingestion_state.match_id),

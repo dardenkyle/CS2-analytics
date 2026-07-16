@@ -206,7 +206,7 @@ stage-service and dbt-readiness cleanup.
 
 ### Completed lifecycle-state cleanup
 
-- Status values are based on lifecycle semantics: `pending`, `processing`, `processed`, `failed`, and `skipped`
+- Status values are based on lifecycle semantics: `discovered`, `processing`, `processed`, `failed`, `skipped`, `dead`, and `partial`
 - Ingestion-state tables use distinct lifecycle fields such as `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, and `last_failed_at`
 - Current table names are `match_ingestion_state`, `map_ingestion_state`, and `demo_ingestion_state`
 - Redundant fields such as `retry_count`, `run_id`, and `worker_id` are intentionally absent from these lifecycle tables

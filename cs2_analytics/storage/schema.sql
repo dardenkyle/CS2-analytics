@@ -138,8 +138,11 @@ CREATE TABLE IF NOT EXISTS match_ingestion_state (
     match_id INT PRIMARY KEY,
     match_url TEXT NOT NULL,
     status TEXT CHECK (
-        status IN ('pending', 'processing', 'processed', 'failed', 'skipped')
-    ) NOT NULL DEFAULT 'pending',
+        status IN (
+            'discovered', 'processing', 'processed', 'failed', 'skipped',
+            'dead', 'partial'
+        )
+    ) NOT NULL DEFAULT 'discovered',
     first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_attempted_at TIMESTAMP,
@@ -163,8 +166,11 @@ CREATE TABLE IF NOT EXISTS map_ingestion_state (
         AND 5
     ),
     status TEXT CHECK (
-        status IN ('pending', 'processing', 'processed', 'failed', 'skipped')
-    ) NOT NULL DEFAULT 'pending',
+        status IN (
+            'discovered', 'processing', 'processed', 'failed', 'skipped',
+            'dead', 'partial'
+        )
+    ) NOT NULL DEFAULT 'discovered',
     first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_attempted_at TIMESTAMP,
@@ -182,8 +188,11 @@ CREATE TABLE IF NOT EXISTS demo_ingestion_state (
     demo_id TEXT PRIMARY KEY,
     demo_url TEXT NOT NULL,
     status TEXT CHECK (
-        status IN ('pending', 'processing', 'processed', 'failed', 'skipped')
-    ) NOT NULL DEFAULT 'pending',
+        status IN (
+            'discovered', 'processing', 'processed', 'failed', 'skipped',
+            'dead', 'partial'
+        )
+    ) NOT NULL DEFAULT 'discovered',
     first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_attempted_at TIMESTAMP,
