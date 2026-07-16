@@ -124,11 +124,10 @@ API_CORS_ORIGINS = _read_csv(
 
 # Feature Toggles
 ENABLE_DATA_STORAGE = True
-ENABLE_DEMO_DOWNLOADS = False
 ENABLE_ANALYTICS = False
 
 # Scraping Config
-HLTV_URL = "https://www.hltv.org/results"
+SOURCE_URL = os.getenv("SOURCE_URL", default="https://www.hltv.org/results")
 START_DATE = "2025-10-01"
 END_DATE = str(dt.datetime.today().date())
 MAX_MATCHES = 10

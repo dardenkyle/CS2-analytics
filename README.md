@@ -19,7 +19,7 @@ The system is deployed end to end: a Python ingestion pipeline writes to
 PostgreSQL, a FastAPI service on Render serves player statistics, and a React
 SPA on GitHub Pages presents them publicly.
 
-The current ingestion architecture uses PostgreSQL-backed ingestion-state tables, thin controllers for batch orchestration, and stage services for per-item match/map/demo workflow boundaries.
+The current ingestion architecture uses PostgreSQL-backed ingestion-state tables, thin controllers for batch orchestration, and stage services for per-item match/map workflow boundaries.
 
 ## Features
 
@@ -32,7 +32,9 @@ The current ingestion architecture uses PostgreSQL-backed ingestion-state tables
 
 ### Deferred / Later-Phase Work
 
-- Demo processing: demo download and parsing remain deferred, though `DemoStageService` preserves the stage boundary.
+- Demo processing: deferred; the demo subsystem lives on the
+  `feature/demo-parsing` branch, while demo link discovery and
+  `demo_ingestion_state` tracking remain on `main`.
 - Deployment baseline: containerized runtime, environment-driven configuration,
   migrations, CI, and smoke tests come before dbt.
 - dbt transformation layer: dbt follows the deployment baseline and stays
@@ -73,15 +75,12 @@ CS2-Analytics/
 |   |-- pipeline/
 |   |-- scrapers/
 |   |-- stage_services/
-|   |-- services/
 |   |-- storage/
 |   `-- utils/
 |-- docs/
 |-- logs/
 |-- scripts/
 |-- tests/
-|-- demos/
-|-- parsed_data/
 `-- frontend/
 ```
 
@@ -146,6 +145,12 @@ Required runtime variables:
 | `DB_PASS` | PostgreSQL password. | `change_me` |
 | `DB_HOST` | PostgreSQL host. | `localhost` |
 | `DB_PORT` | PostgreSQL port. | `5432` |
+
+Optional variables:
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `SOURCE_URL` | Overrides the results discovery URL used by the results scraper. | Built-in results source |
 
 Production mode fails fast when required runtime variables are missing, when
 `DEBUG_MODE=true`, or when `API_CORS_ORIGINS` includes `*`.
@@ -266,7 +271,7 @@ Then open the host and port configured by `API_HOST` and `API_PORT`, such as
 python -m pytest
 ```
 
-Note: Demo processing is still deferred and intentionally remains outside the active ingestion pipeline.
+Note: Demo processing is still deferred and intentionally remains outside the active ingestion pipeline; its implementation lives on the `feature/demo-parsing` branch.
 
 ## Architecture Notes
 
@@ -360,11 +365,14 @@ Demo files introduce a different workload class: large binary downloads,
 temporary-file lifecycle, long parses, and event-level extraction. Rather
 than bolt that onto the match/map surface, demo processing is deferred
 until the analytics layer (dbt) exists and downstream demo needs are
-concrete. The boundary is kept, not deleted: `DemoStageService` and the
-demo ingestion-state table preserve the stage shape, so demo expansion
-plugs into the same controller/stage-service pattern later. The tradeoff
-is no event-level stats yet, in exchange for keeping the active pipeline
-small enough to harden and deploy.
+concrete. The boundary is kept, not deleted: demo links are still
+discovered during match processing and tracked in the demo
+ingestion-state table, while the non-working downloader/parser
+implementation lives on the `feature/demo-parsing` branch until
+acquisition is unblocked. Demo expansion plugs back into the same
+controller/stage-service pattern later. The tradeoff is no event-level
+stats yet, in exchange for keeping the active pipeline small enough to
+harden and deploy.
 
 ## Data Insights & Usage (planned)
 

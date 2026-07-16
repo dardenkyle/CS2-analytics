@@ -4,14 +4,17 @@
 
 This project has moved from an older queue-oriented scraping design toward a cleaner ingestion-state-driven architecture.
 
-The schema uses PostgreSQL ingestion-state tables directly, and the active match, map, and demo stages now separate batch orchestration from per-item workflow through stage services.
+The schema uses PostgreSQL ingestion-state tables directly, and the active results, match, and map stages now separate batch orchestration from per-item workflow through stage services.
 
 ## Current Architectural Focus
 
 - `main.py` and the top-level pipeline remain intentionally thin
-- `MatchController`, `MapController`, and `DemoController` own batch-level concerns
+- `ResultsController`, `MatchController`, and `MapController` own batch-level
+  concerns
 - stage services own per-item fetch, parse, persist, and lifecycle outcome work
-- demo processing remains deferred even though it now has a placeholder stage service boundary
+- demo processing remains deferred; its implementation lives on the
+  `feature/demo-parsing` branch while demo link discovery and
+  `demo_ingestion_state` tracking stay on `main`
 - deployment baseline work is the next architecture phase before dbt
 - dbt remains the next analytics layer after deployment baseline hardening
 - Airflow remains later, after dbt
@@ -157,13 +160,16 @@ They now describe:
 
 ## Deferred Demo Stage
 
-Demo support exists in the codebase, but end-to-end demo processing is not part of the active pipeline yet.
+End-to-end demo processing is not part of the active pipeline.
 
 Current reality:
 
-- demo URLs are discovered during match processing
-- demo-specific scraper, parser, storage, ingestion-state, and stage-service components exist
-- the production path still stops after the map stage
+- demo URLs are discovered during match processing and recorded in
+  `demo_ingestion_state`
+- the non-working demo scraper, parser, storage, controller, and
+  stage-service implementation lives on the `feature/demo-parsing` branch,
+  moved off `main` until demo acquisition is unblocked
+- the production path stops after the map stage
 
 Demo work stays separate because it introduces different operational concerns:
 

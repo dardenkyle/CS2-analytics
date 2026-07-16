@@ -95,8 +95,10 @@ Pipelines coordinate stage order and should stay thin.
 
 ## Deferred Demo Boundary
 
-Demo URLs may be discovered during match processing, and demo-specific scraper,
-parser, storage, ingestion-state, and stage-service components exist.
+Demo URLs may be discovered during match processing and are recorded in
+`demo_ingestion_state`. The non-working demo scraper, parser, storage,
+controller, and stage-service implementation was moved off `main` to the
+`feature/demo-parsing` branch.
 
 Full demo download, parse, event extraction, and local artifact cleanup remain
 deferred until after the initial dbt layer exists and downstream demo needs are
@@ -136,8 +138,8 @@ source tables, removes stale fixed-ID smoke rows, seeds source rows through
 existing storage upserts, checks `/health`, confirms the top players API can
 query PostgreSQL, and removes the fixed-ID rows before exiting. It should run
 against a local or deployment-validation database rather than a production
-analytics database. Runtime artifacts such as logs, downloaded demos, and parsed
-data stay mounted from the working tree and are not baked into the image.
+analytics database. Runtime artifacts such as logs stay mounted from the
+working tree and are not baked into the image.
 
 The first cloud worker path is a manual GitHub Actions workflow,
 `Manual Pipeline Worker`, that builds the same Docker image, validates

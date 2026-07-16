@@ -8,7 +8,6 @@ IMPORT_SAFETY_MODULES = (
     "cs2_analytics.storage.match_storage",
     "cs2_analytics.storage.map_storage",
     "cs2_analytics.storage.player_storage",
-    "cs2_analytics.storage.demo_storage",
     "cs2_analytics.ingestion_state.base_ingestion_state",
     "cs2_analytics.ingestion_state.match_ingestion_state",
     "cs2_analytics.ingestion_state.map_ingestion_state",
