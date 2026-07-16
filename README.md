@@ -179,6 +179,19 @@ environments should run the equivalent Alembic command during release startup:
 alembic -c cs2_analytics/alembic.ini upgrade head
 ```
 
+Day-to-day migration operations are also exposed through the CLI. Each
+command first prints the target database (name, host, and port) so it is
+obvious whether the environment points at a local or production database:
+
+```sh
+cs2a db current                  # show the database's current revision
+cs2a db upgrade                  # apply migrations up to head; confirms first
+cs2a db downgrade <revision>     # revert to a revision; confirms first
+```
+
+These wrap the same `alembic -c cs2_analytics/alembic.ini ...` commands with
+the same environment-driven connection settings.
+
 For an existing database that was already initialized from the current
 `schema.sql`, first confirm the live schema matches the initial Alembic
 migration, then mark it as migration-managed without recreating tables:
