@@ -45,6 +45,7 @@ Thumbs.db
 # Test coverage
 .coverage
 .coverage.*
+coverage-badge.json
 .pytest_cache/
 htmlcov/
 
