@@ -333,11 +333,13 @@ def test_schema_defines_ingestion_state_tables() -> None:
         "last_updated_at",
     )
     required_status_values = (
-        "'pending'",
+        "'discovered'",
         "'processing'",
         "'processed'",
         "'failed'",
         "'skipped'",
+        "'dead'",
+        "'partial'",
     )
 
     for table_name in (
