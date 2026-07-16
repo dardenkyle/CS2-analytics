@@ -3,11 +3,21 @@
 import time
 from collections.abc import Callable
 from contextlib import suppress
-from typing import TypeVar
+from dataclasses import dataclass
 
 from cs2_analytics.exceptions import RetryableScrapeError
 
-ScraperT = TypeVar("ScraperT")
+
+@dataclass
+class BatchRunState[ScraperT]:
+    """Tracks the active scraper and outcome counters for one controller batch run."""
+
+    scraper: ScraperT
+    succeeded: int = 0
+    failed: int = 0
+    retries: int = 0
+    processed_since_reset: int = 0
+    consecutive_recoverable_errors: int = 0
 
 
 def is_retryable_scraper_error(error: Exception) -> bool:
@@ -15,7 +25,39 @@ def is_retryable_scraper_error(error: Exception) -> bool:
     return isinstance(error, RetryableScrapeError)
 
 
-def reset_scraper(
+def _close_before_reset(scraper, logger, close_warning_message: str) -> None:
+    """Closes the outgoing scraper, downgrading close failures to a warning."""
+    try:
+        scraper.close()
+    except Exception as e:
+        logger.warning(close_warning_message, e)
+
+
+def _build_scraper[ScraperT](
+    scraper_factory: Callable[[], ScraperT], startup_delay_seconds: float
+) -> ScraperT:
+    """Creates a scraper and waits out its session startup delay."""
+    new_scraper = scraper_factory()
+    time.sleep(startup_delay_seconds)
+    return new_scraper
+
+
+def _discard_unready_scraper(
+    new_scraper,
+    *,
+    logger,
+    not_ready_warning_message: str | None,
+    reset_attempt: int,
+    attempt_total: int,
+) -> None:
+    """Logs and closes a fresh scraper that failed its health check."""
+    if not_ready_warning_message:
+        logger.warning(not_ready_warning_message, reset_attempt, attempt_total)
+    with suppress(Exception):
+        new_scraper.close()
+
+
+def reset_scraper[ScraperT](
     scraper: ScraperT,
     scraper_factory: Callable[[], ScraperT],
     *,
@@ -31,27 +73,25 @@ def reset_scraper(
     fallback_delay_seconds: float | None = None,
 ) -> ScraperT:
     """Closes and recreates a scraper, optionally retrying until a health check passes."""
-    try:
-        scraper.close()
-    except Exception as e:
-        logger.warning(close_warning_message, e)
+    _close_before_reset(scraper, logger, close_warning_message)
 
     attempt_total = max(1, max_reset_attempts)
 
     for reset_attempt in range(1, attempt_total + 1):
-        new_scraper = scraper_factory()
-        time.sleep(startup_delay_seconds)
+        new_scraper = _build_scraper(scraper_factory, startup_delay_seconds)
 
         if health_check is None or health_check(new_scraper):
             if recovery_success_message and reset_attempt > 1:
                 logger.info(recovery_success_message, reset_attempt)
             return new_scraper
 
-        if not_ready_warning_message:
-            logger.warning(not_ready_warning_message, reset_attempt, attempt_total)
-
-        with suppress(Exception):
-            new_scraper.close()
+        _discard_unready_scraper(
+            new_scraper,
+            logger=logger,
+            not_ready_warning_message=not_ready_warning_message,
+            reset_attempt=reset_attempt,
+            attempt_total=attempt_total,
+        )
 
         if reset_attempt < attempt_total:
             time.sleep(between_attempt_delay_seconds)
@@ -59,13 +99,12 @@ def reset_scraper(
     if fallback_warning_message:
         logger.warning(fallback_warning_message)
 
-    fallback_scraper = scraper_factory()
-    time.sleep(
+    return _build_scraper(
+        scraper_factory,
         startup_delay_seconds
         if fallback_delay_seconds is None
-        else fallback_delay_seconds
+        else fallback_delay_seconds,
     )
-    return fallback_scraper
 
 
 def mark_item_failed(
