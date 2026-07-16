@@ -762,7 +762,10 @@ should be addressed before the repo is considered v1.0.
       `MapParseError` into the failed ingestion state, secondary stats log a
       warning before defaulting (#75)
 - [ ] Test untested failure branches: date-parse warning, scraper close-failure, parser fallback paths
-- [ ] Batch N+1 storage writes using `executemany` (`match_storage.py`, `map_storage.py`, `player_storage.py`)
+- [x] Batch N+1 storage writes using `executemany` (`match_storage.py`,
+      `map_storage.py`, `player_storage.py`) — each store call now issues one
+      `executemany` batch instead of per-row `execute`, matching the
+      `record_many` pattern (#78)
 - [ ] Widen mypy CI target to cover `cs2_analytics` ingestion core, not just the API layer
 - [ ] Break up overlong controller and utility functions (`match_controller.py`, `map_controller.py`, `results_controller.py`, `retry_utils.py`)
 - [x] Move non-working demo subsystem to a `feature/demo-parsing` branch; add
