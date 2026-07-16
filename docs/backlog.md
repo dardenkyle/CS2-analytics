@@ -761,7 +761,10 @@ should be addressed before the repo is considered v1.0.
 - [x] Stop silently coercing parse failures to `0` — required stats now raise
       `MapParseError` into the failed ingestion state, secondary stats log a
       warning before defaulting (#75)
-- [ ] Test untested failure branches: date-parse warning, scraper close-failure, parser fallback paths
+- [x] Test untested failure branches: date-parse warning, scraper
+      close-failure, parser fallback paths — scraper branches gained tests in
+      #106; the parser fallback branches were already covered by the tests
+      added in #103, which made them raise `MapParseError` (#77)
 - [x] Batch N+1 storage writes using `executemany` (`match_storage.py`,
       `map_storage.py`, `player_storage.py`) — each store call now issues one
       `executemany` batch instead of per-row `execute`, matching the
