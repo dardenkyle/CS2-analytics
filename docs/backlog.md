@@ -759,7 +759,8 @@ should be addressed before the repo is considered v1.0.
 
 - [x] Add a coverage `fail-under` threshold and wire it into CI so the floor
       is enforced — `fail_under = 75` in `pyproject.toml`, CI runs
-      `pytest --cov` (#76)
+      `pytest --cov` (#76); floor raised to 80 with a README coverage badge
+      published from CI (#128)
 - [x] Stop silently coercing parse failures to `0` — required stats now raise
       `MapParseError` into the failed ingestion state, secondary stats log a
       warning before defaulting (#75)

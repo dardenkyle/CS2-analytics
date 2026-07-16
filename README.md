@@ -1,6 +1,7 @@
 # Counter-Strike 2 Pro Match Analytics Tool
 
 [![CI](https://github.com/dardenkyle/CS2-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/dardenkyle/CS2-analytics/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/dardenkyle/CS2-analytics/badges/coverage.json)](https://github.com/dardenkyle/CS2-analytics/actions/workflows/ci.yml)
 [![Frontend CI](https://github.com/dardenkyle/CS2-analytics/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/dardenkyle/CS2-analytics/actions/workflows/frontend-ci.yml)
 [![Deploy Frontend](https://github.com/dardenkyle/CS2-analytics/actions/workflows/deploy-frontend.yml/badge.svg)](https://github.com/dardenkyle/CS2-analytics/actions/workflows/deploy-frontend.yml)
 

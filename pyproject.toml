@@ -163,8 +163,9 @@ omit = [
 ]
 
 [tool.coverage.report]
-# Honest floor measured at 75.09% total coverage; raise as coverage improves.
-fail_under = 75
+# Honest floor; raised from 75 at a measured 80.36% (#128). Raise as
+# coverage improves.
+fail_under = 80
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
