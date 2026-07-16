@@ -95,6 +95,7 @@ def _build_map_row_soup(
     player_cell: str = '<a href="/player/22/test-player">TestPlayer</a>',
     kast: str = "70.0%",
     kills: str = "20 (10)",
+    assists: str = "2 (0)",
     adr: str = "80.0",
     rating: str = "1.01",
     swing: str = "+1.00%",
@@ -132,7 +133,7 @@ def _build_map_row_soup(
                   <td class="st-kast">{kast}</td>
                   <td class="st-clutches">0</td>
                   <td class="st-kills">{kills}</td>
-                  <td class="st-assists">2 (0)</td>
+                  <td class="st-assists">{assists}</td>
                   <td class="st-deaths">10 (1)</td>
                   <td class="st-adr">{adr}</td>
                   <td class="st-roundSwing">{swing}</td>
@@ -580,6 +581,20 @@ def test_map_parser_raises_typed_error_for_unparseable_rating() -> None:
     soup = _build_map_row_soup(rating="N/A")
 
     with pytest.raises(MapParseError, match="Failed to parse rating value"):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_missing_assists() -> None:
+    soup = _build_map_row_soup(assists="")
+
+    with pytest.raises(MapParseError, match="No player assists logged."):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_unparseable_assists() -> None:
+    soup = _build_map_row_soup(assists="-")
+
+    with pytest.raises(MapParseError, match="Failed to parse assists value"):
         _parse_map_row_soup(soup)
 
 

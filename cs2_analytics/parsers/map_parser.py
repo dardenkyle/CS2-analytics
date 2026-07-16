@@ -307,7 +307,10 @@ class MapParser:
 
     def _extract_assists(self, cols, assists_idx: int) -> tuple[int, int]:
         """Extracts assists and flash assists from the player row."""
-        assists_text = self._extract_metric_text(cols, assists_idx, ["st-assists"])
+        assists_text = self._require_metric_text(
+            self._extract_metric_text(cols, assists_idx, ["st-assists"]),
+            "No player assists logged.",
+        )
         return self._parse_pair(assists_text, metric="assists")
 
     def _extract_deaths(self, cols, deaths_idx: int) -> tuple[int, int]:
