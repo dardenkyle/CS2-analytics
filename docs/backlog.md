@@ -765,5 +765,7 @@ should be addressed before the repo is considered v1.0.
 - [ ] Batch N+1 storage writes using `executemany` (`match_storage.py`, `map_storage.py`, `player_storage.py`)
 - [ ] Widen mypy CI target to cover `cs2_analytics` ingestion core, not just the API layer
 - [ ] Break up overlong controller and utility functions (`match_controller.py`, `map_controller.py`, `results_controller.py`, `retry_utils.py`)
-- [ ] Move non-working demo subsystem to a `feature/demo-parsing` branch; add deferral note to README
+- [x] Move non-working demo subsystem to a `feature/demo-parsing` branch; add
+      deferral note to README — demo link discovery and `demo_ingestion_state`
+      remain on `main` (#81, ADR-0014)
 - [ ] Add a "Design decisions & tradeoffs" section to the README explaining key architectural choices

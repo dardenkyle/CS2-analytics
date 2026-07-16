@@ -34,11 +34,9 @@ logs/*
 .env.local
 
 # Downloaded files & data
-demos/*
-!demos/.gitkeep
+demos/
 downloaded_files/
-parsed_data/*
-!parsed_data/.gitkeep
+parsed_data/
 
 # OS
 .DS_Store

@@ -21,10 +21,6 @@ class MapParseError(ParseError):
     """Raised when a map stats page cannot be parsed."""
 
 
-class DemoParseError(ParseError):
-    """Raised when a demo file cannot be parsed."""
-
-
 class ScrapeError(CS2AnalyticsError):
     """Base exception for scraping failures."""
 
@@ -47,10 +43,6 @@ class MatchScrapeError(ScrapeError):
 
 class MapScrapeError(ScrapeError):
     """Raised when map HTML cannot be fetched."""
-
-
-class DemoScrapeError(ScrapeError):
-    """Raised when demo archives cannot be downloaded or extracted."""
 
 
 class StorageError(CS2AnalyticsError):
@@ -79,10 +71,6 @@ class MapStorageError(StorageError):
 
 class PlayerStorageError(StorageError):
     """Raised when player records cannot be stored."""
-
-
-class DemoStorageError(StorageError):
-    """Raised when demo records cannot be stored."""
 
 
 class IngestionStateError(CS2AnalyticsError):

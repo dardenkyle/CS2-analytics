@@ -369,3 +369,36 @@ Consequences:
   as before, so callers outside stage services are unaffected.
 - Transaction wiring is unit-testable by asserting all writes received the
   same cursor object.
+
+## ADR-0014: Move The Non-Working Demo Subsystem Off Main
+
+Status:
+Accepted
+
+Date:
+Phase 3.9
+
+Context:
+Non-working demo code sat on `main`: a demo scraper marked not working, a
+demo parser producing placeholder output, an unreachable demo controller and
+stage service (the pipeline demo step was commented out), and demo storage
+with no live caller. Demo acquisition is currently blocked, so the code added
+noise and maintenance surface without value (#81). ADR-0005 already committed
+to deferring demo expansion.
+
+Decision:
+Move the demo scraper, parser, controller, stage service, storage module, and
+their tests to the `feature/demo-parsing` branch, preserving full history.
+Keep the working discovery side on `main`: match processing still discovers
+demo links and records them in `demo_ingestion_state`, and the
+`demo_ingestion_state` and `demo_files` tables stay in the schema unchanged.
+
+Consequences:
+- `main` has no unreachable or placeholder demo code paths.
+- Demo discovery keeps accumulating `demo_ingestion_state` rows, so demo
+  processing can resume from recorded state when acquisition is unblocked.
+- Demo implementation work continues from `feature/demo-parsing`, which plugs
+  back into the same controller/stage-service pattern.
+- The demo stage boundary is now preserved by the ingestion-state tables and
+  discovery flow rather than a placeholder `DemoStageService`, superseding
+  that consequence of ADR-0005.

@@ -34,8 +34,6 @@ services:
       - "${API_PORT:-8000}:${API_PORT:-8000}"
     volumes:
       - ./logs:/app/logs
-      - ./demos:/app/demos
-      - ./parsed_data:/app/parsed_data
     shm_size: "2gb"
     depends_on:
       db:
@@ -70,8 +68,6 @@ services:
     command: ["python", "main.py"]
     volumes:
       - ./logs:/app/logs
-      - ./demos:/app/demos
-      - ./parsed_data:/app/parsed_data
     shm_size: "2gb"
     depends_on:
       db:

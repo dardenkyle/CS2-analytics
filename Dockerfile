@@ -26,7 +26,7 @@ COPY main.py manage_db.py run_api.py ./
 
 RUN site_packages="$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
     && useradd --create-home --uid 10001 appuser \
-    && mkdir -p /app/logs /app/demos /app/parsed_data \
+    && mkdir -p /app/logs \
     && mkdir -p "${site_packages}/seleniumbase/drivers" \
     && chown -R appuser:appuser \
         /app \
