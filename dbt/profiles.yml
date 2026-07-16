@@ -1,0 +1,21 @@
+# Connection profile for the CS2 Analytics dbt project.
+#
+# Credentials are environment-driven via the same DB_* variables the
+# application uses (see .env.example); nothing secret is committed here.
+# dbt does not read .env itself, so export the variables first:
+#
+#   set -a; source .env; set +a
+#   uv run dbt debug --project-dir dbt --profiles-dir dbt
+
+cs2_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DB_HOST') }}"
+      port: "{{ env_var('DB_PORT', '5432') | as_number }}"
+      user: "{{ env_var('DB_USER') }}"
+      password: "{{ env_var('DB_PASS') }}"
+      dbname: "{{ env_var('DB_NAME') }}"
+      schema: analytics
+      threads: 4

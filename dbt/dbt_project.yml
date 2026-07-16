@@ -1,0 +1,23 @@
+# dbt project for the CS2 Analytics transformation layer (Phase 4).
+#
+# dbt owns analytics transformations only. The core ingestion schema
+# (matches, maps, players, and the *_ingestion_state tables) stays owned
+# by Alembic migrations; dbt reads those tables as sources and never
+# manages or migrates them.
+
+name: "cs2_analytics"
+version: "1.0.0"
+
+profile: "cs2_analytics"
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"

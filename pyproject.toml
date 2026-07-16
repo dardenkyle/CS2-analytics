@@ -47,10 +47,14 @@ demo = [
 ]
 
 [dependency-groups]
+dbt = [
+    "dbt-postgres>=1.9",
+]
 dev = [
     "mypy>=1.19.0",
     "ruff>=0.3.0",
     {include-group = "test"},
+    {include-group = "dbt"},
 ]
 test = [
     "pytest>=9.0.0",

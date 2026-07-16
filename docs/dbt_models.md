@@ -2,11 +2,13 @@
 
 This document describes the planned dbt model structure for the CS2 Analytics project.
 
-dbt is the next planned transformation layer. It should be introduced only
-after match/map ingestion semantics are stable and the active stage boundaries
-are clear.
+dbt is the Phase 4 transformation layer. The project skeleton is initialized
+under `dbt/` (#109): an environment-driven Postgres profile reusing the
+application's `DB_*` variables, and source declarations for the Alembic-owned
+`matches`, `maps`, and `players` tables. Models are still planned work.
 
-At this stage, dbt is planned work, not an active part of the ingestion pipeline.
+dbt is not part of the ingestion pipeline; it consumes ingestion outputs
+downstream. Setup and run commands are in the README.
 
 Note:
 Planned raw snapshot tables (for example `raw_matches` and `raw_maps`) are expected to be introduced around dbt rollout time, not before.
