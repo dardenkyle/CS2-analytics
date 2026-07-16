@@ -22,6 +22,11 @@ ingest_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(ingest_app, name="ingest")
+db_app = typer.Typer(
+    help="Schema migration commands wrapping Alembic.",
+    no_args_is_help=True,
+)
+app.add_typer(db_app, name="db")
 
 
 class DiscoverMode(StrEnum):
@@ -68,6 +73,71 @@ def process(
 
     MatchController().run(batch_size=batch)
     MapController().run(batch_size=batch)
+
+
+def _alembic_config():
+    """Load the project's Alembic configuration for programmatic commands.
+
+    alembic.ini declares script_location and prepend_sys_path relative to
+    the repository root, so both are overridden with absolute paths (as
+    initialize_db.run_migrations does) to keep `cs2a db` working from any
+    working directory.
+    """
+    from pathlib import Path
+
+    from alembic.config import Config
+
+    package_root = Path(__file__).resolve().parent
+    config = Config(str(package_root / "alembic.ini"))
+    config.set_main_option("script_location", str(package_root / "alembic"))
+    config.set_main_option("prepend_sys_path", str(package_root.parent))
+    return config
+
+
+def _echo_target_database() -> None:
+    """Print the migration target so the operator sees local versus production."""
+    from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PORT
+
+    typer.echo(f"Target database: {DB_NAME} on {DB_HOST}:{DB_PORT}")
+
+
+@db_app.command("upgrade")
+def db_upgrade(
+    revision: Annotated[
+        str,
+        typer.Argument(help="Target revision to migrate up to."),
+    ] = "head",
+) -> None:
+    """Apply schema migrations up to the given revision, after confirming."""
+    from alembic import command
+
+    _echo_target_database()
+    typer.confirm(f"Upgrade the database to revision '{revision}'?", abort=True)
+    command.upgrade(_alembic_config(), revision)
+
+
+@db_app.command("downgrade")
+def db_downgrade(
+    revision: Annotated[
+        str,
+        typer.Argument(help="Revision to revert the schema down to."),
+    ],
+) -> None:
+    """Revert schema migrations down to the given revision, after confirming."""
+    from alembic import command
+
+    _echo_target_database()
+    typer.confirm(f"Downgrade the database to revision '{revision}'?", abort=True)
+    command.downgrade(_alembic_config(), revision)
+
+
+@db_app.command("current")
+def db_current() -> None:
+    """Show the revision the database is currently at."""
+    from alembic import command
+
+    _echo_target_database()
+    command.current(_alembic_config())
 
 
 @app.command()

@@ -31,11 +31,25 @@ def _patch_controller(monkeypatch, module_path, class_name, name, calls):
     monkeypatch.setattr(module, class_name, lambda: _RecordingController(name, calls))
 
 
+def _patch_alembic_command(monkeypatch, calls):
+    """Replace alembic.command functions with recorders capturing revisions."""
+    import alembic.command
+
+    def _recorder(name):
+        def _record(config, *args, **kwargs):
+            calls.append((name, args))
+
+        return _record
+
+    for command_name in ("upgrade", "downgrade", "current"):
+        monkeypatch.setattr(alembic.command, command_name, _recorder(command_name))
+
+
 def test_help_lists_all_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("ingest", "process", "status"):
+    for command in ("ingest", "process", "status", "db"):
         assert command in result.stdout
 
 
@@ -182,3 +196,77 @@ def test_status_exits_nonzero_when_database_is_unavailable(monkeypatch) -> None:
     result = runner.invoke(app, ["status"])
 
     assert result.exit_code == 1
+
+
+def test_db_upgrade_defaults_to_head_and_prints_target(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+
+    result = runner.invoke(app, ["db", "upgrade"], input="y\n")
+
+    assert result.exit_code == 0
+    assert calls == [("upgrade", ("head",))]
+    assert "Target database:" in result.stdout
+
+
+def test_db_upgrade_accepts_explicit_revision(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+
+    result = runner.invoke(app, ["db", "upgrade", "20260521_0001"], input="y\n")
+
+    assert result.exit_code == 0
+    assert calls == [("upgrade", ("20260521_0001",))]
+
+
+def test_db_upgrade_aborts_without_confirmation(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+
+    result = runner.invoke(app, ["db", "upgrade"], input="n\n")
+
+    assert result.exit_code != 0
+    assert calls == []
+    assert "Target database:" in result.stdout
+
+
+def test_db_downgrade_requires_a_revision(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+
+    result = runner.invoke(app, ["db", "downgrade"])
+
+    assert result.exit_code != 0
+    assert calls == []
+
+
+def test_db_downgrade_aborts_without_confirmation(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+
+    result = runner.invoke(app, ["db", "downgrade", "20260521_0001"], input="n\n")
+
+    assert result.exit_code != 0
+    assert calls == []
+    assert "Target database:" in result.stdout
+
+
+def test_db_downgrade_runs_after_confirmation(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+
+    result = runner.invoke(app, ["db", "downgrade", "20260521_0001"], input="y\n")
+
+    assert result.exit_code == 0
+    assert calls == [("downgrade", ("20260521_0001",))]
+
+
+def test_db_current_reports_revision_and_prints_target(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+
+    result = runner.invoke(app, ["db", "current"])
+
+    assert result.exit_code == 0
+    assert calls == [("current", ())]
+    assert "Target database:" in result.stdout
