@@ -158,9 +158,10 @@ def test_match_ingestion_state_marks_partial(
 
     assert cursor.execute_query is not None
     assert "status = 'partial'" in cursor.execute_query
+    assert "last_processed_at" in cursor.execute_query
     assert "last_updated_at" in cursor.execute_query
     assert cursor.execute_values is not None
-    assert cursor.execute_values[1:] == (1,)
+    assert cursor.execute_values[2:] == (1,)
 
 
 def test_map_ingestion_state_records_parent_match_context(

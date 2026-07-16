@@ -27,12 +27,12 @@ class MatchIngestionState(BaseIngestionState[int]):
         now = dt.datetime.now()
         query = """
         UPDATE match_ingestion_state
-        SET status = 'partial', last_updated_at = %s
+        SET status = 'partial', last_processed_at = %s, last_updated_at = %s
         WHERE match_id = %s;
         """
         try:
             with self.db.get_cursor() as cur:
-                cur.execute(query, (now, id_value))
+                cur.execute(query, (now, now, id_value))
         except Exception as e:
             raise self.error_cls(
                 "Failed to mark item as partial in match_ingestion_state."
