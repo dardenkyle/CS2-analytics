@@ -31,7 +31,7 @@ TABLES_TO_WIPE = (
 )
 
 
-def _connection_kwargs(dbname: str) -> dict[str, str]:
+def _connection_kwargs(dbname: str) -> dict[str, str | int]:
     return {
         "dbname": dbname,
         "user": DB_USER,
@@ -89,9 +89,11 @@ def wipe_database() -> None:
     )
 
     try:
-        with psycopg2.connect(**_connection_kwargs(DB_NAME)) as conn:
-            with conn.cursor() as cur:
-                cur.execute(drop_sql)
+        with (
+            psycopg2.connect(**_connection_kwargs(DB_NAME)) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(drop_sql)
         logger.info("Database tables wiped successfully.")
     except Exception as e:
         raise DatabaseOperationError("Failed to wipe database tables.") from e

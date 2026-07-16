@@ -2,12 +2,27 @@
 
 import datetime as dt
 import re
+from typing import TypedDict
 
 from cs2_analytics.exceptions import MatchParseError
 from cs2_analytics.models.match import Match
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
+
+
+class _MatchMetadata(TypedDict):
+    """Core match fields extracted from a match page."""
+
+    team1: str
+    team2: str
+    score1: int
+    score2: int
+    winner: str
+    event: str
+    match_type: str
+    forfeit: bool
+    match_date: str
 
 
 class MatchParser:
@@ -51,7 +66,7 @@ class MatchParser:
         demo_links = self._extract_demo_links(soup)
         return map_links, demo_links
 
-    def _extract_match_metadata(self, soup) -> dict[str, str | int | bool]:
+    def _extract_match_metadata(self, soup) -> _MatchMetadata:
         """Extracts the core match fields needed to build a Match model."""
         team1, team2 = self._extract_teams(soup)
         logger.debug("Team1: %s Team2: %s", team1, team2)
@@ -191,7 +206,7 @@ class MatchParser:
         """Extracts the event name for the match."""
         event_tag = soup.find("div", class_="event text-ellipsis")
         if event_tag:
-            event_name = event_tag.text.strip()
+            event_name: str = event_tag.text.strip()
             if event_name:
                 return event_name
         raise MatchParseError("Failed to extract event name from match page.")
@@ -228,7 +243,7 @@ class MatchParser:
         map_name_tag = soup.find("div", class_="mapname")
         if not map_name_tag:
             raise MatchParseError("Failed to extract forfeit status from match page.")
-        map_name = map_name_tag.get_text(strip=True)
+        map_name: str = map_name_tag.get_text(strip=True)
         if not map_name:
             raise MatchParseError("Failed to extract forfeit status from match page.")
         return map_name.lower() == "default"

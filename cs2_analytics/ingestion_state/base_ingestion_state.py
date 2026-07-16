@@ -9,9 +9,10 @@ from cs2_analytics.utils.log_manager import get_logger
 logger = get_logger(__name__)
 
 
-class BaseIngestionState:
+class BaseIngestionState[IdT: (int, str)]:
     """
     Generic base class for ingestion state tables.
+    IdT is the source-id type for the table (int for match/map, str for demo).
     Subclasses must define:
     - table_name: the DB table to use
     - id_field: the primary key field
@@ -35,7 +36,7 @@ class BaseIngestionState:
         """Return the shared database instance when an operation needs it."""
         return get_db()
 
-    def fetch(self, limit: int = 25) -> list[tuple[int | str, str]]:
+    def fetch(self, limit: int = 25) -> list[tuple[IdT, str]]:
         """Fetches pending items from the ingestion state table."""
         query = f"""
         SELECT {self.id_field}, {self.url_field}
@@ -47,7 +48,8 @@ class BaseIngestionState:
         try:
             with self.db.get_cursor() as cur:
                 cur.execute(query, (limit,))
-                return cur.fetchall()
+                rows: list[tuple[IdT, str]] = cur.fetchall()
+                return rows
         except Exception as e:
             raise self.error_cls(
                 f"Failed to fetch pending items from {self.table_name}."
@@ -55,7 +57,7 @@ class BaseIngestionState:
 
     def queue(
         self,
-        id_value: int | str,
+        id_value: IdT,
         url: str,
         source: str = "unknown",
         priority: int = 0,
@@ -98,7 +100,7 @@ class BaseIngestionState:
 
     def record_many(
         self,
-        items: list[tuple[int | str, str]],
+        items: list[tuple[IdT, str]],
         source: str = "unknown",
         priority: int = 0,
     ) -> None:

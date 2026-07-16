@@ -234,8 +234,7 @@ class MapParser:
         player_url = self._extract_player_url(name_tag)
         if not player_url:
             raise MapParseError(
-                f"Failed to extract player URL for {player_name!r} "
-                "from map stats page."
+                f"Failed to extract player URL for {player_name!r} from map stats page."
             )
         player_id = self._extract_numeric_id(player_url)
         return player_name, player_url, player_id
@@ -538,6 +537,7 @@ class MapParser:
 
     def _extract_player_name(self, cols, name_tag) -> str:
         """Extracts a non-empty player name from the first stats cell."""
+        player_name: str
         if name_tag:
             player_name = name_tag.get_text(strip=True)
             if player_name:
