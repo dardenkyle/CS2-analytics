@@ -46,6 +46,8 @@ The current ingestion architecture uses PostgreSQL-backed ingestion-state tables
 - Python 3.12
 - SeleniumBase and BeautifulSoup for web scraping
 - PostgreSQL for structured data storage, with Alembic-managed migrations
+- dbt for the downstream analytics transformation layer (Phase 4, in
+  progress)
 - FastAPI for the public read API (deployed on Render)
 - React, TypeScript, and Vite for the public frontend (deployed on GitHub
   Pages)
@@ -77,6 +79,10 @@ CS2-Analytics/
 |   |-- stage_services/
 |   |-- storage/
 |   `-- utils/
+|-- dbt/
+|   |-- dbt_project.yml
+|   |-- profiles.yml
+|   `-- models/
 |-- docs/
 |-- logs/
 |-- scripts/
@@ -270,6 +276,23 @@ Then open the host and port configured by `API_HOST` and `API_PORT`, such as
 ```sh
 python -m pytest
 ```
+
+### 10. Run dbt (analytics transformations)
+
+dbt is installed with the dev dependencies (`uv sync`). It connects with the
+same `DB_*` variables the application uses, but does not read `.env` itself,
+so export them first:
+
+```sh
+set -a; source .env; set +a
+uv run dbt debug --project-dir dbt --profiles-dir dbt
+uv run dbt compile --project-dir dbt --profiles-dir dbt
+```
+
+dbt owns analytics transformations only; the ingestion schema stays owned by
+Alembic migrations. Sources are declared for the `matches`, `maps`, and
+`players` tables, and models arrive with the Phase 4 staging work. See
+`docs/dbt_models.md` for the planned model layers.
 
 Note: Demo processing is still deferred and intentionally remains outside the active ingestion pipeline; its implementation lives on the `feature/demo-parsing` branch.
 

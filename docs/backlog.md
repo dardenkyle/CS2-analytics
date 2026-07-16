@@ -18,9 +18,10 @@ Current priorities:
 - establish a solid ingestion baseline: run the scraper locally, persist to
   the Render database, with controllable quantity (`cs2a` caps and batch
   sizes) and a schedulable entry point
-- then initialize dbt (Phase 4) without moving ingestion responsibilities
-  into dbt; Phase 3.9 tooling hardening (#67-#70, #86) and the Phase 4
-  entry bugs (#71, #74) are closed
+- continue Phase 4 (dbt) without moving ingestion responsibilities into
+  dbt: the project is initialized (#109) and staging models are next;
+  Phase 3.9 tooling hardening (#67-#70, #86) and the Phase 4 entry bugs
+  (#71, #74) are closed
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
   source schema normalization
 - defer demo expansion and Airflow until after the initial dbt layer exists
@@ -699,7 +700,8 @@ writes into.
 
 ### Planned work
 
-- [ ] Initialize dbt project
+- [x] Initialize dbt project (#109): skeleton under `dbt/`, env-driven
+      Postgres profile, sources declared for `matches`, `maps`, `players`
 - [ ] Create staging models (`stg_matches`, `stg_maps`, `stg_players`)
 - [ ] Create intermediate models for reusable joins
 - [ ] Create marts (`fact_*`, `dim_*`)
