@@ -230,18 +230,20 @@ class MapParser:
     def _extract_player_identity(self, cols) -> tuple[str, str, int]:
         """Extracts player display identity from the first row cell."""
         name_tag = cols[0].find("a")
-        player_url = self._extract_player_url(name_tag)
-        player_id = self._extract_numeric_id(player_url) if player_url else -1
         player_name = self._extract_player_name(cols, name_tag)
-        return player_name, player_url or "", player_id
+        player_url = self._extract_player_url(name_tag)
+        if not player_url:
+            raise MapParseError(
+                f"Failed to extract player URL for {player_name!r} "
+                "from map stats page."
+            )
+        player_id = self._extract_numeric_id(player_url)
+        return player_name, player_url, player_id
 
     def _extract_player_url(self, name_tag) -> str | None:
         """Extracts the absolute player URL when one is present."""
-        try:
-            if name_tag and "href" in name_tag.attrs:
-                return f"https://www.hltv.org{name_tag['href']}"
-        except Exception:
-            return None
+        if name_tag and "href" in name_tag.attrs:
+            return f"https://www.hltv.org{name_tag['href']}"
         return None
 
     def _extract_player_stats(
@@ -252,13 +254,18 @@ class MapParser:
         assists, flash_assists = self._extract_assists(cols, column_indexes["assists"])
         deaths, traded_deaths = self._extract_deaths(cols, column_indexes["deaths"])
         opening_kills, opening_deaths = self._parse_colon_pair(
-            self._extract_metric_text(cols, column_indexes["opkd"], ["st-opkd"])
+            self._extract_metric_text(cols, column_indexes["opkd"], ["st-opkd"]),
+            metric="opening duels",
         )
         multi_kills = self._parse_int_value(
-            self._extract_metric_text(cols, column_indexes["mks"], ["st-mks"])
+            self._extract_metric_text(cols, column_indexes["mks"], ["st-mks"]),
+            metric="multi-kills",
         )
         clutches_won = self._parse_int_value(
-            self._extract_metric_text(cols, column_indexes["clutches"], ["st-clutches"])
+            self._extract_metric_text(
+                cols, column_indexes["clutches"], ["st-clutches"]
+            ),
+            metric="clutches won",
         )
         round_swing = self._parse_percent_value(
             self._extract_metric_text(
@@ -266,7 +273,8 @@ class MapParser:
                 column_indexes["round_swing"],
                 ["st-roundSwing"],
                 prefer_hidden=False,
-            )
+            ),
+            metric="round swing",
         )
         kast = self._extract_kast(cols, column_indexes["kast"])
         adr = self._extract_adr(cols, column_indexes["adr"])
@@ -295,12 +303,15 @@ class MapParser:
             self._extract_metric_text(cols, kills_idx, ["st-kills"]),
             "No player kills logged.",
         )
-        return self._parse_pair(kills_text)
+        return self._parse_pair(kills_text, metric="kills")
 
     def _extract_assists(self, cols, assists_idx: int) -> tuple[int, int]:
         """Extracts assists and flash assists from the player row."""
-        assists_text = self._extract_metric_text(cols, assists_idx, ["st-assists"])
-        return self._parse_pair(assists_text)
+        assists_text = self._require_metric_text(
+            self._extract_metric_text(cols, assists_idx, ["st-assists"]),
+            "No player assists logged.",
+        )
+        return self._parse_pair(assists_text, metric="assists")
 
     def _extract_deaths(self, cols, deaths_idx: int) -> tuple[int, int]:
         """Extracts deaths and traded deaths from the player row."""
@@ -308,62 +319,47 @@ class MapParser:
             self._extract_metric_text(cols, deaths_idx, ["st-deaths"]),
             "No player deaths logged.",
         )
-        return self._parse_pair(deaths_text)
+        return self._parse_pair(deaths_text, metric="deaths")
 
     def _extract_kast(self, cols, kast_idx: int) -> float:
         """Extracts KAST as a decimal ratio."""
+        kast_text = self._extract_metric_text(
+            cols,
+            kast_idx,
+            ["st-kast"],
+            prefer_hidden=False,
+        )
         try:
-            kast_text = self._extract_metric_text(
-                cols,
-                kast_idx,
-                ["st-kast"],
-                prefer_hidden=False,
-            ).replace("%", "")
-            return round(float(kast_text) / 100, 3)
-        except ValueError:
-            logger.warning(
-                "Could not parse KAST from: %s",
-                self._extract_metric_text(cols, kast_idx, ["st-kast"]),
-            )
-            return 0.0
+            return round(float(kast_text.replace("%", "")) / 100, 3)
+        except ValueError as e:
+            raise MapParseError(f"Failed to parse KAST value: {kast_text!r}") from e
 
     def _extract_adr(self, cols, adr_idx: int) -> float:
         """Extracts ADR as a float value."""
+        adr_text = self._extract_metric_text(
+            cols,
+            adr_idx,
+            ["st-adr"],
+            prefer_hidden=False,
+        )
         try:
-            return float(
-                self._extract_metric_text(
-                    cols,
-                    adr_idx,
-                    ["st-adr"],
-                    prefer_hidden=False,
-                )
-            )
-        except ValueError:
-            logger.warning(
-                "Could not parse ADR from: %s",
-                self._extract_metric_text(cols, adr_idx, ["st-adr"]),
-            )
-            return 0.0
+            return float(adr_text)
+        except ValueError as e:
+            raise MapParseError(f"Failed to parse ADR value: {adr_text!r}") from e
 
     def _extract_rating(self, cols, rating_idx: int) -> float:
         """Extracts rating as a float value."""
+        rating_text = self._extract_metric_text(
+            cols,
+            rating_idx,
+            ["st-rating"],
+            prefer_hidden=False,
+        )
+        rating_clean = rating_text.replace("+", "").replace("-", "").replace("%", "")
         try:
-            rating_text = self._extract_metric_text(
-                cols,
-                rating_idx,
-                ["st-rating"],
-                prefer_hidden=False,
-            )
-            rating_clean = (
-                rating_text.replace("+", "").replace("-", "").replace("%", "")
-            )
             return float(rating_clean)
-        except (ValueError, IndexError):
-            logger.warning(
-                "Could not parse Rating from: %s",
-                self._extract_metric_text(cols, rating_idx, ["st-rating"]),
-            )
-            return 0.0
+        except ValueError as e:
+            raise MapParseError(f"Failed to parse rating value: {rating_text!r}") from e
 
     def _build_player(
         self,
@@ -612,7 +608,7 @@ class MapParser:
 
         return self._column_text_or_empty(cols, fallback_idx)
 
-    def _parse_pair(self, text: str) -> tuple[int, int]:
+    def _parse_pair(self, text: str, *, metric: str) -> tuple[int, int]:
         """Parses values like '19(10)' into tuple (19, 10)."""
         match = re.search(r"(\d+)\s*\((\d+)\)", text)
         if match:
@@ -621,7 +617,7 @@ class MapParser:
         single = re.search(r"(\d+)", text)
         if single:
             return int(single.group(1)), 0
-        return 0, 0
+        raise MapParseError(f"Failed to parse {metric} value: {text!r}")
 
     def _require_metric_text(self, text: str, message: str) -> str:
         """Raises a parsing error when a required metric cell is missing."""
@@ -633,24 +629,31 @@ class MapParser:
         match = re.search(r"/(\d+)/", url)
         if match:
             return int(match.group(1))
-        return -1
+        raise MapParseError(f"Failed to extract player id from player URL: {url!r}")
 
-    def _parse_colon_pair(self, text: str) -> tuple[int, int]:
-        """Parses values like '5 : 0' into tuple (5, 0)."""
+    def _parse_colon_pair(self, text: str, *, metric: str) -> tuple[int, int]:
+        """Parses values like '5 : 0' into tuple (5, 0).
+
+        Falls back to zeros with a warning because these secondary stats can
+        legitimately render as empty cells.
+        """
         match = re.search(r"(\d+)\s*:\s*(\d+)", text)
         if match:
             return int(match.group(1)), int(match.group(2))
+        logger.warning("Could not parse %s from %r; defaulting to 0", metric, text)
         return 0, 0
 
-    def _parse_int_value(self, text: str) -> int:
+    def _parse_int_value(self, text: str, *, metric: str) -> int:
         match = re.search(r"-?\d+", text)
         if match:
             return int(match.group(0))
+        logger.warning("Could not parse %s from %r; defaulting to 0", metric, text)
         return 0
 
-    def _parse_percent_value(self, text: str) -> float:
+    def _parse_percent_value(self, text: str, *, metric: str) -> float:
         """Parses values like '+14.68%' into 0.1468."""
         match = re.search(r"([+-]?\d+(?:\.\d+)?)\s*%", text)
         if match:
             return round(float(match.group(1)) / 100, 4)
+        logger.warning("Could not parse %s from %r; defaulting to 0", metric, text)
         return 0.0

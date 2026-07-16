@@ -1,7 +1,10 @@
+from unittest import mock
+
 import pytest
 from bs4 import BeautifulSoup
 
 from cs2_analytics.exceptions import MapParseError, MatchParseError
+from cs2_analytics.parsers import map_parser as map_parser_module
 from cs2_analytics.parsers.map_parser import MapParser
 from cs2_analytics.parsers.match_parser import MatchParser
 
@@ -84,6 +87,71 @@ def _build_map_soup(html_override: str | None = None) -> BeautifulSoup:
         </html>
         """,
         "html.parser",
+    )
+
+
+def _build_map_row_soup(
+    *,
+    player_cell: str = '<a href="/player/22/test-player">TestPlayer</a>',
+    kast: str = "70.0%",
+    kills: str = "20 (10)",
+    assists: str = "2 (0)",
+    adr: str = "80.0",
+    rating: str = "1.01",
+    swing: str = "+1.00%",
+) -> BeautifulSoup:
+    """Builds a one-row map stats page with substitutable metric cells."""
+    return _build_map_soup(
+        f"""
+        <html>
+          <body>
+            <div class="match-info-box">
+              <div class="small-text">Map</div>
+              Inferno
+            </div>
+            <table class="stats-table totalstats">
+              <thead>
+                <tr>
+                  <th class="st-teamname">BIG</th>
+                  <th>Op. K-D</th>
+                  <th>MKs</th>
+                  <th>KAST</th>
+                  <th>1vsX</th>
+                  <th>K (hs)</th>
+                  <th>A (f)</th>
+                  <th>D (t)</th>
+                  <th>ADR</th>
+                  <th>Swing</th>
+                  <th>Rating 3.0</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="st-player">{player_cell}</td>
+                  <td class="st-opkd">1 : 1</td>
+                  <td class="st-mks">1</td>
+                  <td class="st-kast">{kast}</td>
+                  <td class="st-clutches">0</td>
+                  <td class="st-kills">{kills}</td>
+                  <td class="st-assists">{assists}</td>
+                  <td class="st-deaths">10 (1)</td>
+                  <td class="st-adr">{adr}</td>
+                  <td class="st-roundSwing">{swing}</td>
+                  <td class="st-rating">{rating}</td>
+                </tr>
+              </tbody>
+            </table>
+          </body>
+        </html>
+        """
+    )
+
+
+def _parse_map_row_soup(soup: BeautifulSoup) -> list:
+    return MapParser().parse_map(
+        soup,
+        map_url="https://www.hltv.org/stats/matches/mapstatsid/2/test-map",
+        map_id=2,
     )
 
 
@@ -493,3 +561,72 @@ def test_map_parser_raises_typed_error_for_missing_deaths() -> None:
             map_url="https://www.hltv.org/stats/matches/mapstatsid/2/test-map",
             map_id=2,
         )
+
+
+def test_map_parser_raises_typed_error_for_unparseable_kast() -> None:
+    soup = _build_map_row_soup(kast="N/A")
+
+    with pytest.raises(MapParseError, match="Failed to parse KAST value"):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_unparseable_adr() -> None:
+    soup = _build_map_row_soup(adr="N/A")
+
+    with pytest.raises(MapParseError, match="Failed to parse ADR value"):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_unparseable_rating() -> None:
+    soup = _build_map_row_soup(rating="N/A")
+
+    with pytest.raises(MapParseError, match="Failed to parse rating value"):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_missing_assists() -> None:
+    soup = _build_map_row_soup(assists="")
+
+    with pytest.raises(MapParseError, match="No player assists logged."):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_unparseable_assists() -> None:
+    soup = _build_map_row_soup(assists="-")
+
+    with pytest.raises(MapParseError, match="Failed to parse assists value"):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_unparseable_kills() -> None:
+    soup = _build_map_row_soup(kills="-")
+
+    with pytest.raises(MapParseError, match="Failed to parse kills value"):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_missing_player_link() -> None:
+    soup = _build_map_row_soup(player_cell="TestPlayer")
+
+    with pytest.raises(MapParseError, match="Failed to extract player URL"):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_raises_typed_error_for_player_url_without_id() -> None:
+    soup = _build_map_row_soup(player_cell='<a href="/player/no-id">TestPlayer</a>')
+
+    with pytest.raises(MapParseError, match="Failed to extract player id"):
+        _parse_map_row_soup(soup)
+
+
+def test_map_parser_logs_and_defaults_unparseable_round_swing() -> None:
+    soup = _build_map_row_soup(swing="n/a")
+
+    with mock.patch.object(map_parser_module.logger, "warning") as warning_mock:
+        players = _parse_map_row_soup(soup)
+
+    assert len(players) == 1
+    assert players[0].round_swing == 0.0
+    warning_mock.assert_called_once_with(
+        "Could not parse %s from %r; defaulting to 0", "round swing", "n/a"
+    )
