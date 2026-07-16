@@ -52,23 +52,23 @@ def store_maps(maps: list[Map], cur=None) -> None:
 
 
 def _execute_store_maps(cur, maps: list[Map]) -> None:
-    for map_obj in maps:
-        cur.execute(
-            INSERT_MAPS_QUERY,
-            {
-                "map_id": map_obj.map_id,
-                "match_id": map_obj.match_id,
-                "map_url": map_obj.map_url,
-                "map_order": map_obj.map_order,
-                "map_name": map_obj.map_name,
-                "team1_score": map_obj.team1_score,
-                "team2_score": map_obj.team2_score,
-                "map_winner": map_obj.map_winner,
-                "date": map_obj.date,
-                "inserted_at": map_obj.inserted_at,
-                "last_scraped_at": map_obj.last_scraped_at,
-                "last_updated_at": map_obj.last_updated_at,
-                "data_complete": map_obj.data_complete,
-            },
-        )
+    values = [
+        {
+            "map_id": map_obj.map_id,
+            "match_id": map_obj.match_id,
+            "map_url": map_obj.map_url,
+            "map_order": map_obj.map_order,
+            "map_name": map_obj.map_name,
+            "team1_score": map_obj.team1_score,
+            "team2_score": map_obj.team2_score,
+            "map_winner": map_obj.map_winner,
+            "date": map_obj.date,
+            "inserted_at": map_obj.inserted_at,
+            "last_scraped_at": map_obj.last_scraped_at,
+            "last_updated_at": map_obj.last_updated_at,
+            "data_complete": map_obj.data_complete,
+        }
+        for map_obj in maps
+    ]
+    cur.executemany(INSERT_MAPS_QUERY, values)
     logger.info("Stored %d map records.", len(maps))

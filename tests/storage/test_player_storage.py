@@ -9,7 +9,7 @@ from cs2_analytics.storage import player_storage as player_storage_module
 
 class _RecordingCursor:
     def __init__(self) -> None:
-        self.executed: list[tuple[str, dict[str, object]]] = []
+        self.executed: list[tuple[str, list[dict[str, object]]]] = []
 
     def __enter__(self):
         return self
@@ -17,8 +17,8 @@ class _RecordingCursor:
     def __exit__(self, exc_type, exc, tb) -> None:
         return None
 
-    def execute(self, query: str, params: dict[str, object]) -> None:
-        self.executed.append((query, params))
+    def executemany(self, query: str, values: list[dict[str, object]]) -> None:
+        self.executed.append((query, values))
 
 
 class _FakeDb:
@@ -76,7 +76,8 @@ def test_store_players_refreshes_context_and_metrics_on_conflict(
 
     player_storage_module.store_players([_player()])
 
-    query, params = cursor.executed[0]
+    query, values = cursor.executed[0]
+    params = values[0]
     conflict_update = _conflict_update_clause(query)
 
     assert "ON CONFLICT (map_id, player_id)" in query
@@ -110,6 +111,19 @@ def test_store_players_refreshes_context_and_metrics_on_conflict(
     assert "last_inserted_at = EXCLUDED.last_inserted_at" not in conflict_update
     assert params["map_id"] == 100
     assert params["player_id"] == 200
+
+
+def test_store_players_batches_rows_into_one_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(player_storage_module, "get_db", lambda: _FakeDb(cursor))
+
+    player_storage_module.store_players([_player(), _player()])
+
+    assert len(cursor.executed) == 1
+    _query, values = cursor.executed[0]
+    assert len(values) == 2
 
 
 def test_store_players_wraps_database_factory_failures(

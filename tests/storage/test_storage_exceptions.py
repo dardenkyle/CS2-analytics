@@ -9,7 +9,7 @@ from cs2_analytics.storage import match_storage as match_storage_module
 
 
 class _FailingCursor:
-    def execute(self, *args, **kwargs) -> None:
+    def executemany(self, *args, **kwargs) -> None:
         raise RuntimeError("insert failed")
 
 

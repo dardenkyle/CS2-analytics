@@ -10,10 +10,10 @@ from cs2_analytics.storage import match_storage as match_storage_module
 
 class _RecordingCursor:
     def __init__(self) -> None:
-        self.executed: list[tuple[str, dict[str, object]]] = []
+        self.executed: list[tuple[str, list[dict[str, object]]]] = []
 
-    def execute(self, query: str, params: dict[str, object]) -> None:
-        self.executed.append((query, params))
+    def executemany(self, query: str, values: list[dict[str, object]]) -> None:
+        self.executed.append((query, values))
 
 
 class _RecordingConnection:
@@ -106,7 +106,8 @@ def test_store_matches_refreshes_trusted_fields_on_conflict(
 
     match_storage_module.store_matches([_match()])
 
-    query, params = cursor.executed[0]
+    query, values = cursor.executed[0]
+    params = values[0]
     conflict_update = _conflict_update_clause(query)
 
     for field_name in (
@@ -134,6 +135,20 @@ def test_store_matches_refreshes_trusted_fields_on_conflict(
     assert conn.committed is True
     assert conn.rolled_back is False
     assert fake_db.released is True
+
+
+def test_store_matches_batches_rows_into_one_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    conn = _RecordingConnection(cursor)
+    monkeypatch.setattr(match_storage_module, "get_db", lambda: _FakeDb(conn))
+
+    match_storage_module.store_matches([_match(), _match()])
+
+    assert len(cursor.executed) == 1
+    _query, values = cursor.executed[0]
+    assert len(values) == 2
 
 
 def test_store_matches_wraps_database_factory_failures(
