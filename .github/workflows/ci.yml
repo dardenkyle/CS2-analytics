@@ -68,5 +68,5 @@ jobs:
       - name: Run migrations
         run: uv run alembic -c cs2_analytics/alembic.ini upgrade head
 
-      - name: Run tests
-        run: uv run pytest
+      - name: Run tests with coverage gate
+        run: uv run pytest --cov

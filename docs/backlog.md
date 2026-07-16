@@ -755,10 +755,12 @@ deployment baseline work, and dbt.
 These are correctness and readability improvements that do not gate Phase 4 but
 should be addressed before the repo is considered v1.0.
 
+- [x] Add a coverage `fail-under` threshold and wire it into CI so the floor
+      is enforced — `fail_under = 75` in `pyproject.toml`, CI runs
+      `pytest --cov` (#76)
 - [x] Stop silently coercing parse failures to `0` — required stats now raise
       `MapParseError` into the failed ingestion state, secondary stats log a
       warning before defaulting (#75)
-- [ ] Add a coverage `fail-under` threshold and wire it into CI so the floor is enforced
 - [ ] Test untested failure branches: date-parse warning, scraper close-failure, parser fallback paths
 - [ ] Batch N+1 storage writes using `executemany` (`match_storage.py`, `map_storage.py`, `player_storage.py`)
 - [ ] Widen mypy CI target to cover `cs2_analytics` ingestion core, not just the API layer
