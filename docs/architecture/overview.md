@@ -4,12 +4,13 @@
 
 This project has moved from an older queue-oriented scraping design toward a cleaner ingestion-state-driven architecture.
 
-The schema uses PostgreSQL ingestion-state tables directly, and the active match and map stages now separate batch orchestration from per-item workflow through stage services.
+The schema uses PostgreSQL ingestion-state tables directly, and the active results, match, and map stages now separate batch orchestration from per-item workflow through stage services.
 
 ## Current Architectural Focus
 
 - `main.py` and the top-level pipeline remain intentionally thin
-- `MatchController` and `MapController` own batch-level concerns
+- `ResultsController`, `MatchController`, and `MapController` own batch-level
+  concerns
 - stage services own per-item fetch, parse, persist, and lifecycle outcome work
 - demo processing remains deferred; its implementation lives on the
   `feature/demo-parsing` branch while demo link discovery and
