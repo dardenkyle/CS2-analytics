@@ -151,7 +151,8 @@ GitHub Actions CI runs on pull requests and pushes to `main`. The minimum gate
 installs development dependencies, runs focused `python -m ruff` `E,F` linting
 over runtime code, type checks API and runner entrypoints with
 `python -m mypy`, applies Alembic migrations against PostgreSQL, and runs
-`python -m pytest`.
+`python -m pytest --cov`, which enforces the coverage floor set by
+`fail_under` in `pyproject.toml`.
 
 A separate frontend gate (`.github/workflows/frontend-ci.yml`) runs only when
 a pull request or push to `main` touches `frontend/**`. It installs
