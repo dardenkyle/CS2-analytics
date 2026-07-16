@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
 
-from cs2_analytics.config.config import END_DATE, HLTV_URL, MAX_MATCHES, START_DATE
+from cs2_analytics.config.config import END_DATE, MAX_MATCHES, SOURCE_URL, START_DATE
 from cs2_analytics.exceptions import ResultsScrapeError, SessionScrapeError
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -31,7 +31,7 @@ class ResultsScraper:
     def __init__(self) -> None:
         """Initializes the scraper with a SeleniumBase driver and config params."""
         self.driver = Driver(uc=True, headless=True)
-        self.base_url = HLTV_URL
+        self.base_url = SOURCE_URL
         self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
         self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
 

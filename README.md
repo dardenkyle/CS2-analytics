@@ -146,6 +146,12 @@ Required runtime variables:
 | `DB_HOST` | PostgreSQL host. | `localhost` |
 | `DB_PORT` | PostgreSQL port. | `5432` |
 
+Optional variables:
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `SOURCE_URL` | Overrides the results discovery URL used by the results scraper. | Built-in results source |
+
 Production mode fails fast when required runtime variables are missing, when
 `DEBUG_MODE=true`, or when `API_CORS_ORIGINS` includes `*`.
 

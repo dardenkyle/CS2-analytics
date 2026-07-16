@@ -18,13 +18,12 @@ from .config import (
     DEBUG_MODE,
     ENABLE_ANALYTICS,
     ENABLE_DATA_STORAGE,
-    ENABLE_DEMO_DOWNLOADS,
     END_DATE,
     ENVIRONMENT,
-    HLTV_URL,
     LOG_FILE,
     LOG_LEVEL,
     MAX_MATCHES,
+    SOURCE_URL,
     START_DATE,
 )
 
@@ -41,12 +40,11 @@ __all__ = [
     "DB_USER",
     "ENABLE_ANALYTICS",
     "ENABLE_DATA_STORAGE",
-    "ENABLE_DEMO_DOWNLOADS",
     "END_DATE",
     "ENVIRONMENT",
-    "HLTV_URL",
     "LOG_FILE",
     "LOG_LEVEL",
     "MAX_MATCHES",
+    "SOURCE_URL",
     "START_DATE",
 ]
