@@ -767,7 +767,12 @@ should be addressed before the repo is considered v1.0.
       `executemany` batch instead of per-row `execute`, matching the
       `record_many` pattern (#78)
 - [ ] Widen mypy CI target to cover `cs2_analytics` ingestion core, not just the API layer
-- [ ] Break up overlong controller and utility functions (`match_controller.py`, `map_controller.py`, `results_controller.py`, `retry_utils.py`)
+- [x] Break up overlong controller and utility functions
+      (`match_controller.py`, `map_controller.py`, `results_controller.py`,
+      `retry_utils.py`) — controller run loops now delegate to cohesive
+      rotate/retry/outcome helpers over a shared `BatchRunState`, and
+      `reset_scraper` gained close/build/discard helpers; behavior unchanged
+      (#80)
 - [x] Move non-working demo subsystem to a `feature/demo-parsing` branch; add
       deferral note to README — demo link discovery and `demo_ingestion_state`
       remain on `main` (#81, ADR-0014)
