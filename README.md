@@ -319,14 +319,17 @@ hard to reason about.
 ### Ingestion state over work queues
 
 Discovered matches, maps, and demos live in PostgreSQL-backed
-ingestion-state tables (`pending`, `processing`, `processed`, `failed`,
-`skipped`) rather than a disposable work queue. Rows are keyed by source ID,
-so rediscovery refreshes existing rows instead of duplicating work, and a
-rerun after a crash resumes from state instead of starting over. The
-`skipped` versus `failed` distinction is deliberate: `skipped` records an
-intentional decision not to process (for example a forfeited match with no
-stats), while `failed` means processing was attempted and exhausted its
-retries. Collapsing the two would make failure metrics lie. The tradeoff is
+ingestion-state tables (`discovered`, `processing`, `processed`, `failed`,
+`skipped`, `dead`, `partial`) rather than a disposable work queue. Rows are
+keyed by source ID, so rediscovery refreshes existing rows instead of
+duplicating work, and a rerun after a crash resumes from state instead of
+starting over. The `skipped` versus `failed` distinction is deliberate:
+`skipped` records an intentional decision not to process (for example a
+forfeited match with no stats), while `failed` means a processing attempt
+went wrong, and `dead` marks rows whose retries are exhausted so claim
+queries can exclude them without counting failures. `partial` is reserved
+for matches processed while some of their maps never reached a terminal
+state. Collapsing these would make failure metrics lie. The tradeoff is
 more lifecycle discipline than a queue requires — every outcome must be
 recorded explicitly — in exchange for an ingestion run that is resumable,
 idempotent, and observable.
