@@ -36,7 +36,7 @@ def _patch_alembic_command(monkeypatch, calls):
     import alembic.command
 
     def _recorder(name):
-        def _record(config, *args):
+        def _record(config, *args, **kwargs):
             calls.append((name, args))
 
         return _record

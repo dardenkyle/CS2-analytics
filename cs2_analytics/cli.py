@@ -76,12 +76,22 @@ def process(
 
 
 def _alembic_config():
-    """Load the project's Alembic configuration for programmatic commands."""
+    """Load the project's Alembic configuration for programmatic commands.
+
+    alembic.ini declares script_location and prepend_sys_path relative to
+    the repository root, so both are overridden with absolute paths (as
+    initialize_db.run_migrations does) to keep `cs2a db` working from any
+    working directory.
+    """
     from pathlib import Path
 
     from alembic.config import Config
 
-    return Config(str(Path(__file__).resolve().parent / "alembic.ini"))
+    package_root = Path(__file__).resolve().parent
+    config = Config(str(package_root / "alembic.ini"))
+    config.set_main_option("script_location", str(package_root / "alembic"))
+    config.set_main_option("prepend_sys_path", str(package_root.parent))
+    return config
 
 
 def _echo_target_database() -> None:
