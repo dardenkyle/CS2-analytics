@@ -10,7 +10,7 @@ from cs2_analytics.storage import map_storage as map_storage_module
 class _RecordingCursor:
     def __init__(self, should_fail: bool = False) -> None:
         self.should_fail = should_fail
-        self.executed: list[tuple[str, dict[str, object]]] = []
+        self.executed: list[tuple[str, list[dict[str, object]]]] = []
 
     def __enter__(self):
         return self
@@ -18,10 +18,10 @@ class _RecordingCursor:
     def __exit__(self, exc_type, exc, tb) -> None:
         return None
 
-    def execute(self, query: str, params: dict[str, object]) -> None:
+    def executemany(self, query: str, values: list[dict[str, object]]) -> None:
         if self.should_fail:
             raise RuntimeError("insert failed")
-        self.executed.append((query, params))
+        self.executed.append((query, values))
 
 
 class _FakeDb:
@@ -64,7 +64,8 @@ def test_store_maps_writes_active_map_contract(monkeypatch: pytest.MonkeyPatch) 
 
     map_storage_module.store_maps([_map()])
 
-    query, params = cursor.executed[0]
+    query, values = cursor.executed[0]
+    params = values[0]
     assert "map_url" in query
     assert "map_order" in query
     assert "map_winner" in query
@@ -75,6 +76,19 @@ def test_store_maps_writes_active_map_contract(monkeypatch: pytest.MonkeyPatch) 
     assert params["map_winner"] == "Liquid"
 
 
+def test_store_maps_batches_rows_into_one_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(map_storage_module, "get_db", lambda: _FakeDb(cursor))
+
+    map_storage_module.store_maps([_map(), _map()])
+
+    assert len(cursor.executed) == 1
+    _query, values = cursor.executed[0]
+    assert len(values) == 2
+
+
 def test_store_maps_refreshes_trusted_fields_without_replacing_inserted_at(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -83,7 +97,7 @@ def test_store_maps_refreshes_trusted_fields_without_replacing_inserted_at(
 
     map_storage_module.store_maps([_map()])
 
-    query, _params = cursor.executed[0]
+    query, _values = cursor.executed[0]
     conflict_update = _conflict_update_clause(query)
 
     for field_name in (
