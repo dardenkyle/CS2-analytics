@@ -1,7 +1,11 @@
 """Tests for the fetch-only results scraper."""
 
+import datetime as dt
+from unittest import mock
+
 import pytest
 
+from cs2_analytics.exceptions import ResultsScrapeError
 from cs2_analytics.scrapers import results_scraper as results_scraper_module
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
 
@@ -12,6 +16,17 @@ class _FakeDriver:
 
     def quit(self) -> None:
         self.quit_called = True
+
+
+class _FakePageDriver:
+    """Serves a fixed results page for _extract_matches_from_page tests."""
+
+    def __init__(self, page_source: str) -> None:
+        self.page_source = page_source
+        self.loaded_urls: list[str] = []
+
+    def get(self, url: str) -> None:
+        self.loaded_urls.append(url)
 
 
 @pytest.fixture
@@ -111,3 +126,53 @@ def test_extract_match_id(scraper: ResultsScraper) -> None:
         scraper._extract_match_id("https://www.hltv.org/matches/12345/a-vs-b") == 12345
     )
     assert scraper._extract_match_id("https://www.hltv.org/results") is None
+
+
+def test_extract_matches_from_page_warns_and_skips_unparseable_date(
+    scraper: ResultsScraper,
+) -> None:
+    scraper.driver = _FakePageDriver(
+        """
+        <html>
+          <body>
+            <div class="results-sublist">
+              <div class="standard-headline">Results for not-a-date</div>
+              <div class="result-con">
+                <a href="/matches/111/a-vs-b"></a>
+              </div>
+            </div>
+            <div class="results-sublist">
+              <div class="standard-headline">Results for May 5th 2025</div>
+              <div class="result-con">
+                <a href="/matches/222/c-vs-d"></a>
+              </div>
+            </div>
+          </body>
+        </html>
+        """
+    )
+    scraper.start_date = dt.date(2025, 1, 1)
+    scraper.end_date = dt.date(2025, 12, 31)
+
+    with mock.patch.object(results_scraper_module.logger, "warning") as warning_mock:
+        matches, stop = scraper._extract_matches_from_page(
+            "https://www.hltv.org/results?offset=0"
+        )
+
+    warning_mock.assert_called_once_with("Could not parse date: %s", "not-a-date")
+    assert matches == ["https://www.hltv.org/matches/222/c-vs-d"]
+    assert stop is False
+
+
+def test_close_failure_raises_typed_error(scraper: ResultsScraper) -> None:
+    def failing_quit() -> None:
+        raise RuntimeError("browser already gone")
+
+    scraper.driver.quit = failing_quit
+
+    with pytest.raises(
+        ResultsScrapeError, match="Failed to close results scraper driver."
+    ) as exc_info:
+        scraper.close()
+
+    assert isinstance(exc_info.value.__cause__, RuntimeError)
