@@ -701,7 +701,7 @@ writes into.
 ### Planned work
 
 - [x] Initialize dbt project (#109): skeleton under `dbt/`, env-driven
-      Postgres profile, sources declared for `matches`, `maps`, `players`
+  Postgres profile, sources declared for `matches`, `maps`, `players`
 - [ ] Create staging models (`stg_matches`, `stg_maps`, `stg_players`)
 - [ ] Create intermediate models for reusable joins
 - [ ] Create marts (`fact_*`, `dim_*`)
