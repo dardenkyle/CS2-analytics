@@ -4,7 +4,7 @@ from cs2_analytics.exceptions import MatchIngestionStateError
 from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
 
 
-class MatchIngestionState(BaseIngestionState):
+class MatchIngestionState(BaseIngestionState[int]):
     """Ingestion-state manager for match discovery and processing."""
 
     def __init__(self) -> None:

@@ -6,7 +6,7 @@ from cs2_analytics.exceptions import MapIngestionStateError
 from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
 
 
-class MapIngestionState(BaseIngestionState):
+class MapIngestionState(BaseIngestionState[int]):
     """Ingestion-state manager for map discovery and processing."""
 
     def __init__(self) -> None:
@@ -31,7 +31,8 @@ class MapIngestionState(BaseIngestionState):
         try:
             with self.db.get_cursor() as cur:
                 cur.execute(query, (limit,))
-                return cur.fetchall()
+                rows: list[tuple[int, str, int | None, int | None]] = cur.fetchall()
+                return rows
         except Exception as e:
             raise self.error_cls(
                 "Failed to fetch pending map items with match context."
@@ -43,9 +44,10 @@ class MapIngestionState(BaseIngestionState):
         url: str,
         source: str = "unknown",
         priority: int = 0,
+        cur=None,
+        *,
         match_id: int | None = None,
         map_order: int | None = None,
-        cur=None,
     ) -> None:
         """Add or refresh a map ingestion row with parent match context.
 

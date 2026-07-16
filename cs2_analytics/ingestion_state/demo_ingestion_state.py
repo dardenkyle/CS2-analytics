@@ -4,7 +4,7 @@ from cs2_analytics.exceptions import DemoIngestionStateError
 from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
 
 
-class DemoIngestionState(BaseIngestionState):
+class DemoIngestionState(BaseIngestionState[str]):
     """Ingestion-state manager for demo discovery and processing."""
 
     def __init__(self) -> None:

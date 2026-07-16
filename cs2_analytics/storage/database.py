@@ -46,9 +46,10 @@ class Database:
 
     def __init__(self):
         """Initialize the database connection pool."""
-        self.pool = _initialize_db_pool()
-        if self.pool is None:
+        pool = _initialize_db_pool()
+        if pool is None:
             raise DatabaseConnectionError("Database connection pool is not available.")
+        self.pool = pool
 
     def get_connection(self):
         """Retrieves a database connection from the pool."""

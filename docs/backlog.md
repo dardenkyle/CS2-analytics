@@ -769,7 +769,11 @@ should be addressed before the repo is considered v1.0.
       `map_storage.py`, `player_storage.py`) — each store call now issues one
       `executemany` batch instead of per-row `execute`, matching the
       `record_many` pattern (#78)
-- [ ] Widen mypy CI target to cover `cs2_analytics` ingestion core, not just the API layer
+- [x] Widen mypy CI target to cover `cs2_analytics` ingestion core, not just
+      the API layer — CI now type-checks `cs2_analytics`; the errors that
+      surfaced were fixed with real annotations (generic
+      `BaseIngestionState[IdT]`, a `_MatchMetadata` TypedDict, typed locals)
+      rather than suppressions (#79)
 - [x] Break up overlong controller and utility functions
       (`match_controller.py`, `map_controller.py`, `results_controller.py`,
       `retry_utils.py`) — controller run loops now delegate to cohesive

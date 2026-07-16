@@ -23,7 +23,8 @@ def _database_url() -> URL:
 
 
 def _redacted_database_url() -> str:
-    return _database_url().render_as_string(hide_password=True)
+    rendered: str = _database_url().render_as_string(hide_password=True)
+    return rendered
 
 
 def run_migrations_offline() -> None:

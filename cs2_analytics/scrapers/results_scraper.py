@@ -100,7 +100,7 @@ class ResultsScraper:
         except Exception as e:
             raise SessionScrapeError(f"Failed to fetch results page: {url}") from e
 
-        matches = []
+        matches: list[str] = []
         stop_scraping = False
 
         for section in soup.find_all("div", class_="results-sublist"):
