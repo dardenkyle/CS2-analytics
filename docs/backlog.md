@@ -22,7 +22,7 @@ Current priorities:
   dbt: the project is initialized (#109), staging models exist (#110),
   the first intermediate model exists (#111), the initial marts exist (#112),
   data tests cover every layer (#113), lineage/docs generation is done
-  (#114), and the SCD2 player-roster-history snapshot (#130) is next;
+  (#114), and the SCD2 player-roster-history snapshot exists (#130);
   Phase 3.9 tooling hardening (#67-#70, #86) and the Phase 4 entry bugs
   (#71, #74) are closed
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
@@ -727,6 +727,15 @@ writes into.
   mart layering; generation/viewing documented in the README and
   `docs/dbt_models.md`; generated output stays gitignored in `dbt/target/`
   rather than committed or published
+- [x] Add SCD2 player-roster-history snapshot (#130):
+  `player_roster_history_snapshot` (check strategy on team_name, keyed on
+  player_id) records player-to-team membership intervals with dbt-managed
+  `dbt_valid_from`/`dbt_valid_to`; sourced from the new deterministic
+  `int_player_current_team` view (latest team-recording map per player);
+  `dim_player_roster_history` shapes it for consumers with a
+  `roster_history_key` surrogate key and `is_current` flag; grain,
+  strategy rationale, and a point-in-time query documented in
+  `docs/dbt_models.md`
 - [ ] Prefer dbt as the transformation layer, not as a replacement for ingestion logic
 
 ---

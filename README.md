@@ -308,8 +308,12 @@ uv run dbt debug --project-dir dbt --profiles-dir dbt
 uv run dbt build --project-dir dbt --profiles-dir dbt
 ```
 
-`dbt build` runs the models and their data tests together; use `dbt run` or
-`dbt test` for either half on its own.
+`dbt build` runs the models, snapshots, and their data tests together; use
+`dbt run`, `dbt snapshot`, or `dbt test` for any part on its own. The
+`player_roster_history_snapshot` snapshot records SCD2 player-to-team roster
+history: each run compares every player's current team against the recorded
+history and effective-dates any changes, so history accrues across runs
+(and resets with the local database).
 
 To browse the model/column documentation and the lineage graph, generate and
 serve the dbt docs site locally (after a `dbt run` or `dbt build` so the

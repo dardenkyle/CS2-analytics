@@ -176,3 +176,59 @@ models:
         data_tests:
           - unique
           - not_null
+
+  - name: dim_player_roster_history
+    description: >
+      SCD2 player-to-team roster membership history. Grain: one row per
+      player-team membership interval, keyed by (player_id, valid_from), with
+      roster_history_key as the surrogate key for downstream joins.
+      Presentation shaping over player_roster_history_snapshot: validity
+      columns renamed, surrogate key added, current interval flagged. Player
+      identity fields stay in dim_players; join on player_id. Intended
+      consumers: roster timelines and point-in-time roster lookups
+      (valid_from <= :as_of and (valid_to > :as_of or valid_to is null)).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - player_id
+              - valid_from
+    columns:
+      - name: roster_history_key
+        description: >
+          Surrogate key for this membership interval, generated from
+          (player_id, valid_from).
+        data_tests:
+          - unique
+          - not_null
+      - name: player_id
+        description: >
+          Player identifier; part of the interval natural key. Joins to
+          dim_players.player_id.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_players')
+                field: player_id
+      - name: team_name
+        description: Team the player belonged to during this interval.
+        data_tests:
+          - not_null
+      - name: observed_map_date
+        description: >
+          Map date of the player's most recent team-recording map when this
+          interval was opened. Context only.
+      - name: valid_from
+        description: >
+          UTC timestamp when this interval was opened; part of the interval
+          natural key.
+        data_tests:
+          - not_null
+      - name: valid_to
+        description: >
+          UTC timestamp when this interval was closed; null while current.
+      - name: is_current
+        description: Whether this is the player's open (current) interval.
+        data_tests:
+          - not_null
