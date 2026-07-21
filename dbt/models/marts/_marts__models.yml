@@ -1,0 +1,131 @@
+version: 2
+
+models:
+  - name: fact_player_map_stats
+    description: >
+      Player performance facts at the player-map grain. Grain: one row per
+      player per map, keyed by (map_id, player_id). Projected from
+      int_match_player_stats. Intended consumers: player performance lookups,
+      player map splits, and rating/ADR trend analysis.
+    columns:
+      - name: match_id
+        description: Parent match identifier.
+      - name: map_id
+        description: Map identifier; part of the grain.
+      - name: player_id
+        description: Player identifier; part of the grain.
+      - name: player_name
+        description: Player name as parsed for this map.
+      - name: team_name
+        description: Team the player represented on this map.
+      - name: event
+        description: Event or tournament name for the parent match.
+      - name: match_date
+        description: Parent match date/time.
+      - name: match_winner
+        description: Winning team name for the parent match.
+      - name: map_name
+        description: Canonical map name.
+      - name: map_order
+        description: Position of this map within the match, from 1 to 5.
+      - name: map_date
+        description: Map date/time.
+      - name: map_winner
+        description: Winning team name for this map.
+      - name: map_team1_score
+        description: Rounds won by team1 on this map.
+      - name: map_team2_score
+        description: Rounds won by team2 on this map.
+      - name: kills
+        description: Total kills on this map.
+      - name: deaths
+        description: Total deaths on this map.
+      - name: assists
+        description: Total assists on this map.
+      - name: flash_assists
+        description: Total flash assists on this map.
+      - name: headshots
+        description: Total headshot kills on this map.
+      - name: opening_kills
+        description: Total opening (entry) kills on this map.
+      - name: opening_deaths
+        description: Total opening (entry) deaths on this map.
+      - name: traded_deaths
+        description: Deaths traded by a teammate on this map.
+      - name: multi_kills
+        description: Rounds with multiple kills on this map.
+      - name: clutches_won
+        description: Clutch rounds won on this map.
+      - name: kast
+        description: KAST percentage on this map.
+      - name: adr
+        description: Average damage per round on this map.
+      - name: rating
+        description: Performance rating from the source on this map.
+      - name: kd_diff
+        description: Kill/death differential on this map.
+      - name: fk_diff
+        description: First-kill differential on this map.
+      - name: round_swing
+        description: Round swing contribution from the source on this map.
+
+  - name: fact_matches
+    description: >
+      Clean match-level facts. Grain: one row per match, keyed by match_id.
+      Built from stg_matches, with map_count derived from stg_maps and
+      losing_team derived from the winner. Intended consumers: recent match
+      listings, event-level match analysis, and team performance analysis.
+    columns:
+      - name: match_id
+        description: Match identifier. Primary key; grain of this model.
+      - name: event
+        description: Event or tournament name, when available.
+      - name: team1
+        description: First team name.
+      - name: team2
+        description: Second team name.
+      - name: score1
+        description: Series score for team1.
+      - name: score2
+        description: Series score for team2.
+      - name: winning_team
+        description: >
+          Winning team name (equals team1 or team2). Null when the source has
+          not recorded a winner.
+      - name: losing_team
+        description: >
+          Losing team name, derived as the team that is not the winner. Null
+          when the winner is null or does not match either team name.
+      - name: match_type
+        description: Match format label, such as best-of series type.
+      - name: match_date
+        description: Match date/time.
+      - name: forfeit
+        description: Whether the match was recorded as a forfeit.
+      - name: map_count
+        description: Number of maps recorded for this match in stg_maps.
+      - name: data_complete
+        description: >
+          Whether the source match row satisfies its required-field contract.
+
+  - name: dim_players
+    description: >
+      Stable player identity dimension. Grain: one row per player, keyed by
+      player_id, holding the most recently persisted identity per player.
+      Intended consumers: filtering by player and joining player metadata onto
+      the fact tables.
+    columns:
+      - name: player_id
+        description: Player identifier. Primary key; grain of this model.
+      - name: player_name
+        description: Most recently persisted player name for this player.
+      - name: player_url
+        description: Most recently persisted source URL for this player.
+
+  - name: dim_maps
+    description: >
+      Unique map catalog. Grain: one row per distinct map name present in
+      stg_maps. Intended consumers: map-based filtering and analytics.
+    columns:
+      - name: map_name
+        description: Distinct map name. Primary key; grain of this model.

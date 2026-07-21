@@ -30,3 +30,6 @@ models:
     intermediate:
       # Intermediate models are reusable-join views over staging models.
       +materialized: view
+    marts:
+      # Marts are business-ready fact/dim tables for analytics and API reads.
+      +materialized: table

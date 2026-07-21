@@ -391,6 +391,12 @@ Possible responsibilities:
 
 # 3. Mart Layer
 
+Status: an initial mart set is implemented (#112) under `dbt/models/marts/` as
+tables, documented in `dbt/models/marts/_marts__models.yml`:
+`fact_player_map_stats` (player-per-map, built on `int_match_player_stats`),
+`fact_matches` (per match), `dim_players` (per player), and `dim_maps` (per map
+name). The other fact/dim models below remain planning-only.
+
 The mart layer contains business-ready models intended for analytics, reporting, and API use.
 
 These should be the cleanest and most trusted representations of the data.
