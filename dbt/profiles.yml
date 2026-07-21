@@ -1,16 +1,39 @@
 # Connection profile for the CS2 Analytics dbt project.
 #
-# Credentials are environment-driven via the same DB_* variables the
-# application uses (see .env.example); nothing secret is committed here.
-# dbt does not read .env itself, so export the variables first:
+# The default target is a LOCAL Postgres, so `dbt run` never touches a
+# deployed database by accident. dbt uses its own DBT_DB_* variables (with
+# local defaults) and is deliberately decoupled from the application's DB_*
+# variables, which may point at a deployed database.
+#
+# Local (default target `dev`): start a local Postgres, then run dbt. The
+# defaults below match docker-compose's `db` service and .env.example:
+#
+#   docker compose --env-file .env.example up -d db
+#   uv run dbt run --project-dir dbt --profiles-dir dbt
+#
+# Override any DBT_DB_* variable to point the default target elsewhere.
+#
+# Deployed database (explicit opt-in only): the `prod` target reads the
+# application's DB_* variables and is only used when named on the command line:
 #
 #   set -a; source .env; set +a
-#   uv run dbt debug --project-dir dbt --profiles-dir dbt
+#   uv run dbt run --project-dir dbt --profiles-dir dbt --target prod
+#
+# Nothing secret is committed here.
 
 cs2_analytics:
   target: dev
   outputs:
     dev:
+      type: postgres
+      host: "{{ env_var('DBT_DB_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_DB_PORT', '5432') | as_number }}"
+      user: "{{ env_var('DBT_DB_USER', 'postgres') }}"
+      password: "{{ env_var('DBT_DB_PASS', 'change_me') }}"
+      dbname: "{{ env_var('DBT_DB_NAME', 'cs2_db') }}"
+      schema: analytics
+      threads: 4
+    prod:
       type: postgres
       host: "{{ env_var('DB_HOST') }}"
       port: "{{ env_var('DB_PORT', '5432') | as_number }}"

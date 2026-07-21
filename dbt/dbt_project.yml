@@ -21,3 +21,9 @@ target-path: "target"
 clean-targets:
   - "target"
   - "dbt_packages"
+
+models:
+  cs2_analytics:
+    staging:
+      # Staging models are thin views over the Alembic-owned sources.
+      +materialized: view
