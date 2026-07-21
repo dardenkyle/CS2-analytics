@@ -30,18 +30,32 @@ models:
         description: Position of this map within the match, from 1 to 5.
       - name: map_date
         description: Map date/time.
+      - name: map_winner
+        description: Winning team name for this map.
+      - name: map_team1_score
+        description: Rounds won by team1 on this map.
+      - name: map_team2_score
+        description: Rounds won by team2 on this map.
       - name: kills
         description: Total kills on this map.
       - name: deaths
         description: Total deaths on this map.
       - name: assists
         description: Total assists on this map.
+      - name: flash_assists
+        description: Total flash assists on this map.
       - name: headshots
         description: Total headshot kills on this map.
       - name: opening_kills
         description: Total opening (entry) kills on this map.
       - name: opening_deaths
         description: Total opening (entry) deaths on this map.
+      - name: traded_deaths
+        description: Deaths traded by a teammate on this map.
+      - name: multi_kills
+        description: Rounds with multiple kills on this map.
+      - name: clutches_won
+        description: Clutch rounds won on this map.
       - name: kast
         description: KAST percentage on this map.
       - name: adr
@@ -52,6 +66,8 @@ models:
         description: Kill/death differential on this map.
       - name: fk_diff
         description: First-kill differential on this map.
+      - name: round_swing
+        description: Round swing contribution from the source on this map.
 
   - name: fact_matches
     description: >
@@ -73,9 +89,13 @@ models:
       - name: score2
         description: Series score for team2.
       - name: winning_team
-        description: Winning team name (equals team1 or team2).
+        description: >
+          Winning team name (equals team1 or team2). Null when the source has
+          not recorded a winner.
       - name: losing_team
-        description: Losing team name, derived as the team that is not the winner.
+        description: >
+          Losing team name, derived as the team that is not the winner. Null
+          when the winner is null or does not match either team name.
       - name: match_type
         description: Match format label, such as best-of series type.
       - name: match_date

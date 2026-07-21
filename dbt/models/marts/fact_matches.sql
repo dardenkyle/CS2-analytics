@@ -2,7 +2,8 @@
 --
 -- Grain: one row per match, keyed by match_id. Built from stg_matches, with
 -- map_count derived from stg_maps and losing_team derived from the winner and
--- the two team names.
+-- the two team names. losing_team is null when the winner is null or does not
+-- match either team name, rather than guessing a loser.
 --
 -- Intended consumers: recent match listings, event-level match analysis, and
 -- team performance analysis.
@@ -36,7 +37,7 @@ final as (
         matches.match_winner as winning_team,
         case
             when matches.match_winner = matches.team1 then matches.team2
-            else matches.team1
+            when matches.match_winner = matches.team2 then matches.team1
         end as losing_team,
         matches.match_type,
         matches.date as match_date,

@@ -31,19 +31,27 @@ final as (
         map_name,
         map_order,
         map_date,
+        map_winner,
+        map_team1_score,
+        map_team2_score,
 
         -- performance
         kills,
         deaths,
         assists,
+        flash_assists,
         headshots,
         opening_kills,
         opening_deaths,
+        traded_deaths,
+        multi_kills,
+        clutches_won,
         kast,
         adr,
         rating,
         kd_diff,
-        fk_diff
+        fk_diff,
+        round_swing
 
     from enriched
 

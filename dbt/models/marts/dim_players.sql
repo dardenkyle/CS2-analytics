@@ -3,7 +3,9 @@
 -- Grain: one row per player, keyed by player_id. The parsed player rows repeat
 -- identity fields across every map a player appears on, and a player_name can
 -- change over time, so this dimension keeps the most recently persisted
--- identity per player_id (by inserted_at).
+-- identity per player_id (by inserted_at). Rows persisted in the same batch
+-- share an inserted_at, so map_id breaks ties to keep the pick deterministic
+-- across rebuilds.
 --
 -- Intended consumers: filtering by player and joining player metadata onto the
 -- fact tables.
@@ -22,7 +24,7 @@ ranked as (
         player_url,
         row_number() over (
             partition by player_id
-            order by inserted_at desc nulls last
+            order by inserted_at desc nulls last, map_id desc
         ) as identity_rank
 
     from players
