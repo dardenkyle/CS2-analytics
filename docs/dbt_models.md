@@ -82,6 +82,9 @@ The dbt project should be organized into three main layers:
 - intermediate
 - marts
 
+Snapshots (SCD2 change tracking) sit alongside the model layers under
+`snapshots/`; see the Snapshot Layer section.
+
 This keeps transformations readable, modular, and maintainable.
 
 ---
@@ -594,6 +597,67 @@ Use cases:
 
 ---
 
+# 4. Snapshot Layer (SCD2)
+
+Status: implemented (#130). One snapshot records player-to-team roster
+membership history as a Slowly Changing Dimension Type 2, with a mart
+dimension shaped on top of it for consumers.
+
+## player_roster_history_snapshot
+
+- Grain: one row per player-team membership interval, keyed by
+  (player_id, dbt_valid_from).
+- Source: `int_player_current_team`, which derives each player's current
+  team as the team_name from their most recent map that recorded a team
+  (the ingestion pipeline does not populate a roster table). The derivation
+  is deterministic (map_date desc, map_id desc tie-break) so re-runs against
+  unchanged sources cannot corrupt recorded history.
+- Strategy: `check` on `team_name`, keyed on `player_id`. The source has no
+  reliable roster-change timestamp, and a `timestamp` strategy keyed on map
+  recency would open a new interval every time a player simply played
+  another map.
+- dbt manages `dbt_valid_from`, `dbt_valid_to`, and `dbt_scd_id`. Intervals
+  are effective-dated from when a snapshot run observed the change, not
+  backdated to the underlying map date; `observed_map_date` carries the
+  match-data context. The first snapshot run seeds each player's current
+  membership with `dbt_valid_from` equal to that run's timestamp.
+- History is additive only. The snapshot never mutates ingestion outputs or
+  existing marts, and it builds in the same database/schema as the models,
+  so resetting the local database also resets locally recorded history.
+
+Run it with `dbt snapshot`, or as part of `dbt build`, which orders it after
+its source model automatically.
+
+## dim_player_roster_history
+
+- Grain: one row per player-team membership interval, keyed by
+  (player_id, valid_from), with `roster_history_key` as the surrogate key
+  for downstream joins.
+- Presentation shaping over the snapshot only: renames `dbt_valid_from` /
+  `dbt_valid_to` to `valid_from` / `valid_to`, adds the surrogate key, and
+  flags the open interval with `is_current`.
+- Player identity fields stay in `dim_players`; consumers join on
+  `player_id` rather than duplicating them here.
+
+Point-in-time query example (roster of a team as of a given date):
+
+```sql
+select
+    roster.player_id,
+    players.player_name
+from dim_player_roster_history as roster
+join dim_players as players
+    on players.player_id = roster.player_id
+where roster.team_name = 'Some Team'
+  and roster.valid_from <= timestamp '2026-06-01'
+  and (
+      roster.valid_to > timestamp '2026-06-01'
+      or roster.valid_to is null
+  )
+```
+
+---
+
 ## Planned Directory Structure
 
 The dbt project should follow a clear folder structure:
@@ -604,6 +668,7 @@ dbt/
     staging/
     intermediate/
     marts/
+  snapshots/
   tests/
   macros/
   seeds/
@@ -621,6 +686,7 @@ Use these prefixes consistently:
 - `int_` for intermediate models
 - `fact_` for fact tables
 - `dim_` for dimension tables
+- `_snapshot` suffix for snapshots
 
 Rules:
 

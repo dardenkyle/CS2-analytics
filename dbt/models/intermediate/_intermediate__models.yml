@@ -94,3 +94,32 @@ models:
         description: Round-swing metric on this map.
       - name: rating
         description: Performance rating from the source on this map.
+
+  - name: int_player_current_team
+    description: >
+      Each player's current team as observed in match data. Grain: one row
+      per player, keyed by player_id. The ingestion pipeline does not
+      populate a roster table, so current membership is derived as the
+      team_name from the player's most recent map that recorded a team
+      (map_date desc, map_id desc as the deterministic tie-break). Rows with
+      a null player_id or null team_name are excluded. This is the source
+      relation for the player_roster_history_snapshot SCD2 snapshot, so its
+      output must stay deterministic across runs.
+    columns:
+      - name: player_id
+        description: Player identifier. Primary key; grain of this model.
+        data_tests:
+          - unique
+          - not_null
+      - name: team_name
+        description: >
+          Team the player represented on their most recent team-recording
+          map.
+        data_tests:
+          - not_null
+      - name: observed_map_date
+        description: >
+          Map date of the most recent map that recorded a team for this
+          player.
+        data_tests:
+          - not_null

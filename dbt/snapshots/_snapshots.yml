@@ -1,0 +1,67 @@
+version: 2
+
+snapshots:
+  - name: player_roster_history_snapshot
+    relation: ref('int_player_current_team')
+    description: >
+      SCD2 history of player-to-team roster membership. Grain: one row per
+      player-team membership interval, keyed by (player_id, dbt_valid_from).
+      Each dbt snapshot run compares the current team per player (from
+      int_player_current_team) against the latest recorded row; when the team
+      changes, the open interval is closed (dbt_valid_to is set) and a new
+      interval is opened. Intervals are effective-dated from when the change
+      was observed by a snapshot run, not backdated to the underlying map
+      date; observed_map_date carries the match-data context. The check
+      strategy is used because the source has no reliable roster-change
+      timestamp: a timestamp strategy keyed on map recency would open a new
+      interval every time a player simply played another map. History is
+      additive only; this snapshot never mutates ingestion outputs or
+      existing marts.
+    config:
+      unique_key: player_id
+      strategy: check
+      check_cols: [team_name]
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - player_id
+              - dbt_valid_from
+    columns:
+      - name: player_id
+        description: >
+          Player identifier; the snapshot unique key and part of the interval
+          natural key. Joins to dim_players.player_id.
+        data_tests:
+          - not_null
+      - name: team_name
+        description: >
+          Team the player belonged to during this interval; the tracked
+          (check strategy) column.
+        data_tests:
+          - not_null
+      - name: observed_map_date
+        description: >
+          Map date of the player's most recent team-recording map at the time
+          this interval was opened. Context only; not part of change
+          detection, so it is frozen when the interval is opened rather than
+          updated on every new map.
+      - name: dbt_scd_id
+        description: >
+          dbt-managed surrogate key for this interval row, unique across the
+          snapshot.
+        data_tests:
+          - not_null
+          - unique
+      - name: dbt_valid_from
+        description: >
+          UTC timestamp when this interval was opened; part of the interval
+          natural key.
+        data_tests:
+          - not_null
+      - name: dbt_valid_to
+        description: >
+          UTC timestamp when this interval was closed by a newer observation;
+          null while the interval is current.
+      - name: dbt_updated_at
+        description: dbt-managed timestamp of the run that last wrote this row.
