@@ -652,6 +652,13 @@ This should be decided after actual query patterns and table sizes are understoo
 
 ## Testing Strategy
 
+Status: implemented (#113). Grain `unique`/`not_null` tests cover every
+source table, staging model, intermediate model, and mart; `relationships`
+tests cover the key joins (maps -> matches, player rows -> maps/matches, and
+fact -> dim joins). Multi-column `(map_id, player_id)` grains use
+`dbt_utils.unique_combination_of_columns` (see `dbt/packages.yml`; install
+with `dbt deps`). Run everything with `dbt build`.
+
 dbt tests should be added to ensure trust in transformed models.
 
 ### Core test types

@@ -1,0 +1,10 @@
+# dbt package dependencies. Install with:
+#
+#   uv run dbt deps --project-dir dbt --profiles-dir dbt
+#
+# dbt_utils provides unique_combination_of_columns, used to test the
+# (map_id, player_id) grain of the player models, which spans two columns
+# and cannot be expressed with the built-in single-column unique test.
+packages:
+  - package: dbt-labs/dbt_utils
+    version: [">=1.3.0", "<2.0.0"]

@@ -21,7 +21,7 @@ Current priorities:
 - continue Phase 4 (dbt) without moving ingestion responsibilities into
   dbt: the project is initialized (#109), staging models exist (#110),
   the first intermediate model exists (#111), the initial marts exist (#112),
-  and dbt tests are next;
+  data tests cover every layer (#113), and lineage/docs generation is next;
   Phase 3.9 tooling hardening (#67-#70, #86) and the Phase 4 entry bugs
   (#71, #74) are closed
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
@@ -715,7 +715,11 @@ writes into.
   `fact_matches`, `dim_players`, and `dim_maps` as tables, each with a
   documented grain. `fact_player_map_stats` is built on
   `int_match_player_stats`.
-- [ ] Add dbt tests (`not_null`, `unique`, `relationships`)
+- [x] Add dbt tests (`not_null`, `unique`, `relationships`) (#113): grain
+  `unique`/`not_null` tests on every source, staging, intermediate, and mart
+  model; `relationships` tests on the key joins; multi-column grains tested via
+  `dbt_utils.unique_combination_of_columns` (new `dbt/packages.yml`
+  dependency). CI integration deferred to its own review.
 - [ ] Generate lineage/docs
 - [ ] Prefer dbt as the transformation layer, not as a replacement for ingestion logic
 

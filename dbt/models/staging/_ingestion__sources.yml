@@ -5,18 +5,47 @@ sources:
     description: >
       Parsed application tables written by the ingestion pipeline and owned
       by Alembic migrations. dbt reads these as sources and never manages
-      their schema.
+      their schema. Grain tests here catch ingestion-side grain drift at the
+      boundary; relationship tests live on the staging models, which are thin
+      views over these tables.
     schema: public
     tables:
       - name: matches
         description: >
           One row per professional match: teams, series score, winner,
           event, match type, and match date.
+        columns:
+          - name: match_id
+            description: Primary key; grain of this table.
+            data_tests:
+              - unique
+              - not_null
       - name: maps
         description: >
           One row per map played within a match, keyed by map_id with a
           foreign key to matches and a per-match map_order.
+        columns:
+          - name: map_id
+            description: Primary key; grain of this table.
+            data_tests:
+              - unique
+              - not_null
       - name: players
         description: >
           Per-player per-map performance statistics (kills, deaths, ADR,
           KAST, rating, and related fields), keyed by (map_id, player_id).
+        data_tests:
+          - dbt_utils.unique_combination_of_columns:
+              arguments:
+                combination_of_columns:
+                  - map_id
+                  - player_id
+        columns:
+          - name: map_id
+            description: Part of the grain.
+            data_tests:
+              - not_null
+          - name: player_id
+            description: Part of the grain.
+            data_tests:
+              - not_null

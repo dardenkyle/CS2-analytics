@@ -14,6 +14,9 @@ models:
     columns:
       - name: match_id
         description: Source match identifier. Primary key; grain of this model.
+        data_tests:
+          - unique
+          - not_null
       - name: match_url
         description: Canonical source URL for the match.
       - name: team1
@@ -28,6 +31,8 @@ models:
         description: >
           Winning team name (source column winner). Equals either team1 or
           team2.
+        data_tests:
+          - not_null
       - name: event
         description: Event or tournament name, when available.
       - name: match_type
@@ -36,6 +41,8 @@ models:
         description: Whether the match was recorded as a forfeit.
       - name: date
         description: Match date/time as parsed from the source.
+        data_tests:
+          - not_null
       - name: inserted_at
         description: >
           First persistence timestamp for the source row (source column
@@ -59,14 +66,25 @@ models:
     columns:
       - name: map_id
         description: Source map-stats identifier. Primary key; grain of this model.
+        data_tests:
+          - unique
+          - not_null
       - name: match_id
         description: Parent match identifier; foreign key to stg_matches.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_matches')
+                field: match_id
       - name: map_url
         description: Canonical source URL for the map stats page.
       - name: map_order
         description: Position of this map within the match, from 1 to 5.
       - name: map_name
         description: Map name, such as Mirage or Inferno.
+        data_tests:
+          - not_null
       - name: team1_score
         description: Round score for team1 on this map.
       - name: team2_score
@@ -96,13 +114,29 @@ models:
       timezone-aware (TIMESTAMPTZ); downstream models should not assume UTC-aware
       semantics. Audit-field timezone normalization is deferred (see
       docs/schema_target_pre_dbt.md).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - map_id
+              - player_id
     columns:
       - name: map_id
         description: Map identifier; foreign key to stg_maps. Part of the grain.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_maps')
+                field: map_id
       - name: player_id
         description: Player identifier. Part of the grain.
+        data_tests:
+          - not_null
       - name: player_name
         description: Player name as parsed for this map.
+        data_tests:
+          - not_null
       - name: player_url
         description: Canonical source URL for the player, when available.
       - name: map_name

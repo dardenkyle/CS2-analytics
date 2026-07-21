@@ -296,16 +296,20 @@ python -m pytest
 dbt is installed with the dev dependencies (`uv sync`). Its default target is a
 **local** Postgres, so `dbt run` never touches a deployed database by accident.
 dbt uses its own `DBT_DB_*` variables (with local defaults, see `.env.example`)
-and does not read `.env` itself. Start a local Postgres, load the schema, then
-run dbt:
+and does not read `.env` itself. Start a local Postgres, load the schema,
+install dbt packages, then build (models plus data tests):
 
 ```sh
 docker compose --env-file .env.example up -d db
 env DB_HOST=localhost DB_USER=postgres DB_PASS=change_me DB_NAME=cs2_db \
   uv run alembic -c cs2_analytics/alembic.ini upgrade head
+uv run dbt deps --project-dir dbt --profiles-dir dbt
 uv run dbt debug --project-dir dbt --profiles-dir dbt
-uv run dbt run --project-dir dbt --profiles-dir dbt
+uv run dbt build --project-dir dbt --profiles-dir dbt
 ```
+
+`dbt build` runs the models and their data tests together; use `dbt run` or
+`dbt test` for either half on its own.
 
 To run against a deployed database on purpose, export its `DB_*` values and
 name the `prod` target explicitly:

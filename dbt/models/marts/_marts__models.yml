@@ -7,13 +7,33 @@ models:
       player per map, keyed by (map_id, player_id). Projected from
       int_match_player_stats. Intended consumers: player performance lookups,
       player map splits, and rating/ADR trend analysis.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - map_id
+              - player_id
     columns:
       - name: match_id
         description: Parent match identifier.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fact_matches')
+                field: match_id
       - name: map_id
         description: Map identifier; part of the grain.
+        data_tests:
+          - not_null
       - name: player_id
         description: Player identifier; part of the grain.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_players')
+                field: player_id
       - name: player_name
         description: Player name as parsed for this map.
       - name: team_name
@@ -26,6 +46,12 @@ models:
         description: Winning team name for the parent match.
       - name: map_name
         description: Canonical map name.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_maps')
+                field: map_name
       - name: map_order
         description: Position of this map within the match, from 1 to 5.
       - name: map_date
@@ -78,6 +104,9 @@ models:
     columns:
       - name: match_id
         description: Match identifier. Primary key; grain of this model.
+        data_tests:
+          - unique
+          - not_null
       - name: event
         description: Event or tournament name, when available.
       - name: team1
@@ -91,7 +120,10 @@ models:
       - name: winning_team
         description: >
           Winning team name (equals team1 or team2). Null when the source has
-          not recorded a winner.
+          not recorded a winner; the current source schema enforces a non-null
+          winner, which the not_null test asserts at this layer.
+        data_tests:
+          - not_null
       - name: losing_team
         description: >
           Losing team name, derived as the team that is not the winner. Null
@@ -100,10 +132,14 @@ models:
         description: Match format label, such as best-of series type.
       - name: match_date
         description: Match date/time.
+        data_tests:
+          - not_null
       - name: forfeit
         description: Whether the match was recorded as a forfeit.
       - name: map_count
         description: Number of maps recorded for this match in stg_maps.
+        data_tests:
+          - not_null
       - name: data_complete
         description: >
           Whether the source match row satisfies its required-field contract.
@@ -117,8 +153,13 @@ models:
     columns:
       - name: player_id
         description: Player identifier. Primary key; grain of this model.
+        data_tests:
+          - unique
+          - not_null
       - name: player_name
         description: Most recently persisted player name for this player.
+        data_tests:
+          - not_null
       - name: player_url
         description: Most recently persisted source URL for this player.
 
@@ -129,3 +170,6 @@ models:
     columns:
       - name: map_name
         description: Distinct map name. Primary key; grain of this model.
+        data_tests:
+          - unique
+          - not_null
