@@ -245,3 +245,65 @@ class BaseIngestionState[IdT: (int, str)]:
             raise self.error_cls(
                 f"Failed to mark item as skipped in {self.table_name}."
             ) from e
+
+    def fetch_requeue_candidates(
+        self,
+        status: str,
+        limit: int | None = None,
+        id_value: IdT | None = None,
+    ) -> list[tuple[IdT, int | None, str | None]]:
+        """Fetches rows in the given status that are eligible for requeueing.
+
+        Returns (id, failure_count, last_error_message) tuples so callers
+        can preview exactly what a requeue would touch. Ordering matches
+        fetch(): priority first, then oldest discovery.
+        """
+        query = f"""
+        SELECT {self.id_field}, failure_count, last_error_message
+        FROM {self.table_name}
+        WHERE status = %s
+        """
+        params: list[object] = [status]
+        if id_value is not None:
+            query += f"AND {self.id_field} = %s\n        "
+            params.append(id_value)
+        query += "ORDER BY priority DESC, first_seen_at ASC\n        "
+        if limit is not None:
+            query += "LIMIT %s\n        "
+            params.append(limit)
+        try:
+            with self.db.get_cursor() as cur:
+                cur.execute(query, tuple(params))
+                rows: list[tuple[IdT, int | None, str | None]] = cur.fetchall()
+                return rows
+        except Exception as e:
+            raise self.error_cls(
+                f"Failed to fetch requeue candidates from {self.table_name}."
+            ) from e
+
+    def requeue(self, ids: list[IdT], expected_status: str) -> int:
+        """Resets rows back to 'discovered' so processing picks them up again.
+
+        Only rows still in expected_status are reset, so an item that
+        changed state between preview and confirmation is left alone.
+        failure_count and last_error_message are preserved as history
+        (the requeue itself is visible via last_updated_at); the next
+        mark_as_failed keeps incrementing from the preserved count.
+        Returns the number of rows actually reset.
+        """
+        if not ids:
+            return 0
+        now = dt.datetime.now()
+        query = f"""
+        UPDATE {self.table_name}
+        SET status = 'discovered', last_updated_at = %s
+        WHERE {self.id_field} = ANY(%s) AND status = %s;
+        """
+        try:
+            with self.db.get_cursor() as cur:
+                cur.execute(query, (now, list(ids), expected_status))
+                return cur.rowcount
+        except Exception as e:
+            raise self.error_cls(
+                f"Failed to requeue items in {self.table_name}."
+            ) from e

@@ -49,7 +49,7 @@ def test_help_lists_all_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("ingest", "process", "status", "db"):
+    for command in ("ingest", "process", "retry", "status", "db"):
         assert command in result.stdout
 
 
@@ -159,6 +159,176 @@ def test_process_runs_matches_then_maps_with_batch(monkeypatch) -> None:
         ("match", {"batch_size": 10}),
         ("map", {"batch_size": 10}),
     ]
+
+
+class _FakeRetryState:
+    """Ingestion-state stand-in recording fetch/requeue calls per stage."""
+
+    def __init__(
+        self,
+        name: str,
+        table_name: str,
+        candidates: list[tuple],
+        calls: list[tuple[str, str, dict]],
+    ) -> None:
+        self.table_name = table_name
+        self._name = name
+        self._candidates = candidates
+        self._calls = calls
+
+    def fetch_requeue_candidates(self, status, limit=None, id_value=None):
+        self._calls.append(
+            ("fetch", self._name, {"status": status, "limit": limit, "id": id_value})
+        )
+        return self._candidates
+
+    def requeue(self, ids, expected_status):
+        self._calls.append(
+            ("requeue", self._name, {"ids": ids, "expected_status": expected_status})
+        )
+        return len(ids)
+
+
+def _patch_retry_states(monkeypatch, candidates, calls):
+    """Replace both lazily imported state classes with recording fakes."""
+    import importlib
+
+    match_module = importlib.import_module(
+        "cs2_analytics.ingestion_state.match_ingestion_state"
+    )
+    map_module = importlib.import_module(
+        "cs2_analytics.ingestion_state.map_ingestion_state"
+    )
+
+    monkeypatch.setattr(
+        match_module,
+        "MatchIngestionState",
+        lambda: _FakeRetryState("match", "match_ingestion_state", candidates, calls),
+    )
+    monkeypatch.setattr(
+        map_module,
+        "MapIngestionState",
+        lambda: _FakeRetryState("map", "map_ingestion_state", candidates, calls),
+    )
+
+
+def test_retry_requires_a_stage(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(1, 3, "boom")], calls)
+
+    result = runner.invoke(app, ["retry"])
+
+    assert result.exit_code != 0
+    assert calls == []
+
+
+def test_retry_defaults_to_failed_and_requeues_after_confirmation(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(1, 3, "boom"), (2, 1, None)], calls)
+
+    result = runner.invoke(app, ["retry", "--stage", "match"], input="y\n")
+
+    assert result.exit_code == 0
+    assert calls == [
+        ("fetch", "match", {"status": "failed", "limit": None, "id": None}),
+        ("requeue", "match", {"ids": [1, 2], "expected_status": "failed"}),
+    ]
+    assert "2 match row(s) in status 'failed'" in result.stdout
+    assert "Target database:" in result.stdout
+    assert "Requeued 2 row(s)" in result.stdout
+
+
+def test_retry_map_stage_uses_map_state(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(7, 2, "boom")], calls)
+
+    result = runner.invoke(app, ["retry", "--stage", "map"], input="y\n")
+
+    assert result.exit_code == 0
+    assert [call[1] for call in calls] == ["map", "map"]
+
+
+def test_retry_dead_and_partial_require_explicit_status(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(1, 5, "gone")], calls)
+
+    result = runner.invoke(
+        app, ["retry", "--stage", "match", "--status", "dead"], input="y\n"
+    )
+
+    assert result.exit_code == 0
+    assert calls == [
+        ("fetch", "match", {"status": "dead", "limit": None, "id": None}),
+        ("requeue", "match", {"ids": [1], "expected_status": "dead"}),
+    ]
+
+
+def test_retry_passes_limit_and_id_filters(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(42, 1, "boom")], calls)
+
+    result = runner.invoke(
+        app,
+        ["retry", "--stage", "match", "--limit", "5", "--id", "42"],
+        input="y\n",
+    )
+
+    assert result.exit_code == 0
+    assert calls[0] == ("fetch", "match", {"status": "failed", "limit": 5, "id": 42})
+
+
+def test_retry_dry_run_reports_rows_without_writing(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(1, 3, "boom")], calls)
+
+    result = runner.invoke(app, ["retry", "--stage", "match", "--dry-run"])
+
+    assert result.exit_code == 0
+    assert [call[0] for call in calls] == ["fetch"]
+    assert "Dry run: no rows were changed." in result.stdout
+    assert "1 match row(s) in status 'failed'" in result.stdout
+
+
+def test_retry_aborts_without_confirmation(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(1, 3, "boom")], calls)
+
+    result = runner.invoke(app, ["retry", "--stage", "match"], input="n\n")
+
+    assert result.exit_code != 0
+    assert [call[0] for call in calls] == ["fetch"]
+    assert "Target database:" in result.stdout
+
+
+def test_retry_reports_when_nothing_matches(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [], calls)
+
+    result = runner.invoke(app, ["retry", "--stage", "match"])
+
+    assert result.exit_code == 0
+    assert [call[0] for call in calls] == ["fetch"]
+    assert "No failed rows to requeue in match_ingestion_state." in result.stdout
+
+
+def test_retry_exits_nonzero_when_fetch_fails(monkeypatch) -> None:
+    import importlib
+
+    from cs2_analytics.exceptions import MatchIngestionStateError
+
+    match_module = importlib.import_module(
+        "cs2_analytics.ingestion_state.match_ingestion_state"
+    )
+
+    class _FailingState:
+        def fetch_requeue_candidates(self, status, limit=None, id_value=None):
+            raise MatchIngestionStateError("db down")
+
+    monkeypatch.setattr(match_module, "MatchIngestionState", lambda: _FailingState())
+
+    result = runner.invoke(app, ["retry", "--stage", "match"])
+
+    assert result.exit_code == 1
 
 
 def test_status_prints_counts_per_table(monkeypatch) -> None:

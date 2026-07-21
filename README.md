@@ -274,7 +274,19 @@ cs2a ingest discover            # scrape results pages, queue new matches
 cs2a ingest discover --mode backfill
 cs2a process --batch 50         # process pending matches, then maps
 cs2a status                     # ingestion-state row counts by status
+cs2a retry --stage match        # requeue failed matches for reprocessing
+cs2a retry --stage map --dry-run
 ```
+
+`cs2a retry` resets `failed` ingestion-state rows back to `discovered` so
+the next `cs2a process` run picks them up. `dead` and `partial` rows are
+only requeued when named explicitly via `--status`, including when
+targeting a single row with `--id`. `--limit` bounds how much work is
+requeued and `--dry-run` previews the affected rows without writing.
+Before writing, the command shows the affected row count and the target
+database and asks for confirmation. Requeueing preserves `failure_count`
+and `last_error_message` as history; the requeue itself is visible via
+`last_updated_at`.
 
 ### 8. Run the API
 
