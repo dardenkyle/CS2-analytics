@@ -9,13 +9,29 @@ models:
       stg_matches join into one place so downstream marts do not repeat it.
       Joins and context attachment only; no aggregation. The canonical map_name
       comes from stg_maps.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - map_id
+              - player_id
     columns:
       - name: map_id
         description: Map identifier; part of the grain. Joins to stg_maps.map_id.
+        data_tests:
+          - not_null
       - name: player_id
         description: Player identifier; part of the grain.
+        data_tests:
+          - not_null
       - name: match_id
         description: Parent match identifier, carried from stg_maps.match_id.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_matches')
+                field: match_id
       - name: team1
         description: First team name for the parent match.
       - name: team2
