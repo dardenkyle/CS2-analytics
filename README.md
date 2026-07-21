@@ -292,20 +292,33 @@ python -m pytest
 
 ### 10. Run dbt (analytics transformations)
 
-dbt is installed with the dev dependencies (`uv sync`). It connects with the
-same `DB_*` variables the application uses, but does not read `.env` itself,
-so export them first:
+dbt is installed with the dev dependencies (`uv sync`). Its default target is a
+**local** Postgres, so `dbt run` never touches a deployed database by accident.
+dbt uses its own `DBT_DB_*` variables (with local defaults, see `.env.example`)
+and does not read `.env` itself. Start a local Postgres, load the schema, then
+run dbt:
+
+```sh
+docker compose --env-file .env.example up -d db
+env DB_HOST=localhost DB_USER=postgres DB_PASS=change_me DB_NAME=cs2_db \
+  uv run alembic -c cs2_analytics/alembic.ini upgrade head
+uv run dbt debug --project-dir dbt --profiles-dir dbt
+uv run dbt run --project-dir dbt --profiles-dir dbt
+```
+
+To run against a deployed database on purpose, export its `DB_*` values and
+name the `prod` target explicitly:
 
 ```sh
 set -a; source .env; set +a
-uv run dbt debug --project-dir dbt --profiles-dir dbt
-uv run dbt compile --project-dir dbt --profiles-dir dbt
+uv run dbt run --project-dir dbt --profiles-dir dbt --target prod
 ```
 
 dbt owns analytics transformations only; the ingestion schema stays owned by
 Alembic migrations. Sources are declared for the `matches`, `maps`, and
-`players` tables, and models arrive with the Phase 4 staging work. See
-`docs/dbt_models.md` for the planned model layers.
+`players` tables. The staging layer (`stg_matches`, `stg_maps`, `stg_players`)
+is thin views over those sources. See `docs/dbt_models.md` for the planned
+model layers.
 
 Note: Demo processing is still deferred and intentionally remains outside the active ingestion pipeline; its implementation lives on the `feature/demo-parsing` branch.
 
