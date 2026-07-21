@@ -1,0 +1,80 @@
+version: 2
+
+models:
+  - name: int_match_player_stats
+    description: >
+      Per-map player performance enriched with map and match context. Grain:
+      one row per player per map, keyed by (map_id, player_id) - the same grain
+      as stg_players. Factors the reusable stg_players -> stg_maps ->
+      stg_matches join into one place so downstream marts do not repeat it.
+      Joins and context attachment only; no aggregation. The canonical map_name
+      comes from stg_maps.
+    columns:
+      - name: map_id
+        description: Map identifier; part of the grain. Joins to stg_maps.map_id.
+      - name: player_id
+        description: Player identifier; part of the grain.
+      - name: match_id
+        description: Parent match identifier, carried from stg_maps.match_id.
+      - name: team1
+        description: First team name for the parent match.
+      - name: team2
+        description: Second team name for the parent match.
+      - name: match_winner
+        description: Winning team name for the parent match.
+      - name: event
+        description: Event or tournament name for the parent match.
+      - name: match_type
+        description: Match format label for the parent match.
+      - name: match_date
+        description: Parent match date/time (stg_matches.date).
+      - name: map_order
+        description: Position of this map within the match, from 1 to 5.
+      - name: map_name
+        description: Canonical map name from stg_maps.
+      - name: map_winner
+        description: Winning team name for this map.
+      - name: map_team1_score
+        description: Round score for team1 on this map (stg_maps.team1_score).
+      - name: map_team2_score
+        description: Round score for team2 on this map (stg_maps.team2_score).
+      - name: map_date
+        description: Map date/time (stg_maps.date).
+      - name: player_name
+        description: Player name as parsed for this map.
+      - name: player_url
+        description: Canonical source URL for the player, when available.
+      - name: team_name
+        description: Team the player represented on this map.
+      - name: kills
+        description: Total kills on this map.
+      - name: headshots
+        description: Total headshot kills on this map.
+      - name: assists
+        description: Total assists on this map.
+      - name: flash_assists
+        description: Total flash assists on this map.
+      - name: deaths
+        description: Total deaths on this map.
+      - name: traded_deaths
+        description: Total traded deaths on this map.
+      - name: opening_kills
+        description: Total opening (entry) kills on this map.
+      - name: opening_deaths
+        description: Total opening (entry) deaths on this map.
+      - name: multi_kills
+        description: Total multi-kill rounds on this map.
+      - name: clutches_won
+        description: Total clutches won on this map.
+      - name: kast
+        description: KAST percentage on this map.
+      - name: kd_diff
+        description: Kill/death differential on this map.
+      - name: adr
+        description: Average damage per round on this map.
+      - name: fk_diff
+        description: First-kill differential on this map.
+      - name: round_swing
+        description: Round-swing metric on this map.
+      - name: rating
+        description: Performance rating from the source on this map.

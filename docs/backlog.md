@@ -19,8 +19,8 @@ Current priorities:
   the Render database, with controllable quantity (`cs2a` caps and batch
   sizes) and a schedulable entry point
 - continue Phase 4 (dbt) without moving ingestion responsibilities into
-  dbt: the project is initialized (#109), staging models exist (#110), and
-  intermediate models are next;
+  dbt: the project is initialized (#109), staging models exist (#110),
+  the first intermediate model exists (#111), and marts are next;
   Phase 3.9 tooling hardening (#67-#70, #86) and the Phase 4 entry bugs
   (#71, #74) are closed
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
@@ -705,8 +705,12 @@ writes into.
   Postgres profile, sources declared for `matches`, `maps`, `players`
 - [x] Create staging models (`stg_matches`, `stg_maps`, `stg_players`) (#110):
   thin views over the declared sources with documented grains
-- [ ] Create intermediate models for reusable joins
-- [ ] Create marts (`fact_*`, `dim_*`)
+- [x] Create intermediate models for reusable joins (#111):
+  `int_match_player_stats` factors the reusable stg_players -> stg_maps ->
+  stg_matches join (grain: one row per player per map). The issue's
+  "used by a downstream mart" check is satisfied when the marts land (#112).
+- [ ] Create marts (`fact_*`, `dim_*`) - includes wiring at least one mart onto
+  `int_match_player_stats` to close the #111 downstream-usage criterion
 - [ ] Add dbt tests (`not_null`, `unique`, `relationships`)
 - [ ] Generate lineage/docs
 - [ ] Prefer dbt as the transformation layer, not as a replacement for ingestion logic

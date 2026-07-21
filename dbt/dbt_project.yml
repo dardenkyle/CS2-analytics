@@ -27,3 +27,6 @@ models:
     staging:
       # Staging models are thin views over the Alembic-owned sources.
       +materialized: view
+    intermediate:
+      # Intermediate models are reusable-join views over staging models.
+      +materialized: view
