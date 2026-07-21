@@ -6,7 +6,11 @@ models:
       Staging model over the matches source table. Grain: one row per
       professional match, keyed by match_id. Thin rename/cast/select over the
       source; the stringified trace/debug columns map_links and demo_links are
-      intentionally dropped.
+      intentionally dropped. All audit timestamps (inserted_at, last_scraped_at,
+      last_updated_at) are timezone-naive TIMESTAMP in the current source,
+      unlike stg_maps where they are timezone-aware (TIMESTAMPTZ); downstream
+      models should not assume UTC-aware semantics. Audit-field timezone
+      normalization is deferred (see docs/schema_target_pre_dbt.md).
     columns:
       - name: match_id
         description: Source match identifier. Primary key; grain of this model.
@@ -35,7 +39,8 @@ models:
       - name: inserted_at
         description: >
           First persistence timestamp for the source row (source column
-          last_inserted_at).
+          last_inserted_at). Timezone-naive TIMESTAMP in the current source,
+          unlike stg_maps.inserted_at which is timezone-aware (TIMESTAMPTZ).
       - name: last_scraped_at
         description: Most recent time the source row was scraped.
       - name: last_updated_at
@@ -85,7 +90,12 @@ models:
     description: >
       Staging model over the players source table. Grain: one row per player per
       map, keyed by (map_id, player_id). Thin rename/cast/select over the
-      source; carries per-map total stats only.
+      source; carries per-map total stats only. All audit timestamps
+      (inserted_at, last_scraped_at, last_updated_at) are timezone-naive
+      TIMESTAMP in the current source, unlike stg_maps where they are
+      timezone-aware (TIMESTAMPTZ); downstream models should not assume UTC-aware
+      semantics. Audit-field timezone normalization is deferred (see
+      docs/schema_target_pre_dbt.md).
     columns:
       - name: map_id
         description: Map identifier; foreign key to stg_maps. Part of the grain.
@@ -136,7 +146,8 @@ models:
       - name: inserted_at
         description: >
           First persistence timestamp for the source row (source column
-          last_inserted_at).
+          last_inserted_at). Timezone-naive TIMESTAMP in the current source,
+          unlike stg_maps.inserted_at which is timezone-aware (TIMESTAMPTZ).
       - name: last_scraped_at
         description: Most recent time the source row was scraped.
       - name: last_updated_at
