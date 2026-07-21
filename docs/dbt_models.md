@@ -270,6 +270,12 @@ Possible responsibilities:
 
 # 2. Intermediate Layer
 
+Status: `int_match_player_stats` is implemented (#111) under
+`dbt/models/intermediate/` as a reusable-join view over the staging models
+(grain: one row per player per map), documented in
+`dbt/models/intermediate/_intermediate__models.yml`. The other `int_*` models
+below remain planning-only until a mart needs them.
+
 The intermediate layer handles reusable joins and logic that should not be repeated in marts.
 
 These models are not always exposed directly to end users or the API.
