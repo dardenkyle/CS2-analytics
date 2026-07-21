@@ -164,10 +164,21 @@ Validated production checks:
   failure with diagnostics before parser handling. This confirms the deployment
   worker path while keeping recurring worker runs paused until broader live
   ingestion behavior and operations are intentionally resumed.
-- As of 2026-07, the worker's in-container browser validation fails on current
-  Debian Chromium (#91): the unpinned browser stack drifted past what the
-  installed SeleniumBase can drive. The image itself builds (Python 3.12 base
-  since #90), and the worker path stays paused pending #91 and #66.
+- The 2026-07-06 in-container browser validation failures (#91) were caused by
+  Debian trixie's initial Chromium 150 package (`150.0.7871.46-1~deb13u1`),
+  which SeleniumBase undetected mode could not connect to. The follow-up distro
+  point release (`150.0.7871.124-1~deb13u1`) resolved the failure with no
+  repository change: validation passes with it on both the then-current and
+  current SeleniumBase releases. The worker path stays paused pending #66.
+- To keep worker builds reproducible instead of drifting with `pip` resolution,
+  the Docker image installs Python dependencies pinned by `uv.lock` (via
+  `uv export --frozen`). Upgrading the browser automation stack now happens
+  through a reviewed `uv.lock` update rather than silently at build time.
+  Chromium and its driver still come from the Debian package archive, which
+  only serves current point releases, so the browser itself can still drift;
+  `scripts/validate_worker_browser.py` logs the Chromium, ChromeDriver,
+  SeleniumBase, and Selenium versions on every run so any future failure is
+  immediately attributable to a specific stack.
 
 Local worker validation commands:
 
