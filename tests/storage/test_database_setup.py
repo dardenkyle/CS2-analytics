@@ -48,7 +48,19 @@ class _RecordingPool:
 
 
 def _clear_import_safety_modules(monkeypatch) -> None:
+    """Drop the modules from sys.modules so the test can re-import them.
+
+    Re-importing a submodule also rebinds it as an attribute on its parent
+    package, and monkeypatch only restores sys.modules. Pin the parent
+    attribute too so teardown leaves sys.modules and the package attribute
+    pointing at the same module object; otherwise later tests that patch
+    one lookup path silently miss consumers using the other.
+    """
     for module_name in IMPORT_SAFETY_MODULES:
+        parent_name, _, child_name = module_name.rpartition(".")
+        parent = sys.modules.get(parent_name)
+        if parent is not None and hasattr(parent, child_name):
+            monkeypatch.setattr(parent, child_name, getattr(parent, child_name))
         monkeypatch.delitem(sys.modules, module_name, raising=False)
 
 

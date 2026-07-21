@@ -7,11 +7,14 @@ do not pay the scraper-stack import cost.
 """
 
 from enum import StrEnum
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 
-from cs2_analytics.exceptions import DatabaseConnectionError
+from cs2_analytics.exceptions import DatabaseConnectionError, IngestionStateError
+
+if TYPE_CHECKING:
+    from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
 
 app = typer.Typer(
     help="CS2 analytics ingestion pipeline.",
@@ -75,6 +78,107 @@ def process(
     MapController().run(batch_size=batch)
 
 
+class RetryStage(StrEnum):
+    """Ingestion stage whose state table a requeue targets."""
+
+    MATCH = "match"
+    MAP = "map"
+
+
+class RetryStatus(StrEnum):
+    """Lifecycle statuses eligible for requeueing."""
+
+    FAILED = "failed"
+    DEAD = "dead"
+    PARTIAL = "partial"
+
+
+RETRY_ERROR_PREVIEW_LENGTH = 60
+
+
+def _retry_state_for(stage: RetryStage) -> "BaseIngestionState[int]":
+    """Return the ingestion-state manager for the requested retry stage."""
+    from cs2_analytics.ingestion_state.map_ingestion_state import MapIngestionState
+    from cs2_analytics.ingestion_state.match_ingestion_state import MatchIngestionState
+
+    if stage is RetryStage.MATCH:
+        return MatchIngestionState()
+    return MapIngestionState()
+
+
+@app.command()
+def retry(
+    stage: Annotated[
+        RetryStage,
+        typer.Option(help="Ingestion stage whose state rows to requeue."),
+    ],
+    status: Annotated[
+        RetryStatus,
+        typer.Option(
+            help=(
+                "Status to requeue. dead and partial rows are only requeued "
+                "when named here explicitly, including with --id."
+            ),
+        ),
+    ] = RetryStatus.FAILED,
+    limit: Annotated[
+        int | None,
+        typer.Option(min=1, help="Requeue at most this many rows."),
+    ] = None,
+    item_id: Annotated[
+        int | None,
+        typer.Option("--id", help="Requeue a single match/map by ID."),
+    ] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Print what would be requeued without writing."),
+    ] = False,
+) -> None:
+    """Requeue failed ingestion work by resetting rows to 'discovered'.
+
+    failure_count and last_error_message are preserved as history; the
+    requeue itself is visible via last_updated_at. The next `cs2a process`
+    run picks the requeued rows up.
+    """
+    state = _retry_state_for(stage)
+    try:
+        candidates = state.fetch_requeue_candidates(
+            status.value, limit=limit, id_value=item_id
+        )
+    except IngestionStateError as e:
+        typer.echo(f"Failed to fetch requeue candidates: {e}", err=True)
+        raise typer.Exit(code=1) from e
+
+    if not candidates:
+        typer.echo(f"No {status.value} rows to requeue in {state.table_name}.")
+        return
+
+    for row_id, failure_count, last_error in candidates:
+        error_preview = last_error or ""
+        if len(error_preview) > RETRY_ERROR_PREVIEW_LENGTH:
+            error_preview = error_preview[:RETRY_ERROR_PREVIEW_LENGTH] + "..."
+        typer.echo(f"  {row_id}  failures={failure_count or 0}  {error_preview}")
+    typer.echo(f"{len(candidates)} {stage.value} row(s) in status '{status.value}'.")
+
+    if dry_run:
+        typer.echo("Dry run: no rows were changed.")
+        return
+
+    _echo_target_database()
+    typer.confirm(f"Requeue {len(candidates)} row(s) to 'discovered'?", abort=True)
+    try:
+        requeued = state.requeue([row[0] for row in candidates], status.value)
+    except IngestionStateError as e:
+        typer.echo(f"Failed to requeue rows: {e}", err=True)
+        raise typer.Exit(code=1) from e
+    typer.echo(f"Requeued {requeued} row(s); failure_count preserved as history.")
+    skipped = len(candidates) - requeued
+    if skipped > 0:
+        typer.echo(
+            f"{skipped} row(s) changed status since the preview and were left alone."
+        )
+
+
 def _alembic_config():
     """Load the project's Alembic configuration for programmatic commands.
 
@@ -95,7 +199,7 @@ def _alembic_config():
 
 
 def _echo_target_database() -> None:
-    """Print the migration target so the operator sees local versus production."""
+    """Print the target database so the operator sees local versus production."""
     from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PORT
 
     typer.echo(f"Target database: {DB_NAME} on {DB_HOST}:{DB_PORT}")
