@@ -705,12 +705,13 @@ writes into.
   Postgres profile, sources declared for `matches`, `maps`, `players`
 - [x] Create staging models (`stg_matches`, `stg_maps`, `stg_players`) (#110):
   thin views over the declared sources with documented grains
-- [x] Create intermediate models for reusable joins (#111):
-  `int_match_player_stats` factors the reusable stg_players -> stg_maps ->
-  stg_matches join (grain: one row per player per map). The issue's
-  "used by a downstream mart" check is satisfied when the marts land (#112).
-- [ ] Create marts (`fact_*`, `dim_*`) - includes wiring at least one mart onto
-  `int_match_player_stats` to close the #111 downstream-usage criterion
+- [ ] Create intermediate models for reusable joins (#111):
+  - [x] `int_match_player_stats` built - factors the reusable stg_players ->
+    stg_maps -> stg_matches join (grain: one row per player per map)
+  - [ ] at least one downstream mart consumes it - closes the #111
+    "used by a downstream mart" criterion; lands with the marts (#112)
+- [ ] Create marts (`fact_*`, `dim_*`) - the first mart consumes
+  `int_match_player_stats`, closing the #111 downstream-usage criterion
 - [ ] Add dbt tests (`not_null`, `unique`, `relationships`)
 - [ ] Generate lineage/docs
 - [ ] Prefer dbt as the transformation layer, not as a replacement for ingestion logic
