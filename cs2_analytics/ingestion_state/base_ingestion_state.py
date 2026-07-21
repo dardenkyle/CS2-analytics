@@ -302,7 +302,7 @@ class BaseIngestionState[IdT: (int, str)]:
         try:
             with self.db.get_cursor() as cur:
                 cur.execute(query, (now, list(ids), expected_status))
-                return cur.rowcount
+                return int(cur.rowcount)
         except Exception as e:
             raise self.error_cls(
                 f"Failed to requeue items in {self.table_name}."
