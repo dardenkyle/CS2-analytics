@@ -119,15 +119,18 @@ models:
         description: Series score for team2.
       - name: winning_team
         description: >
-          Winning team name (equals team1 or team2). Null when the source has
-          not recorded a winner; the current source schema enforces a non-null
-          winner, which the not_null test asserts at this layer.
+          Winning team name (equals team1 or team2). Non-null; the source
+          schema enforces a recorded winner and the not_null test asserts it
+          at this layer.
         data_tests:
           - not_null
       - name: losing_team
         description: >
-          Losing team name, derived as the team that is not the winner. Null
-          when the winner is null or does not match either team name.
+          Losing team name, derived as the team that is not the winner.
+          Non-null in practice: the source schema requires the winner to equal
+          team1 or team2, so the derivation always resolves.
+        data_tests:
+          - not_null
       - name: match_type
         description: Match format label, such as best-of series type.
       - name: match_date

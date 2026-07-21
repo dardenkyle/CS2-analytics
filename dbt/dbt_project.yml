@@ -8,6 +8,10 @@
 name: "cs2_analytics"
 version: "1.0.0"
 
+# The generic-test `arguments:` nesting used in the model yml requires
+# dbt 1.10+; fail fast on older installs instead of misparsing tests.
+require-dbt-version: [">=1.10.0", "<2.0.0"]
+
 profile: "cs2_analytics"
 
 model-paths: ["models"]
