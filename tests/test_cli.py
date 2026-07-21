@@ -170,11 +170,13 @@ class _FakeRetryState:
         table_name: str,
         candidates: list[tuple],
         calls: list[tuple[str, str, dict]],
+        requeue_result: int | None = None,
     ) -> None:
         self.table_name = table_name
         self._name = name
         self._candidates = candidates
         self._calls = calls
+        self._requeue_result = requeue_result
 
     def fetch_requeue_candidates(self, status, limit=None, id_value=None):
         self._calls.append(
@@ -186,10 +188,12 @@ class _FakeRetryState:
         self._calls.append(
             ("requeue", self._name, {"ids": ids, "expected_status": expected_status})
         )
+        if self._requeue_result is not None:
+            return self._requeue_result
         return len(ids)
 
 
-def _patch_retry_states(monkeypatch, candidates, calls):
+def _patch_retry_states(monkeypatch, candidates, calls, requeue_result=None):
     """Replace both lazily imported state classes with recording fakes."""
     import importlib
 
@@ -203,12 +207,16 @@ def _patch_retry_states(monkeypatch, candidates, calls):
     monkeypatch.setattr(
         match_module,
         "MatchIngestionState",
-        lambda: _FakeRetryState("match", "match_ingestion_state", candidates, calls),
+        lambda: _FakeRetryState(
+            "match", "match_ingestion_state", candidates, calls, requeue_result
+        ),
     )
     monkeypatch.setattr(
         map_module,
         "MapIngestionState",
-        lambda: _FakeRetryState("map", "map_ingestion_state", candidates, calls),
+        lambda: _FakeRetryState(
+            "map", "map_ingestion_state", candidates, calls, requeue_result
+        ),
     )
 
 
@@ -287,6 +295,34 @@ def test_retry_dry_run_reports_rows_without_writing(monkeypatch) -> None:
     assert [call[0] for call in calls] == ["fetch"]
     assert "Dry run: no rows were changed." in result.stdout
     assert "1 match row(s) in status 'failed'" in result.stdout
+
+
+def test_retry_truncates_long_error_previews(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    long_error = "x" * 100
+    _patch_retry_states(monkeypatch, [(1, 2, long_error)], calls)
+
+    result = runner.invoke(app, ["retry", "--stage", "match", "--dry-run"])
+
+    assert result.exit_code == 0
+    assert "x" * 60 + "..." in result.stdout
+    assert "x" * 61 not in result.stdout
+
+
+def test_retry_reports_rows_left_alone_when_status_changed(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(
+        monkeypatch, [(1, 3, "boom"), (2, 1, None)], calls, requeue_result=1
+    )
+
+    result = runner.invoke(app, ["retry", "--stage", "match"], input="y\n")
+
+    assert result.exit_code == 0
+    assert "Requeued 1 row(s)" in result.stdout
+    assert (
+        "1 row(s) changed status since the preview and were left alone."
+        in result.stdout
+    )
 
 
 def test_retry_aborts_without_confirmation(monkeypatch) -> None:

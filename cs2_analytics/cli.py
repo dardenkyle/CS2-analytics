@@ -7,11 +7,14 @@ do not pay the scraper-stack import cost.
 """
 
 from enum import StrEnum
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 
 from cs2_analytics.exceptions import DatabaseConnectionError, IngestionStateError
+
+if TYPE_CHECKING:
+    from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
 
 app = typer.Typer(
     help="CS2 analytics ingestion pipeline.",
@@ -93,7 +96,7 @@ class RetryStatus(StrEnum):
 RETRY_ERROR_PREVIEW_LENGTH = 60
 
 
-def _retry_state_for(stage: RetryStage):
+def _retry_state_for(stage: RetryStage) -> "BaseIngestionState[int]":
     """Return the ingestion-state manager for the requested retry stage."""
     from cs2_analytics.ingestion_state.map_ingestion_state import MapIngestionState
     from cs2_analytics.ingestion_state.match_ingestion_state import MatchIngestionState
@@ -151,7 +154,9 @@ def retry(
         return
 
     for row_id, failure_count, last_error in candidates:
-        error_preview = (last_error or "")[:RETRY_ERROR_PREVIEW_LENGTH]
+        error_preview = last_error or ""
+        if len(error_preview) > RETRY_ERROR_PREVIEW_LENGTH:
+            error_preview = error_preview[:RETRY_ERROR_PREVIEW_LENGTH] + "..."
         typer.echo(f"  {row_id}  failures={failure_count or 0}  {error_preview}")
     typer.echo(f"{len(candidates)} {stage.value} row(s) in status '{status.value}'.")
 
@@ -167,6 +172,11 @@ def retry(
         typer.echo(f"Failed to requeue rows: {e}", err=True)
         raise typer.Exit(code=1) from e
     typer.echo(f"Requeued {requeued} row(s); failure_count preserved as history.")
+    skipped = len(candidates) - requeued
+    if skipped > 0:
+        typer.echo(
+            f"{skipped} row(s) changed status since the preview and were left alone."
+        )
 
 
 def _alembic_config():
