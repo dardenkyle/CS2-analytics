@@ -1,0 +1,147 @@
+version: 2
+
+models:
+  - name: stg_matches
+    description: >
+      Staging model over the matches source table. Grain: one row per
+      professional match, keyed by match_id. Thin rename/cast/select over the
+      source; the stringified trace/debug columns map_links and demo_links are
+      intentionally dropped.
+    columns:
+      - name: match_id
+        description: Source match identifier. Primary key; grain of this model.
+      - name: match_url
+        description: Canonical source URL for the match.
+      - name: team1
+        description: First team name as parsed from the match page.
+      - name: team2
+        description: Second team name as parsed from the match page.
+      - name: score1
+        description: Series score for team1.
+      - name: score2
+        description: Series score for team2.
+      - name: match_winner
+        description: >
+          Winning team name (source column winner). Equals either team1 or
+          team2.
+      - name: event
+        description: Event or tournament name, when available.
+      - name: match_type
+        description: Match format label, such as best-of series type.
+      - name: forfeit
+        description: Whether the match was recorded as a forfeit.
+      - name: date
+        description: Match date/time as parsed from the source.
+      - name: inserted_at
+        description: >
+          First persistence timestamp for the source row (source column
+          last_inserted_at).
+      - name: last_scraped_at
+        description: Most recent time the source row was scraped.
+      - name: last_updated_at
+        description: Most recent meaningful update to the source row.
+      - name: data_complete
+        description: >
+          Whether the source row satisfies its required-field contract for
+          downstream use.
+
+  - name: stg_maps
+    description: >
+      Staging model over the maps source table. Grain: one row per map played
+      within a match, keyed by map_id, with match_id as a foreign key to
+      stg_matches and a per-match map_order. Thin rename/cast/select over the
+      source.
+    columns:
+      - name: map_id
+        description: Source map-stats identifier. Primary key; grain of this model.
+      - name: match_id
+        description: Parent match identifier; foreign key to stg_matches.
+      - name: map_url
+        description: Canonical source URL for the map stats page.
+      - name: map_order
+        description: Position of this map within the match, from 1 to 5.
+      - name: map_name
+        description: Map name, such as Mirage or Inferno.
+      - name: team1_score
+        description: Round score for team1 on this map.
+      - name: team2_score
+        description: Round score for team2 on this map.
+      - name: map_winner
+        description: Winning team name for this map.
+      - name: date
+        description: Map date/time as parsed from the source.
+      - name: inserted_at
+        description: First persistence timestamp for the source row.
+      - name: last_scraped_at
+        description: Most recent time the source row was scraped.
+      - name: last_updated_at
+        description: Most recent meaningful update to the source row.
+      - name: data_complete
+        description: >
+          Whether the source row satisfies its required-field contract for
+          downstream use.
+
+  - name: stg_players
+    description: >
+      Staging model over the players source table. Grain: one row per player per
+      map, keyed by (map_id, player_id). Thin rename/cast/select over the
+      source; carries per-map total stats only.
+    columns:
+      - name: map_id
+        description: Map identifier; foreign key to stg_maps. Part of the grain.
+      - name: player_id
+        description: Player identifier. Part of the grain.
+      - name: player_name
+        description: Player name as parsed for this map.
+      - name: player_url
+        description: Canonical source URL for the player, when available.
+      - name: map_name
+        description: >
+          Parsed map-name context for this player row. Downstream models should
+          prefer stg_maps.map_name for a canonical map name.
+      - name: team_name
+        description: Team the player represented on this map.
+      - name: kills
+        description: Total kills on this map.
+      - name: headshots
+        description: Total headshot kills on this map.
+      - name: assists
+        description: Total assists on this map.
+      - name: flash_assists
+        description: Total flash assists on this map.
+      - name: deaths
+        description: Total deaths on this map.
+      - name: traded_deaths
+        description: Total traded deaths on this map.
+      - name: opening_kills
+        description: Total opening (entry) kills on this map.
+      - name: opening_deaths
+        description: Total opening (entry) deaths on this map.
+      - name: multi_kills
+        description: Total multi-kill rounds on this map.
+      - name: clutches_won
+        description: Total clutches won on this map.
+      - name: kast
+        description: KAST percentage on this map.
+      - name: kd_diff
+        description: Kill/death differential on this map.
+      - name: adr
+        description: Average damage per round on this map.
+      - name: fk_diff
+        description: First-kill differential on this map.
+      - name: round_swing
+        description: Round-swing metric on this map.
+      - name: rating
+        description: Performance rating from the source on this map.
+      - name: inserted_at
+        description: >
+          First persistence timestamp for the source row (source column
+          last_inserted_at).
+      - name: last_scraped_at
+        description: Most recent time the source row was scraped.
+      - name: last_updated_at
+        description: Most recent meaningful update to the source row.
+      - name: data_complete
+        description: >
+          Whether the source row satisfies its required-field contract for
+          downstream use.

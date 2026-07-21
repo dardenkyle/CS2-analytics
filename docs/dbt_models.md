@@ -88,6 +88,13 @@ This keeps transformations readable, modular, and maintainable.
 
 # 1. Staging Layer
 
+Status: the parsed-source staging models `stg_matches`, `stg_maps`, and
+`stg_players` are implemented (#110) as thin views under
+`dbt/models/staging/`, with grains and columns documented in
+`dbt/models/staging/_staging__models.yml`. The `stg_raw_*` snapshot models
+below remain planning-only; the pipeline does not persist raw HTML snapshots,
+so those are not built.
+
 The staging layer standardizes raw inputs and structured source tables.
 
 These models should do light cleanup only.
