@@ -313,7 +313,10 @@ uv run dbt build --project-dir dbt --profiles-dir dbt
 `player_roster_history_snapshot` snapshot records SCD2 player-to-team roster
 history: each run compares every player's current team against the recorded
 history and effective-dates any changes, so history accrues across runs
-(and resets with the local database).
+(and resets with the local database). On a fresh database, run `dbt build`
+(or `dbt snapshot`) before a standalone `dbt run`: `dbt run` does not
+execute snapshots, and `dim_player_roster_history` reads the snapshot
+table.
 
 To browse the model/column documentation and the lineage graph, generate and
 serve the dbt docs site locally (after a `dbt run` or `dbt build` so the

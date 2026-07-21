@@ -29,7 +29,7 @@ ranked as (
         map_date,
         row_number() over (
             partition by player_id
-            order by map_date desc, map_id desc
+            order by map_date desc nulls last, map_id desc
         ) as recency_rank
 
     from player_maps
