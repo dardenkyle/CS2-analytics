@@ -701,6 +701,23 @@ dbt tests should be added to ensure trust in transformed models.
 
 ## Documentation Goals
 
+Status: implemented (#114). Every source table, model, and physical model
+column has a description in the model yml, and the generated lineage graph
+shows the intended layering: sources feed only the staging views, staging
+feeds the intermediate model and the marts, and `fact_player_map_stats` is
+built from `int_match_player_stats`. Generate and view the docs site with:
+
+```sh
+uv run dbt docs generate --project-dir dbt --profiles-dir dbt
+uv run dbt docs serve --project-dir dbt --profiles-dir dbt
+```
+
+Run `dbt run` or `dbt build` first so the catalog reflects the built tables.
+Generated output goes to `dbt/target/`, which is gitignored: docs are
+generated on demand rather than committed or published, and project
+documentation under `docs/architecture/` remains the source of truth for
+architecture boundaries. dbt docs cover the transformation layer only.
+
 dbt documentation should help explain:
 
 - model purpose
@@ -708,13 +725,13 @@ dbt documentation should help explain:
 - important columns
 - lineage between models
 
-Each model should eventually have:
+Each model should have:
 
 - a short description
 - important column descriptions
 - tests defined where appropriate
 
-This will make the project stronger both for maintainability and portfolio presentation.
+This makes the project stronger both for maintainability and portfolio presentation.
 
 ---
 

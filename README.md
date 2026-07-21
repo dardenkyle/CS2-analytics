@@ -311,6 +311,18 @@ uv run dbt build --project-dir dbt --profiles-dir dbt
 `dbt build` runs the models and their data tests together; use `dbt run` or
 `dbt test` for either half on its own.
 
+To browse the model/column documentation and the lineage graph, generate and
+serve the dbt docs site locally (after a `dbt run` or `dbt build` so the
+catalog reflects the built tables):
+
+```sh
+uv run dbt docs generate --project-dir dbt --profiles-dir dbt
+uv run dbt docs serve --project-dir dbt --profiles-dir dbt
+```
+
+The generated site lives in `dbt/target/`, which is gitignored; docs are
+generated on demand, not committed or published.
+
 To run against a deployed database on purpose, export its `DB_*` values and
 name the `prod` target explicitly:
 
