@@ -564,8 +564,9 @@ assumptions work outside the local development machine.
        Missing required map page selectors should be classified as retryable
        scraper/session failures with useful diagnostics, while real parser
        failures should remain parser failures. Previously failed map rows can be
-       handled by later recovery/reset work; this branch should use the manual
-       worker path to validate map processing before recurring worker runs.
+       handled by later recovery/reset work (delivered as `cs2a retry`, #122,
+       PR #139); this branch should use the manual worker path to validate map
+       processing before recurring worker runs.
 
    Map fetch validation now waits for the required map stats selector and logs
    requested URL, browser URL, title, page-source length, challenge marker
@@ -634,6 +635,9 @@ and #68.
 - [x] Consolidate lint/format on ruff — remove black and isort from dev deps
       (#70)
 - [x] Add `cs2a` CLI entry point (#86)
+- [x] Add `cs2a retry` command to requeue failed/dead/partial ingestion-state
+      rows back to `discovered`, with preview, target-database confirmation,
+      and preserved failure history (#122)
 
 ### Suggested branch sequence
 
