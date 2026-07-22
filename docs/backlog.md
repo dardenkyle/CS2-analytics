@@ -742,6 +742,51 @@ writes into.
   `docs/dbt_models.md`
 - [ ] Prefer dbt as the transformation layer, not as a replacement for ingestion logic
 
+### Follow-through: legibility
+
+The transformation layer is built; these make it visible from outside the
+repo.
+
+- [ ] Present the shipped dbt layer in the README: lineage diagram, SCD2
+      snapshot callout, mart grain table (#143)
+- [ ] Run dbt build (models, snapshots, tests) in CI against a disposable
+      Postgres with seeded fixtures (#144)
+- [ ] Publish generated dbt docs (lineage DAG) to GitHub Pages (#145)
+
+---
+
+## Phase 4.5: dbt Operations and Depth
+
+Goal:
+Make the shipped dbt layer operate continuously and deepen it, without
+pulling Airflow (Phase 5) forward.
+
+The SCD2 snapshot only records roster changes during runs that observe
+them, and history cannot be backfilled - so scheduled execution is the
+time-sensitive item and leads this phase.
+
+### Planned work
+
+- [ ] Schedule a daily `dbt build --target prod` against the deployed
+      database (GitHub Actions cron preferred, local cron fallback) with a
+      basic source-freshness gate so SCD2 history accrues (#146)
+- [ ] Normalize audit-field timestamps on matches and players to
+      TIMESTAMPTZ - pulled forward from deferred as the incremental
+      watermark enabler (#132)
+- [ ] Convert `fact_player_map_stats` to an incremental materialization
+      with a `unique_key` and `is_incremental()` watermark filter; evaluate
+      `fact_matches` alongside (#147, after #132)
+- [ ] Deepen data quality: per-source freshness thresholds, warn/error
+      test severities, store_failures audit tables, and selective
+      distribution tests (#148)
+
+### After Phase 4.5
+
+- Point API read paths at the dbt marts (already tracked under Deferred
+  Work / API Expansion) once the marts are continuously rebuilt
+- Cloud warehouse (BigQuery) and Airflow (Phase 5) stay downstream; the
+  #146 scheduled workflow is the interim orchestration Phase 5 replaces
+
 ---
 
 ## Phase 5: Airflow Orchestration
