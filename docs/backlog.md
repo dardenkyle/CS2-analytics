@@ -11,23 +11,27 @@ stable stage-service boundaries, controller retry hardening, relational
 match/map/player storage contracts, Alembic-managed schema, a containerized
 runtime, CI gates for both stacks, and a first cloud deployment (Render API
 and PostgreSQL, GitHub Pages frontend). Frontend Phase A is complete and the
-public demo is live.
+public demo is live. The Phase 4 dbt transformation layer is built end to
+end (#109-#114, #130): staging, intermediate, and mart models, data tests
+on every layer, lineage/docs generation, and the SCD2
+player-roster-history snapshot.
 
 Current priorities:
 
-- establish a solid ingestion baseline: run the scraper locally, persist to
+- finish the final Phase 4 tasks before moving to Phase 4.5: the build
+  itself is done, so what remains is the legibility follow-through -
+  README presents the shipped layer (#143), dbt build runs in CI (#144),
+  dbt docs publish to GitHub Pages (#145)
+- then start Phase 4.5 (dbt operations and depth), led by the scheduled
+  prod dbt build so SCD2 roster history starts accruing (#146), followed
+  by #132, #147, and #148 in dependency order
+- keep the ingestion baseline solid: run the scraper locally, persist to
   the Render database, with controllable quantity (`cs2a` caps and batch
   sizes) and a schedulable entry point
-- continue Phase 4 (dbt) without moving ingestion responsibilities into
-  dbt: the project is initialized (#109), staging models exist (#110),
-  the first intermediate model exists (#111), the initial marts exist (#112),
-  data tests cover every layer (#113), lineage/docs generation is done
-  (#114), and the SCD2 player-roster-history snapshot exists (#130);
-  Phase 3.9 tooling hardening (#67-#70, #86) and the Phase 4 entry bugs
-  (#71, #74) are closed
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
   source schema normalization
-- defer demo expansion and Airflow until after the initial dbt layer exists
+- defer demo expansion, cloud warehouse work, and Airflow (Phase 5) until
+  after Phase 4.5
 
 ---
 
