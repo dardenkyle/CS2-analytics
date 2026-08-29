@@ -18,13 +18,15 @@ player-roster-history snapshot.
 
 Current priorities:
 
-- finish the final Phase 4 tasks before moving to Phase 4.5: the build
-  itself is done, so what remains is the legibility follow-through -
-  README presents the shipped layer (#143), dbt build runs in CI (#144),
-  dbt docs publish to GitHub Pages (#145)
-- then start Phase 4.5 (dbt operations and depth), led by the scheduled
-  prod dbt build so SCD2 roster history starts accruing (#146), followed
-  by #132, #147, and #148 in dependency order
+- the scheduled prod dbt build (#146) was pulled ahead of the remaining
+  Phase 4 legibility tasks because it is the only calendar-sensitive item:
+  SCD2 roster history only accrues while it runs, and gaps cannot be
+  backfilled. It is delivered by the Scheduled dbt Build workflow.
+- finish the Phase 4 legibility follow-through: README presents the
+  shipped layer (#143), dbt build runs in CI (#144), dbt docs publish to
+  GitHub Pages (#145)
+- continue Phase 4.5 (dbt operations and depth) with #132, #147, and #148
+  in dependency order, then point API read paths at the marts (#150)
 - keep the ingestion baseline solid: run the scraper locally, persist to
   the Render database, with controllable quantity (`cs2a` caps and batch
   sizes) and a schedulable entry point
@@ -771,9 +773,12 @@ time-sensitive item and leads this phase.
 
 ### Planned work
 
-- [ ] Schedule a daily `dbt build --target prod` against the deployed
-      database (GitHub Actions cron preferred, local cron fallback) with a
-      basic source-freshness gate so SCD2 history accrues (#146)
+- [x] Schedule a daily `dbt build --target prod` against the deployed
+      database with a basic source-freshness gate so SCD2 history accrues
+      (#146) - delivered as the Scheduled dbt Build GitHub Actions
+      workflow (daily 10:00 UTC cron plus workflow_dispatch); the
+      deployed database accepts Actions runner connections, so the local
+      cron fallback was not needed
 - [ ] Normalize audit-field timestamps on matches and players to
       TIMESTAMPTZ - pulled forward from deferred as the incremental
       watermark enabler (#132)
@@ -786,8 +791,8 @@ time-sensitive item and leads this phase.
 
 ### After Phase 4.5
 
-- Point API read paths at the dbt marts (already tracked under Deferred
-  Work / API Expansion) once the marts are continuously rebuilt
+- Point API read paths at the dbt marts (#150, also tracked under
+  Deferred Work / API Expansion) once the marts are continuously rebuilt
 - Cloud warehouse (BigQuery) and Airflow (Phase 5) stay downstream; the
   #146 scheduled workflow is the interim orchestration Phase 5 replaces
 

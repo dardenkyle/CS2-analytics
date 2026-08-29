@@ -9,6 +9,17 @@ sources:
       boundary; relationship tests live on the staging models, which are thin
       views over these tables.
     schema: public
+    # Freshness gates the scheduled prod run (.github/workflows/
+    # scheduled-dbt-build.yml): a stale scraper fails the run loudly
+    # instead of letting the SCD2 snapshot silently freeze history.
+    # Scraping is manual today, so thresholds are generous; the cast to
+    # timestamptz covers the tables whose audit columns are still naive
+    # TIMESTAMP (see #132).
+    config:
+      loaded_at_field: "last_scraped_at::timestamptz"
+      freshness:
+        warn_after: { count: 3, period: day }
+        error_after: { count: 7, period: day }
     tables:
       - name: matches
         description: >
