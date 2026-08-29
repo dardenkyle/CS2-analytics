@@ -665,9 +665,12 @@ The Scheduled dbt Build workflow
 10:00 UTC (plus `workflow_dispatch`) against the deployed database:
 
 1. `dbt source freshness --target prod` - gate. The ingestion sources
-   declare `loaded_at_field: last_scraped_at` with warn-after 3 days and
-   error-after 7 days; stale sources fail the workflow loudly instead of
-   letting snapshot history freeze while runs stay green.
+   declare per-table `loaded_at_field`s on `last_scraped_at` (with an
+   explicit `AT TIME ZONE 'UTC'` conversion for the naive TIMESTAMP
+   columns on matches and players, see #132, so freshness age never
+   shifts with the session timezone) and warn-after 3 days /
+   error-after 7 days; stale sources fail the workflow loudly instead
+   of letting snapshot history freeze while runs stay green.
 2. `dbt build --target prod` - models, snapshots, and data tests.
 
 Connection settings come from the repository's `DB_*` Actions secrets
