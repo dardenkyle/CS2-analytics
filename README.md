@@ -245,6 +245,12 @@ The API is available at `http://localhost:8000` by default. See
 `docs/deployment.md` for Docker build, environment variable, runtime data, and
 container command details.
 
+The `/api/top_players` endpoint reads the dbt-built marts
+(`analytics.fact_player_map_stats`, `analytics.dim_players`), not the raw
+ingestion tables, so on a fresh database run `dbt build` (section 10) after
+migrations before exercising the API read path; the deployment smoke path
+below is the exception and provisions its own minimal stand-ins.
+
 Run the deterministic deployment smoke path after PostgreSQL, migrations, and
 the API are available:
 
@@ -257,7 +263,9 @@ docker compose --profile tools run --rm smoke
 
 The smoke path seeds a tiny fixed-ID dataset, checks `/health`, verifies the API
 can query PostgreSQL through the top players read path, and removes the smoke
-rows before exiting. It should run against a local or deployment-validation
+rows before exiting. Because the API reads the dbt-built `analytics` marts and
+the smoke database never runs dbt, the smoke script creates minimal mart
+stand-ins (schema and the columns the read path uses) and seeds them directly. It should run against a local or deployment-validation
 database, not a production analytics database, and does not depend on live
 website scraping.
 

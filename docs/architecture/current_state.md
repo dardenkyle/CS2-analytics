@@ -125,7 +125,9 @@ gate and then `dbt build` daily against the deployed database, using the
 repository's `DB_*` Actions secrets through the `prod` profile target. Its
 read/write boundary: dbt reads the Alembic-owned `public` ingestion tables
 as sources only and writes exclusively to the `analytics` schema (models
-and the SCD2 snapshot). The read-only rule for production validation above
+and the SCD2 snapshot). The API's read path consumes the `analytics`
+marts (#150), so the marts are the serving contract and the ingestion
+schema has no direct API consumers. The read-only rule for production validation above
 applies to the application/ingestion surface; the scheduled dbt build's
 `analytics`-schema writes are the deliberate exception.
 
