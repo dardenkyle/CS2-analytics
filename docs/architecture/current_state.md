@@ -26,7 +26,8 @@ boundary but remains deferred.
 
 ## Stable Source Grains
 
-Phase 3.5 made the active parsed-source tables ready for downstream dbt staging:
+Phase 3.5 stabilized the active parsed-source tables, which the dbt staging
+layer now consumes as sources:
 
 - `matches`: one row per match
 - `maps`: one row per played map
@@ -101,8 +102,8 @@ controller, and stage-service implementation was moved off `main` to the
 `feature/demo-parsing` branch.
 
 Full demo download, parse, event extraction, and local artifact cleanup remain
-deferred until after the initial dbt layer exists and downstream demo needs are
-clearer.
+deferred; the initial dbt layer now exists, but downstream demo needs are
+still unclear.
 
 ## Transformation And Orchestration Boundary
 
@@ -115,8 +116,18 @@ browser validation is tracked by #91, and cloud scraping remains blocked by
 Scheduled scraper runs stay deferred until match and map batch behavior is
 validated. Manual migrations remain the release path, with write-based smoke
 checks limited to separate smoke or staging databases and production
-validation kept read-only. dbt comes after Phase 3.9 and the Phase 4 entry
-criteria.
+validation kept read-only.
+
+The Phase 4 dbt transformation layer is built and is now a scheduled
+production runtime component (#146): the Scheduled dbt Build workflow
+(`.github/workflows/scheduled-dbt-build.yml`) runs a `dbt source freshness`
+gate and then `dbt build` daily against the deployed database, using the
+repository's `DB_*` Actions secrets through the `prod` profile target. Its
+read/write boundary: dbt reads the Alembic-owned `public` ingestion tables
+as sources only and writes exclusively to the `analytics` schema (models
+and the SCD2 snapshot). The read-only rule for production validation above
+applies to the application/ingestion surface; the scheduled dbt build's
+`analytics`-schema writes are the deliberate exception.
 
 Normal database setup applies Alembic migrations through
 `alembic -c cs2_analytics/alembic.ini upgrade head` or
@@ -170,8 +181,11 @@ deferred until recurring deployment validation needs one; until then,
 production validation stays read-only and limited live ingestion validation is
 used to prove the deployed pipeline path.
 
-dbt will be added after the deployment baseline and must remain downstream of
-ingestion. It should transform stable source tables, not own ingestion logic or
-application/source schema.
+dbt is in place and remains downstream of ingestion: it transforms the stable
+source tables and owns neither ingestion logic nor the application/source
+schema. It runs on the daily scheduled workflow described under
+Transformation And Orchestration Boundary.
 
-Airflow comes after dbt and must not drive schema semantics prematurely.
+Airflow comes after dbt maturity and must not drive schema semantics
+prematurely; the scheduled dbt workflow is the interim orchestration Airflow
+would replace.

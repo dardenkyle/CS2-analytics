@@ -42,3 +42,6 @@ cs2_analytics:
       dbname: "{{ env_var('DB_NAME') }}"
       schema: analytics
       threads: 4
+      # Deployed Postgres requires TLS; require prevents a silent
+      # plaintext fallback. Override only for a non-TLS target.
+      sslmode: "{{ env_var('DB_SSLMODE', 'require') }}"

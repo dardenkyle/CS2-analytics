@@ -350,6 +350,14 @@ set -a; source .env; set +a
 uv run dbt run --project-dir dbt --profiles-dir dbt --target prod
 ```
 
+The deployed database is also rebuilt automatically: the Scheduled dbt
+Build workflow (`.github/workflows/scheduled-dbt-build.yml`) runs
+`dbt build --target prod` daily (10:00 UTC, plus manual dispatch) so the
+SCD2 roster snapshot observes changes as they happen - missed runs are
+roster history that cannot be backfilled. Each run is gated by
+`dbt source freshness`, so stale ingestion data fails the workflow
+instead of silently freezing snapshot history.
+
 dbt owns analytics transformations only; the ingestion schema stays owned by
 Alembic migrations. Sources are declared for the `matches`, `maps`, and
 `players` tables. The staging layer (`stg_matches`, `stg_maps`, `stg_players`)

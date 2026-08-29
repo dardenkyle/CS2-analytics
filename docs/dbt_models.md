@@ -656,6 +656,29 @@ where roster.team_name = 'Some Team'
   )
 ```
 
+## Scheduled execution (#146)
+
+The snapshot's `check` strategy can only record a roster change during a
+run that observes it, so unscheduled execution silently loses history.
+The Scheduled dbt Build workflow
+(`.github/workflows/scheduled-dbt-build.yml`) therefore runs daily at
+10:00 UTC (plus `workflow_dispatch`) against the deployed database:
+
+1. `dbt source freshness --target prod` - gate. The ingestion sources
+   declare per-table `loaded_at_field`s on `last_scraped_at` (with an
+   explicit `AT TIME ZONE 'UTC'` conversion for the naive TIMESTAMP
+   columns on matches and players, see #132, so freshness age never
+   shifts with the session timezone) and warn-after 3 days /
+   error-after 7 days; stale sources fail the workflow loudly instead
+   of letting snapshot history freeze while runs stay green.
+2. `dbt build --target prod` - models, snapshots, and data tests.
+
+Connection settings come from the repository's `DB_*` Actions secrets
+through the `prod` profile target (TLS required via `sslmode`). Freshness
+thresholds are set for today's manual scraping cadence; tightening them
+belongs to the data-quality depth work (#148). This workflow is interim
+orchestration ("Phase 5 lite") and is what Airflow later replaces.
+
 ---
 
 ## Planned Directory Structure
