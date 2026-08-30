@@ -15,9 +15,10 @@ The schema uses PostgreSQL ingestion-state tables directly, and the active resul
 - demo processing remains deferred; its implementation lives on the
   `feature/demo-parsing` branch while demo link discovery and
   `demo_ingestion_state` tracking stay on `main`
-- deployment baseline work is the next architecture phase before dbt
-- dbt remains the next analytics layer after deployment baseline hardening
-- Airflow remains later, after dbt
+- the deployment baseline and the dbt transformation layer are complete:
+  the marts serve the API read paths, rebuild daily against the deployed
+  database, and build with their tests in CI
+- Airflow remains later, after dbt operational depth
 
 ## Current Flow
 
@@ -46,11 +47,12 @@ The intended design is:
 - stage-specific processing reads from those lifecycle rows
 - per-item stage workflow is handled by dedicated stage services
 - controllers stay thin and focus on batch-level concerns
-- deployment baseline work happens before dbt so runtime, configuration,
-  migrations, containers, CI, and smoke tests are reproducible
-- dbt is added after ingestion semantics, stage boundaries, and deployment
-  baseline assumptions are stable
-- Airflow is added only after dbt exists and the stage boundaries are clean
+- deployment baseline work happened before dbt so runtime, configuration,
+  migrations, containers, CI, and smoke tests were reproducible first
+- dbt was added after ingestion semantics, stage boundaries, and deployment
+  baseline assumptions stabilized; it stays downstream of ingestion
+- Airflow is added only after dbt operational depth and would replace the
+  scheduled dbt build workflow
 
 ## Stage Responsibilities
 
@@ -187,12 +189,13 @@ The demo processing implementation should stay deferred until:
 
 1. Keep the current `*_ingestion_state` tables stable.
 2. Keep controller/stage-service responsibilities clean as ingestion evolves.
-3. Finish Phase 3.9 tooling hardening and the Phase 4 entry criteria
-   (v1.0 hardening items) before adding dbt; the Phase 3.75 deployment
-   baseline is complete and live.
-4. Implement dbt models over the stable `matches`, `maps`, and `players`
-   parsed-source grains.
-5. Implement Airflow after dbt exists and the stage boundaries are clean.
+3. Keep the dbt layer downstream of ingestion: the models over the stable
+   `matches`, `maps`, and `players` grains are implemented, serve the API
+   read paths, and are rebuilt daily and CI-verified.
+4. Deepen dbt operations (incremental materializations, data-quality
+   depth) per the Phase 4.5 backlog.
+5. Implement Airflow after dbt operational depth; it replaces the
+   scheduled dbt build workflow.
 
 ## Rules
 

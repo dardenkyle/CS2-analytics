@@ -17,8 +17,10 @@ idle periods.)
 This project is a Counter-Strike 2 analytics tool focused on collecting professional match, map, and player data and turning it into reliable, queryable analytics data.
 
 The system is deployed end to end: a Python ingestion pipeline writes to
-PostgreSQL, a FastAPI service on Render serves player statistics, and a React
-SPA on GitHub Pages presents them publicly.
+PostgreSQL, a dbt transformation layer builds tested fact and dimension
+marts from the raw tables (rebuilt daily against the deployed database),
+a FastAPI service on Render serves player statistics from those marts, and
+a React SPA on GitHub Pages presents them publicly.
 
 The current ingestion architecture uses PostgreSQL-backed ingestion-state tables, thin controllers for batch orchestration, and stage services for per-item match/map workflow boundaries.
 
@@ -31,24 +33,32 @@ The current ingestion architecture uses PostgreSQL-backed ingestion-state tables
 - Map processing collects player performance metrics such as kills, deaths, assists, ADR, KAST, opening duels, multi-kills, clutches, and round swing.
 - Ingestion hardening uses retry/backoff, browser session recovery, and lifecycle tracking for resilient scraping runs.
 
+### Analytics Transformation (dbt)
+
+- Staging, intermediate, and mart layers over the ingestion schema, with
+  data tests on every layer (see
+  [Transformation Layer (dbt)](#transformation-layer-dbt)).
+- SCD2 `player_roster_history_snapshot` records player-to-team roster
+  history from observed changes.
+- The marts serve the API's read paths, rebuild daily against the deployed
+  database behind a source-freshness gate, and build in CI on every push.
+
 ### Deferred / Later-Phase Work
 
 - Demo processing: deferred; the demo subsystem lives on the
   `feature/demo-parsing` branch, while demo link discovery and
   `demo_ingestion_state` tracking remain on `main`.
-- Deployment baseline: containerized runtime, environment-driven configuration,
-  migrations, CI, and smoke tests come before dbt.
-- dbt transformation layer: dbt follows the deployment baseline and stays
-  downstream of ingestion.
-- Airflow orchestration: Airflow comes after dbt and clean stage boundaries.
+- Airflow orchestration: Airflow comes after dbt operational depth; the
+  scheduled daily dbt build is the interim orchestration it would replace.
 
 ## Tech Stack
 
 - Python 3.12
 - SeleniumBase and BeautifulSoup for web scraping
 - PostgreSQL for structured data storage, with Alembic-managed migrations
-- dbt for the downstream analytics transformation layer (Phase 4, in
-  progress)
+- dbt for the analytics transformation layer (staging / intermediate /
+  marts, SCD2 snapshot, data tests; CI-verified and rebuilt daily in
+  production)
 - FastAPI for the public read API (deployed on Render)
 - React, TypeScript, and Vite for the public frontend (deployed on GitHub
   Pages)
@@ -215,8 +225,8 @@ python manage_db.py --wipe
 ```
 
 The wipe command asks for `y` confirmation before dropping tables. Alembic owns
-the application/source schema; future dbt models will remain downstream and
-will not manage ingestion tables.
+the application/source schema; the dbt models are downstream and do not
+manage ingestion tables.
 
 ### 6. Run With Docker Compose
 
@@ -376,7 +386,7 @@ instead of silently freezing snapshot history.
 dbt owns analytics transformations only; the ingestion schema stays owned by
 Alembic migrations. Sources are declared for the `matches`, `maps`, and
 `players` tables. The staging layer (`stg_matches`, `stg_maps`, `stg_players`)
-is thin views over those sources. See `docs/dbt_models.md` for the planned
+is thin views over those sources. See `docs/dbt_models.md` for the
 model layers.
 
 Note: Demo processing is still deferred and intentionally remains outside the active ingestion pipeline; its implementation lives on the `feature/demo-parsing` branch.
@@ -404,6 +414,84 @@ results discovery
 -> MapStageService per-item workflow
 -> relational storage
 ```
+
+## Transformation Layer (dbt)
+
+The analytics warehouse is a shipped dbt project (`dbt/`) layered over the
+ingestion schema: staging views standardize the Alembic-owned source
+tables, intermediate views factor the reusable joins, and mart tables are
+the analytics-facing contract. The marts are not a side artifact - the
+API's read paths query them in production, they are rebuilt daily against
+the deployed database by a scheduled workflow, and the whole DAG builds
+and tests in CI on every push.
+
+```mermaid
+flowchart LR
+    subgraph sources["public schema (Alembic-owned)"]
+        matches
+        maps
+        players
+    end
+    subgraph staging["staging (views)"]
+        stg_matches
+        stg_maps
+        stg_players
+    end
+    subgraph intermediate["intermediate (views)"]
+        int_mps["int_match_player_stats"]
+        int_pct["int_player_current_team"]
+    end
+    subgraph marts["marts (tables)"]
+        fact_matches
+        fact_pms["fact_player_map_stats"]
+        dim_players
+        dim_maps
+        dim_prh["dim_player_roster_history"]
+    end
+    snap["player_roster_history_snapshot (SCD2)"]
+    api["FastAPI read paths"]
+
+    matches --> stg_matches
+    maps --> stg_maps
+    players --> stg_players
+    stg_matches --> int_mps
+    stg_maps --> int_mps
+    stg_players --> int_mps
+    stg_matches --> fact_matches
+    stg_maps --> fact_matches
+    stg_maps --> dim_maps
+    stg_players --> dim_players
+    int_mps --> fact_pms
+    int_mps --> int_pct
+    int_pct --> snap
+    snap --> dim_prh
+    marts --> api
+```
+
+Mart grains:
+
+| Model | Grain | Notes |
+| --- | --- | --- |
+| `fact_player_map_stats` | one row per player per map (`map_id`, `player_id`) | per-map performance stats; serves the top players API read path |
+| `fact_matches` | one row per match (`match_id`) | derives winning/losing team and map count |
+| `dim_players` | one row per player (`player_id`) | player identity for joins |
+| `dim_maps` | one row per map name (`map_name`) | map catalog across matches |
+| `dim_player_roster_history` | one row per player-team membership interval (`player_id`, `valid_from`) | SCD2 shaped over the snapshot, with `is_current` flag |
+
+The SCD2 piece is `player_roster_history_snapshot`: a dbt snapshot that
+records player-to-team roster membership over time. The source data has no
+reliable roster-change timestamps, so a `check`-strategy snapshot is the
+right tool - each run compares every player's derived current team against
+recorded history and effective-dates any change, so validity ranges come
+from observed changes rather than trusting parsed dates. History accrues
+run over run, which is why the scheduled daily build exists.
+
+Every layer carries data tests (uniqueness of the declared grains,
+not-null keys, and relationship tests between models - 63 in total), run
+by `dbt build` locally, in CI against a disposable Postgres, and daily
+against production behind a source-freshness gate. Local run instructions
+are in [section 10](#10-run-dbt-analytics-transformations); model-level
+documentation lives in `docs/dbt_models.md`.
 
 ## Design Decisions & Tradeoffs
 
@@ -448,7 +536,7 @@ The parsed source tables were locked to explicit grains before any
 analytics work: `matches` is one row per match, `maps` one row per played
 map, `players` one row per player per map. Storage writes are upserts that
 refresh trusted fields, so re-running ingestion over the same matches never
-duplicates rows. This was done ahead of the planned dbt layer because
+duplicates rows. This was done ahead of the dbt layer because
 transformation models are only as trustworthy as their sources — building
 dbt on tables that could drift or duplicate would push data-quality
 firefighting downstream where it is hardest to debug. The tradeoff is
@@ -466,17 +554,17 @@ Docker Compose (`python run_api.py` for the API, `python main.py` for the
 pipeline) — one runtime to debug instead of a separate cloud configuration.
 Production validation is read-only by policy: health checks and DB-backed
 reads, with write-based smoke tests restricted to disposable databases. The tradeoff is fewer operational
-capabilities (no scheduling, manual migrations) in exchange for a
-deployment simple enough to reason about while the data layer is still
-evolving.
+capabilities (no ingestion scheduling, manual migrations) in exchange for a
+deployment simple enough to reason about while the data layer was still
+evolving; the scheduled daily dbt build was added once the transformation
+layer stabilized.
 
 ### Demo parsing deferred behind a preserved boundary
 
 Demo files introduce a different workload class: large binary downloads,
 temporary-file lifecycle, long parses, and event-level extraction. Rather
 than bolt that onto the match/map surface, demo processing is deferred
-until the analytics layer (dbt) exists and downstream demo needs are
-concrete. The boundary is kept, not deleted: demo links are still
+until downstream demo needs are concrete. The boundary is kept, not deleted: demo links are still
 discovered during match processing and tracked in the demo
 ingestion-state table, while the non-working downloader/parser
 implementation lives on the `feature/demo-parsing` branch until
@@ -485,15 +573,20 @@ controller/stage-service pattern later. The tradeoff is no event-level
 stats yet, in exchange for keeping the active pipeline small enough to
 harden and deploy.
 
-## Data Insights & Usage (planned)
+## Data Insights & Usage
 
-- Current API surface includes a player-oriented read path for top players by
-  average rating, shown live on the public demo page.
+Live today:
+
+- Top players by average rating, served from the dbt marts and shown on
+  the public demo page.
+- Point-in-time roster queries over `dim_player_roster_history` (SCD2).
+
+Planned:
+
 - View per-match player performance.
 - Compare teams' win rates on specific maps.
 - Identify key players in matchups.
-- Add transformed analytics models through dbt.
-- Expand API read paths over trusted transformed tables.
+- Additional API read paths over the mart layer (matches, teams).
 
 ## Developer Notes
 
@@ -501,14 +594,17 @@ See `docs/` for architecture and roadmap details.
 
 Current architecture direction:
 
-- Phases 2, 3, 3.5, 3.6, and 3.75 are complete.
+- Phases 2 through 3.9 are complete, as is Phase 4 (the dbt transformation
+  layer: staging / intermediate / marts, data tests, and the SCD2 roster
+  snapshot).
 - Frontend Phase A shipped the public GitHub Pages demo backed by the live
   API (see `docs/frontend_backlog.md`).
-- Phase 3.9 (environment and tooling hardening) is in progress.
-- Phase 4 (dbt transformation layer) follows Phase 3.9. Entry criteria include
-  v1.0 hardening items for ingestion layer correctness and atomic writes.
+- Phase 4.5 (dbt operations and depth) is in progress: the scheduled daily
+  prod build, CI dbt build, and mart-backed API read paths are shipped;
+  incremental materializations and deeper data quality remain.
 - Demo pipeline implementation remains deferred.
-- Airflow comes after dbt and clean transformation boundaries.
+- Airflow comes after dbt operational depth and would replace the
+  scheduled-build workflow.
 
 ## License
 

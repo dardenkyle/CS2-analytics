@@ -22,9 +22,9 @@ Current priorities:
   Phase 4 legibility tasks because it is the only calendar-sensitive item:
   SCD2 roster history only accrues while it runs, and gaps cannot be
   backfilled. It is delivered by the Scheduled dbt Build workflow.
-- finish the Phase 4 legibility follow-through: README presents the
-  shipped layer (#143) and dbt docs publish to GitHub Pages (#145); dbt
-  build now runs in CI on every push/PR (#144)
+- finish the Phase 4 legibility follow-through: dbt docs publish to
+  GitHub Pages (#145) is the remaining item; the README presents the
+  shipped layer (#143) and dbt build runs in CI on every push/PR (#144)
 - continue Phase 4.5 (dbt operations and depth) with #132, #147, and #148
   in dependency order; the API read paths already point at the marts
   (#150)
@@ -754,8 +754,11 @@ writes into.
 The transformation layer is built; these make it visible from outside the
 repo.
 
-- [ ] Present the shipped dbt layer in the README: lineage diagram, SCD2
-      snapshot callout, mart grain table (#143)
+- [x] Present the shipped dbt layer in the README: lineage diagram, SCD2
+      snapshot callout, mart grain table (#143) - Transformation Layer
+      section with Mermaid lineage, grain table, and test/CI/scheduled
+      run framing; stale planned/in-progress wording swept from README
+      and docs/dbt_models.md
 - [x] Run dbt build (models, snapshots, tests) in CI against a disposable
       Postgres with seeded fixtures (#144) - the ci.yml dbt-build job
       migrates a service container, seeds a checked-in fixture through
