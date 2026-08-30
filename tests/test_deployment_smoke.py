@@ -5,7 +5,7 @@ from scripts import deployment_smoke
 
 class _RecordingCursor:
     def __init__(self, fetchone_results: list[tuple[object, ...]] | None = None) -> None:
-        self.executed: list[tuple[str, tuple[int, ...] | None]] = []
+        self.executed: list[tuple[str, tuple[object, ...] | None]] = []
         self.fetchone_results = list(fetchone_results or [])
 
     def __enter__(self) -> "_RecordingCursor":
@@ -14,7 +14,7 @@ class _RecordingCursor:
     def __exit__(self, exc_type, exc, tb) -> None:
         return None
 
-    def execute(self, query: str, params: tuple[int, ...] | None = None) -> None:
+    def execute(self, query: str, params: tuple[object, ...] | None = None) -> None:
         self.executed.append((query, params))
 
     def fetchone(self) -> tuple[object, ...]:
@@ -87,6 +87,25 @@ def test_cleanup_smoke_source_rows_deletes_fixed_ids_in_dependency_order(
             (deployment_smoke.SMOKE_MATCH_ID,),
         ),
     ]
+
+
+def test_ensure_smoke_mart_relations_creates_schema_and_stand_ins(monkeypatch) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(
+        deployment_smoke,
+        "Database",
+        lambda: _FakeDatabase(cursor),
+    )
+
+    deployment_smoke.ensure_smoke_mart_relations()
+
+    executed_queries = [query for query, _params in cursor.executed]
+    assert executed_queries[0] == "CREATE SCHEMA IF NOT EXISTS analytics;"
+    assert "CREATE TABLE IF NOT EXISTS analytics.fact_player_map_stats" in (
+        executed_queries[1]
+    )
+    assert "CREATE TABLE IF NOT EXISTS analytics.dim_players" in executed_queries[2]
+    assert all("IF NOT EXISTS" in query for query in executed_queries)
 
 
 def test_seed_smoke_mart_rows_inserts_fixed_ids(monkeypatch) -> None:
