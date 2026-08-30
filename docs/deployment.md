@@ -113,11 +113,17 @@ Pages origin. For a project page such as
 
 ## Frontend GitHub Pages Deployment
 
-The public React SPA deploys to GitHub Pages through
-`.github/workflows/deploy-frontend.yml`. Pushes to `main` that touch
-`frontend/**` (or the workflow file) build the SPA with Node 24 (`npm ci`,
-`npm run build`) and publish `frontend/dist` to the `github-pages`
-environment. The workflow can also be run manually from the Actions tab.
+The public React SPA and the generated dbt docs site deploy to GitHub
+Pages together through `.github/workflows/deploy-frontend.yml`. Pages
+deployments replace the whole site, so the workflow composes one
+artifact: pushes to `main` that touch `frontend/**`, `dbt/**`, the CI
+fixture seeder, or the workflow file build the SPA with Node 24
+(`npm ci`, `npm run build`), generate the static dbt docs against a
+disposable Postgres service (migrations, fixture seed, `dbt build`,
+`dbt docs generate --static`), place them under `dist/dbt-docs/`, and
+publish `frontend/dist` to the `github-pages` environment. The dbt docs
+are served at `https://dardenkyle.github.io/CS2-analytics/dbt-docs/`.
+The workflow can also be run manually from the Actions tab.
 
 Deployment details:
 
