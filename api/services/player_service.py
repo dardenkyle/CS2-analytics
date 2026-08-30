@@ -20,6 +20,11 @@ class PlayerService:
         """
         Fetches top players based on average rating, filtered by minimum maps played.
 
+        Reads the dbt-built marts (analytics schema), not the raw ingestion
+        tables: fact_player_map_stats carries the per-map performance grain
+        and dim_players carries player identity, so aggregation is keyed on
+        player_id rather than on raw player_name values.
+
         Args:
             min_maps (int): Minimum number of maps a player must have played.
             limit (int): Number of players to return.
@@ -29,11 +34,13 @@ class PlayerService:
         """
         sql: str = """
             SELECT
-                player_name,
+                dim_players.player_name,
                 COUNT(*) AS maps_played,
-                ROUND(AVG(rating)::numeric, 2) AS avg_rating
-            FROM players
-            GROUP BY player_name
+                ROUND(AVG(fact_player_map_stats.rating)::numeric, 2) AS avg_rating
+            FROM analytics.fact_player_map_stats
+            JOIN analytics.dim_players
+                ON dim_players.player_id = fact_player_map_stats.player_id
+            GROUP BY fact_player_map_stats.player_id, dim_players.player_name
             HAVING COUNT(*) >= %s
             ORDER BY avg_rating DESC
             LIMIT %s;

@@ -35,8 +35,11 @@ def main() -> int:
         timeout_seconds = read_timeout_seconds()
         verify_migrated_tables()
         cleanup_smoke_source_rows()
+        cleanup_smoke_mart_rows()
         smoke_data_touched = True
         seed_smoke_source_rows()
+        ensure_smoke_mart_relations()
+        seed_smoke_mart_rows()
         verify_api_health(api_base_url, timeout_seconds)
         verify_top_players_read(api_base_url, timeout_seconds)
     except Exception as exc:
@@ -46,6 +49,7 @@ def main() -> int:
         if smoke_data_touched:
             try:
                 cleanup_smoke_source_rows()
+                cleanup_smoke_mart_rows()
             except Exception as exc:
                 logger.warning("Failed to clean up deployment smoke data: %s", exc)
 
@@ -181,6 +185,63 @@ def seed_smoke_source_rows() -> None:
     )
 
 
+def ensure_smoke_mart_relations() -> None:
+    """Create smoke-only stand-ins for the dbt-built mart relations.
+
+    The API reads the analytics marts, but the disposable smoke database
+    never runs dbt (the runtime image does not include it), so the
+    relations the read path uses are created here with only the columns
+    that path touches. Real environments get the full tables from
+    `dbt build`, which replaces these stand-ins.
+    """
+    db = Database()
+    with db.get_cursor() as cur:
+        cur.execute("CREATE SCHEMA IF NOT EXISTS analytics;")
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS analytics.fact_player_map_stats ("
+            "map_id BIGINT, player_id BIGINT, rating DOUBLE PRECISION);"
+        )
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS analytics.dim_players ("
+            "player_id BIGINT, player_name TEXT);"
+        )
+
+
+def cleanup_smoke_mart_rows() -> None:
+    """Remove fixed-ID smoke rows from the mart relations if they exist."""
+    db = Database()
+    with db.get_cursor() as cur:
+        cur.execute("SELECT to_regclass('analytics.fact_player_map_stats');")
+        if cur.fetchone()[0] is not None:
+            cur.execute(
+                "DELETE FROM analytics.fact_player_map_stats"
+                " WHERE map_id = %s AND player_id = %s;",
+                (SMOKE_MAP_ID, SMOKE_PLAYER_ID),
+            )
+        cur.execute("SELECT to_regclass('analytics.dim_players');")
+        if cur.fetchone()[0] is not None:
+            cur.execute(
+                "DELETE FROM analytics.dim_players WHERE player_id = %s;",
+                (SMOKE_PLAYER_ID,),
+            )
+
+
+def seed_smoke_mart_rows() -> None:
+    """Seed mart rows so the API read check can see the smoke player."""
+    db = Database()
+    with db.get_cursor() as cur:
+        cur.execute(
+            "INSERT INTO analytics.fact_player_map_stats"
+            " (map_id, player_id, rating) VALUES (%s, %s, %s);",
+            (SMOKE_MAP_ID, SMOKE_PLAYER_ID, 9.99),
+        )
+        cur.execute(
+            "INSERT INTO analytics.dim_players"
+            " (player_id, player_name) VALUES (%s, %s);",
+            (SMOKE_PLAYER_ID, SMOKE_PLAYER_NAME),
+        )
+
+
 def verify_api_health(api_base_url: str, timeout_seconds: int) -> None:
     """Check the stable shallow API health endpoint."""
     payload = request_json(f"{api_base_url}/health", timeout_seconds)
@@ -190,7 +251,7 @@ def verify_api_health(api_base_url: str, timeout_seconds: int) -> None:
 
 
 def verify_top_players_read(api_base_url: str, timeout_seconds: int) -> None:
-    """Check that the API can read seeded source data from PostgreSQL."""
+    """Check that the API can read seeded mart data from PostgreSQL."""
     payload = request_json(
         f"{api_base_url}/api/top_players?min_maps=1&limit=100",
         timeout_seconds,

@@ -826,12 +826,16 @@ This makes the project stronger both for maintainability and portfolio presentat
 
 ## Relationship to the API Layer
 
-The FastAPI application should eventually prefer querying trusted transformed tables where appropriate.
+The FastAPI application reads the trusted transformed tables, not the raw
+ingestion tables. As of #150, the top players endpoint queries
+`fact_player_map_stats` joined to `dim_players`, aggregated on `player_id`,
+so the marts hold the API's data contract and the staging/intermediate
+layers can be restructured freely.
 
-Examples:
+Future endpoints should follow the same pattern:
 
 - recent matches endpoint -> fact_matches
-- player stats endpoint -> fact_player_map_stats or fact_player_match_stats
+- player stats endpoints -> fact_player_map_stats
 - team summaries -> fact_matches + dim_teams
 
 This keeps transformation logic out of the API code and reinforces separation of concerns.
@@ -851,6 +855,7 @@ Recommended rollout order:
 4. create intermediate reusable joins
 5. create fact and dimension marts
 6. update API/data consumers to use trusted marts where appropriate
+   (done for the top players read path in #150)
 
 ---
 

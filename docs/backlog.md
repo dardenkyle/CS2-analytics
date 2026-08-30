@@ -791,8 +791,11 @@ time-sensitive item and leads this phase.
 
 ### After Phase 4.5
 
-- Point API read paths at the dbt marts (#150, also tracked under
-  Deferred Work / API Expansion) once the marts are continuously rebuilt
+- [x] Point API read paths at the dbt marts (#150) - `/api/top_players`
+      now reads `analytics.fact_player_map_stats` joined to
+      `analytics.dim_players`, aggregated on `player_id`, with the
+      deployment smoke path seeding mart stand-ins for the disposable
+      smoke database
 - Cloud warehouse (BigQuery) and Airflow (Phase 5) stay downstream; the
   #146 scheduled workflow is the interim orchestration Phase 5 replaces
 
@@ -824,8 +827,9 @@ deployment baseline work, and dbt.
       environment-driven host/port settings, and CORS configuration
 - [ ] Add endpoints for matches and teams
 - [ ] Add pagination/filtering patterns
-- [ ] Evaluate querying transformed dbt models for read paths after dbt marts
-      exist
+- [x] Evaluate querying transformed dbt models for read paths after dbt marts
+      exist - done (#150): the top players read path is served from the
+      marts; future endpoints should read marts by default
 
 ### Demo Pipeline
 
