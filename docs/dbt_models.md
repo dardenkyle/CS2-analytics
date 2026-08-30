@@ -1,35 +1,28 @@
 # dbt Models
 
-This document describes the planned dbt model structure for the CS2 Analytics project.
+This document describes the dbt model structure for the CS2 Analytics project.
 
-dbt is the Phase 4 transformation layer. The project skeleton is initialized
-under `dbt/` (#109): an environment-driven Postgres profile reusing the
-application's `DB_*` variables, and source declarations for the Alembic-owned
-`matches`, `maps`, and `players` tables. Models are still planned work.
+The transformation layer is implemented (#109-#114, #130) under `dbt/`:
+staging, intermediate, and mart models, data tests on every layer, and the
+SCD2 `player_roster_history_snapshot`. The marts serve the API's read
+paths (#150), rebuild daily against the deployed database on a scheduled
+workflow (#146), and build with their tests in CI on every push (#144).
+Some sections below keep their original design-note voice; per-section
+`Status:` lines record what is implemented versus planning-only.
 
 dbt is not part of the ingestion pipeline; it consumes ingestion outputs
 downstream. Setup and run commands are in the README.
 
 Note:
-Planned raw snapshot tables (for example `raw_matches` and `raw_maps`) are expected to be introduced around dbt rollout time, not before.
-
-Completed prerequisite order:
-
-1. review lifecycle semantics for the current match/map discovery tables
-2. update the current state tables and their audit fields
-3. thin `MatchController` and `MapController` by introducing stage services
-4. stabilize the active `matches`, `maps`, and `players` grains for dbt
-   readiness
-
-Next dependency:
-
-5. add dbt scaffolding and staging models over the active parsed-source tables
+Raw snapshot tables (for example `raw_matches` and `raw_maps`) were not
+introduced; the pipeline does not persist raw HTML, so the `stg_raw_*`
+models below remain planning-only.
 
 ---
 
 ## Purpose
 
-dbt will be used to transform raw and structured PostgreSQL tables into clean, analytics-ready models.
+dbt transforms raw and structured PostgreSQL tables into clean, analytics-ready models.
 
 Its role in this project is to:
 
@@ -74,7 +67,7 @@ dbt should consume stable ingestion outputs, not compensate for ingestion-state 
 
 ---
 
-## Planned Model Layers
+## Model Layers
 
 The dbt project should be organized into three main layers:
 
@@ -110,7 +103,7 @@ Typical staging responsibilities:
 - expose one clean representation of each source table
 - avoid business-heavy logic
 
-## Planned staging models
+## Staging models
 
 ### stg_raw_matches
 
@@ -290,7 +283,7 @@ Typical intermediate responsibilities:
 - isolate transformation steps
 - reduce duplication across marts
 
-## Planned intermediate models
+## Intermediate models
 
 ### int_match_player_stats
 
@@ -410,7 +403,7 @@ Typical mart responsibilities:
 - support analytics and filtering
 - provide high-confidence tables for downstream consumers
 
-## Planned fact models
+## Fact models
 
 ### fact_matches
 
@@ -515,7 +508,7 @@ Use cases:
 
 ---
 
-## Planned dimension models
+## Dimension models
 
 ### dim_players
 
@@ -681,7 +674,7 @@ orchestration ("Phase 5 lite") and is what Airflow later replaces.
 
 ---
 
-## Planned Directory Structure
+## Directory Structure
 
 The dbt project should follow a clear folder structure:
 
@@ -842,7 +835,7 @@ This keeps transformation logic out of the API code and reinforces separation of
 
 ---
 
-## Planned Rollout Order
+## Rollout Order (as executed)
 
 dbt should be introduced now that lifecycle semantics, active-stage
 responsibilities, and match/map/player grains are stable.
