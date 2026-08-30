@@ -187,14 +187,17 @@ def main() -> int:
 
     require_local_database(args.allow_remote)
     now = datetime.now(UTC)
-    store_matches(fixture_matches(now))
-    store_maps(fixture_maps(now))
-    store_players(fixture_players(now))
+    matches = fixture_matches(now)
+    maps = fixture_maps(now)
+    players = fixture_players(now)
+    store_matches(matches)
+    store_maps(maps)
+    store_players(players)
     logger.info(
         "Seeded dbt CI fixture: %d matches, %d maps, %d player rows.",
-        len(FIXTURE_MATCH_IDS),
-        len(FIXTURE_MAP_IDS),
-        6,
+        len(matches),
+        len(maps),
+        len(players),
     )
     return 0
 
