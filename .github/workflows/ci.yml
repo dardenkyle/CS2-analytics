@@ -81,6 +81,66 @@ jobs:
           name: coverage-badge
           path: coverage-badge.json
 
+  dbt-build:
+    name: dbt Build And Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: cs2_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: change_me
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cs2_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # DB_* drive Alembic and the fixture seeder; DBT_DB_* drive dbt's
+      # default dev target. Both point at the disposable service container
+      # only - CI never touches a deployed database.
+      DB_NAME: cs2_db
+      DB_USER: postgres
+      DB_PASS: change_me
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DBT_DB_HOST: 127.0.0.1
+
+    steps:
+      - name: Check out repository
+        # actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Set up Python
+        # actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run migrations
+        run: uv run alembic -c cs2_analytics/alembic.ini upgrade head
+
+      - name: Seed dbt fixture data
+        run: uv run python scripts/seed_dbt_ci_fixture.py
+
+      - name: Install dbt packages
+        run: uv run dbt deps --project-dir dbt --profiles-dir dbt
+
+      - name: Build dbt models, snapshots, and tests
+        run: uv run dbt build --project-dir dbt --profiles-dir dbt
+
   publish-coverage-badge:
     name: Publish Coverage Badge
     needs: lint-type-test

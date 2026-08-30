@@ -23,10 +23,11 @@ Current priorities:
   SCD2 roster history only accrues while it runs, and gaps cannot be
   backfilled. It is delivered by the Scheduled dbt Build workflow.
 - finish the Phase 4 legibility follow-through: README presents the
-  shipped layer (#143), dbt build runs in CI (#144), dbt docs publish to
-  GitHub Pages (#145)
+  shipped layer (#143) and dbt docs publish to GitHub Pages (#145); dbt
+  build now runs in CI on every push/PR (#144)
 - continue Phase 4.5 (dbt operations and depth) with #132, #147, and #148
-  in dependency order, then point API read paths at the marts (#150)
+  in dependency order; the API read paths already point at the marts
+  (#150)
 - keep the ingestion baseline solid: run the scraper locally, persist to
   the Render database, with controllable quantity (`cs2a` caps and batch
   sizes) and a schedulable entry point
@@ -755,8 +756,10 @@ repo.
 
 - [ ] Present the shipped dbt layer in the README: lineage diagram, SCD2
       snapshot callout, mart grain table (#143)
-- [ ] Run dbt build (models, snapshots, tests) in CI against a disposable
-      Postgres with seeded fixtures (#144)
+- [x] Run dbt build (models, snapshots, tests) in CI against a disposable
+      Postgres with seeded fixtures (#144) - the ci.yml dbt-build job
+      migrates a service container, seeds a checked-in fixture through
+      the real storage layer, and fails on any model or test failure
 - [ ] Publish generated dbt docs (lineage DAG) to GitHub Pages (#145)
 
 ---

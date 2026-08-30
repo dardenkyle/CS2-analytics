@@ -358,6 +358,13 @@ set -a; source .env; set +a
 uv run dbt run --project-dir dbt --profiles-dir dbt --target prod
 ```
 
+The dbt layer is CI-verified: the `dbt-build` job in
+`.github/workflows/ci.yml` runs `dbt build` (models, snapshots, and data
+tests) on every push and pull request against a disposable Postgres
+service container, migrated with Alembic and seeded with a small
+checked-in fixture (`scripts/seed_dbt_ci_fixture.py`) that writes through
+the real storage layer. Any model or data-test failure fails CI.
+
 The deployed database is also rebuilt automatically: the Scheduled dbt
 Build workflow (`.github/workflows/scheduled-dbt-build.yml`) runs
 `dbt build --target prod` daily (10:00 UTC, plus manual dispatch) so the
