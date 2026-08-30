@@ -1,9 +1,9 @@
 # Current Architecture State
 
-This document summarizes the active architecture as of the first cloud
-deployment and the enforced scraper boundary (post-Phase 3.75, frontend
-Phase A complete, Phase 3.9 in progress). For the longer architecture
-overview, see `docs/architecture/overview.md`.
+This document summarizes the active architecture as of the shipped dbt
+transformation layer and its operations baseline (Phases 2-4 and frontend
+Phase A complete; Phase 4.5 dbt operations and depth in progress). For
+the longer architecture overview, see `docs/architecture/overview.md`.
 
 ## Active Runtime Flow
 
