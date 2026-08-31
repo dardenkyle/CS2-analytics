@@ -68,6 +68,74 @@ def discover(
     ResultsController().run(max_matches=cap)
 
 
+class CoveragePeriod(StrEnum):
+    """Bucket size for the discovery-coverage report."""
+
+    DAY = "day"
+    WEEK = "week"
+
+
+@ingest_app.command("coverage")
+def coverage(
+    period: Annotated[
+        CoveragePeriod,
+        typer.Option(help="Bucket size for per-period counts and gaps."),
+    ] = CoveragePeriod.WEEK,
+) -> None:
+    """Report discovery date coverage of the target window.
+
+    Read-only: compares the configured window (START_DATE through today)
+    against match dates present in `matches`, lists zero-match periods as
+    gaps, and shows the not-yet-processed backlog (every non-processed
+    lifecycle status) so "not discovered" is distinguishable from "not
+    yet processed". Backfill cursor state joins this report once the
+    backfill strategy (#121) lands.
+    """
+    import datetime as dt
+
+    from cs2_analytics.config.config import START_DATE
+    from cs2_analytics.storage.discovery_coverage import (
+        compute_gap_ranges,
+        fetch_discovery_coverage,
+    )
+
+    window_start = dt.date.fromisoformat(START_DATE)
+    window_end = dt.date.today()
+    try:
+        report = fetch_discovery_coverage(window_start, window_end, period.value)
+    except DatabaseConnectionError as e:
+        typer.echo(f"Database unavailable: {e}", err=True)
+        raise typer.Exit(code=1) from e
+
+    gaps = compute_gap_ranges(
+        window_start, window_end, period.value, report["period_counts"]
+    )
+    typer.echo(
+        f"Discovery window: {window_start} .. {window_end} (per {period.value})"
+    )
+    typer.echo(f"Earliest match: {report['earliest_match'] or '-'}")
+    typer.echo(f"Latest match:   {report['latest_match'] or '-'}")
+    typer.echo(
+        f"Matches in window: {report['window_matches']}"
+        f" (total in database: {report['total_matches']})"
+    )
+    covered = len(report["period_counts"])
+    typer.echo(f"Covered periods: {covered}; gap ranges: {len(gaps)}")
+    if gaps:
+        typer.echo(f"Gaps (no matches, per {period.value}):")
+        for gap_start, gap_end in gaps:
+            typer.echo(f"  {gap_start} .. {gap_end}")
+    pending = report["pending_by_status"]
+    if pending:
+        typer.echo("Not yet processed (by status):")
+        for status_name, row_count in pending.items():
+            typer.echo(f"  {status_name:<12} {row_count}")
+        typer.echo(
+            "Note: gaps may reflect unprocessed backlog rather than"
+            " undiscovered dates."
+        )
+
+
 @app.command()
 def process(
     batch: Annotated[

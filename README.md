@@ -290,6 +290,7 @@ Or use the `cs2a` CLI installed with the package for individual stages:
 ```sh
 cs2a ingest discover            # scrape results pages, queue new matches
 cs2a ingest discover --mode backfill
+cs2a ingest coverage            # discovery date coverage of the target window
 cs2a process --batch 50         # process pending matches, then maps
 cs2a status                     # ingestion-state row counts by status
 cs2a failures --stage match     # recent failed rows with error details
@@ -308,6 +309,14 @@ ordered most recently failed first (`--limit`, default 20). `--group`
 aggregates rows by error message so dominant failure modes - transient
 scraper noise versus a structural break like a page layout change - are
 obvious before running `cs2a retry`.
+
+`cs2a ingest coverage` reports discovery date coverage: the configured
+window (`START_DATE` through today), earliest/latest ingested match
+dates, how many periods (`--period week` default, or `day`) contain
+matches, contiguous zero-match gap ranges, and the not-yet-processed
+backlog (every non-processed lifecycle status) so "not discovered" is
+distinguishable from "not yet processed". Backfill cursor state joins
+the report once the backfill strategy (#121) lands.
 
 `cs2a inspect` is the single-item companion: given one ID it prints the
 full ingestion-state row (status, lifecycle timestamps, failure fields,
