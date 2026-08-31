@@ -56,6 +56,21 @@ def test_help_lists_all_commands() -> None:
         assert command in result.stdout
 
 
+def _assert_discover_call(calls, max_matches, before, after) -> None:
+    """Assert one discover run with the CLI-owned window defaults.
+
+    end_date is computed at run time, so it is bounded between dates
+    captured before and after the invocation instead of compared to a
+    fresh today(), which would flake across midnight.
+    """
+    assert len(calls) == 1
+    name, kwargs = calls[0]
+    assert name == "results"
+    assert kwargs["max_matches"] == max_matches
+    assert kwargs["start_date"] == dt.date(2025, 10, 1)
+    assert before <= kwargs["end_date"] <= after
+
+
 def test_discover_defaults_to_incremental_cap(monkeypatch) -> None:
     calls: list[tuple[str, dict]] = []
     _patch_controller(
@@ -66,10 +81,12 @@ def test_discover_defaults_to_incremental_cap(monkeypatch) -> None:
         calls,
     )
 
+    before = dt.date.today()
     result = runner.invoke(app, ["ingest", "discover"])
+    after = dt.date.today()
 
     assert result.exit_code == 0
-    assert calls == [("results", {"max_matches": 50, "start_date": dt.date(2025, 10, 1), "end_date": dt.date.today()})]
+    _assert_discover_call(calls, 50, before, after)
 
 
 def test_discover_backfill_raises_the_cap(monkeypatch) -> None:
@@ -82,10 +99,12 @@ def test_discover_backfill_raises_the_cap(monkeypatch) -> None:
         calls,
     )
 
+    before = dt.date.today()
     result = runner.invoke(app, ["ingest", "discover", "--mode", "backfill"])
+    after = dt.date.today()
 
     assert result.exit_code == 0
-    assert calls == [("results", {"max_matches": 1000, "start_date": dt.date(2025, 10, 1), "end_date": dt.date.today()})]
+    _assert_discover_call(calls, 1000, before, after)
 
 
 def test_discover_max_matches_overrides_mode(monkeypatch) -> None:
@@ -98,12 +117,14 @@ def test_discover_max_matches_overrides_mode(monkeypatch) -> None:
         calls,
     )
 
+    before = dt.date.today()
     result = runner.invoke(
         app, ["ingest", "discover", "--mode", "backfill", "--max-matches", "7"]
     )
+    after = dt.date.today()
 
     assert result.exit_code == 0
-    assert calls == [("results", {"max_matches": 7, "start_date": dt.date(2025, 10, 1), "end_date": dt.date.today()})]
+    _assert_discover_call(calls, 7, before, after)
 
 
 def test_discover_rejects_nonpositive_max_matches(monkeypatch) -> None:
