@@ -657,16 +657,19 @@ The Scheduled dbt Build workflow
 
 1. `dbt source freshness --target prod` - gate. The ingestion sources
    declare a source-level `loaded_at_field` on `last_scraped_at` (all
-   audit columns are TIMESTAMPTZ since #132) with warn-after 3 days /
-   error-after 7 days; stale sources fail the workflow loudly instead
-   of letting snapshot history freeze while runs stay green.
+   audit columns are TIMESTAMPTZ since #132) with per-table thresholds
+   (#148) of warn-after 3 days / error-after 7 days; stale sources fail
+   the workflow loudly instead of letting snapshot history freeze while
+   runs stay green.
 2. `dbt build --target prod` - models, snapshots, and data tests.
 
 Connection settings come from the repository's `DB_*` Actions secrets
 through the `prod` profile target (TLS required via `sslmode`). Freshness
-thresholds are set for today's manual scraping cadence; tightening them
-belongs to the data-quality depth work (#148). This workflow is interim
-orchestration ("Phase 5 lite") and is what Airflow later replaces.
+thresholds are set for today's manual scraping cadence: warn at 3 days
+means "probably forgot to scrape", error at 7 days means "roster history
+is at risk". If the cadence changes, adjust warn first. This workflow is
+interim orchestration ("Phase 5 lite") and is what Airflow later
+replaces.
 
 ---
 
@@ -758,12 +761,67 @@ Routine daily runs stay incremental.
 
 ## Testing Strategy
 
-Status: implemented (#113). Grain `unique`/`not_null` tests cover every
-source table, staging model, intermediate model, and mart; `relationships`
-tests cover the key joins (maps -> matches, player rows -> maps/matches, and
-fact -> dim joins). Multi-column `(map_id, player_id)` grains use
-`dbt_utils.unique_combination_of_columns` (see `dbt/packages.yml`; install
-with `dbt deps`). Run everything with `dbt build`.
+Status: implemented (#113, extended by #148). Grain `unique`/`not_null`
+tests cover every source table, staging model, intermediate model, and
+mart; `relationships` tests cover the key joins (maps -> matches, player
+rows -> maps/matches, and fact -> dim joins). Multi-column
+`(map_id, player_id)` grains use `dbt_utils.unique_combination_of_columns`
+(see `dbt/packages.yml`; install with `dbt deps`). Run everything with
+`dbt build`.
+
+### Severity policy (#148)
+
+Two tiers, chosen so the scheduled prod run distinguishes "page me" from
+"look later":
+
+- **error** (dbt default, left implicit): structural tests - grain
+  uniqueness, not-null keys, and `relationships` joins. A failure means
+  downstream models cannot be trusted, so the build stops.
+- **warn**: distribution-style tests - `dbt_utils.accepted_range` bounds
+  on mart stat columns, the `expression_is_true` derivation checks
+  (`kd_diff = kills - deaths`, `fk_diff = opening_kills -
+  opening_deaths`), and the singular row-coverage test
+  (`dbt/tests/assert_fact_player_map_stats_row_coverage.sql`). These
+  encode assumptions about game-stat bounds, so they start as warnings
+  and get promoted to `error` deliberately once they have survived
+  enough real data.
+
+Every new distribution-style test starts at `warn`. Range values are
+grounded in the observed production distributions as of 2026-08-31 with
+headroom (for example, rating observed 0.15-3.19, tested 0-4); `kast` is
+a fraction (0-1), not a percentage, because the parser divides by 100.
+
+### Stored failures (#148)
+
+`store_failures` is enabled project-wide (`dbt_project.yml`,
+`data_tests` block), so every data test writes its failing rows to an
+audit table on each run - failed tests are triaged by querying rows, not
+by re-running SQL. With the profile schema set to `analytics`, audit
+tables land in the `analytics_dbt_test__audit` schema, named after the
+test (long test names are truncated and suffixed with a hash). To
+inspect a failure:
+
+```sql
+select * from analytics_dbt_test__audit.<test_name> limit 50;
+```
+
+The exact relation name appears in the dbt log output for the failing
+test. Audit tables
+are overwritten on every run, so they always reflect the latest build;
+they are diagnostic state, not history.
+
+### Source freshness (#148)
+
+Each source table (`matches`, `maps`, `players`) declares its own
+freshness thresholds on `last_scraped_at` (warn 3 days / error 7 days
+today). Run locally with:
+
+```sh
+uv run dbt source freshness --project-dir dbt --profiles-dir dbt
+```
+
+The scheduled prod workflow runs this as a gate before `dbt build`; see
+Scheduled execution above.
 
 dbt tests should be added to ensure trust in transformed models.
 
