@@ -49,7 +49,7 @@ def test_help_lists_all_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("ingest", "process", "retry", "status", "db"):
+    for command in ("ingest", "process", "retry", "failures", "status", "db"):
         assert command in result.stdout
 
 
@@ -402,6 +402,119 @@ def test_status_exits_nonzero_when_database_is_unavailable(monkeypatch) -> None:
     result = runner.invoke(app, ["status"])
 
     assert result.exit_code == 1
+
+
+def _patch_failure_queries(monkeypatch, rows=None, groups=None):
+    """Replace the failure query helpers with recorders in their module."""
+    import cs2_analytics.storage.ingestion_state_summary as summary_module
+
+    calls: list[tuple[str, tuple]] = []
+
+    def _rows(stage, status, limit):
+        calls.append(("rows", (stage, status, limit)))
+        return rows or []
+
+    def _groups(stage, status, limit):
+        calls.append(("groups", (stage, status, limit)))
+        return groups or []
+
+    monkeypatch.setattr(summary_module, "fetch_failure_rows", _rows)
+    monkeypatch.setattr(summary_module, "fetch_failure_groups", _groups)
+    return calls
+
+
+def test_failures_lists_rows_with_truncated_error(monkeypatch) -> None:
+    long_error = "MatchParseError: " + "x" * 100
+    calls = _patch_failure_queries(
+        monkeypatch,
+        rows=[
+            (940123, "failed", 3, "2026-08-30 10:00:00+00:00", long_error),
+            (940124, "failed", 1, None, None),
+        ],
+    )
+
+    result = runner.invoke(app, ["failures", "--stage", "match"])
+
+    assert result.exit_code == 0
+    assert calls == [("rows", ("match", "failed", 20))]
+    assert "940123" in result.stdout
+    assert "failures=3" in result.stdout
+    assert "2026-08-30 10:00:00+00:00" in result.stdout
+    assert "..." in result.stdout
+    assert long_error not in result.stdout
+    assert "last_failed=-" in result.stdout
+    assert "2 match row(s) in status 'failed'" in result.stdout
+
+
+def test_failures_group_aggregates_by_error_message(monkeypatch) -> None:
+    calls = _patch_failure_queries(
+        monkeypatch,
+        groups=[
+            ("MapParseError: layout changed", 5, "2026-08-30 10:00:00+00:00"),
+            (None, 1, None),
+        ],
+    )
+
+    result = runner.invoke(
+        app, ["failures", "--stage", "map", "--status", "dead", "--group"]
+    )
+
+    assert result.exit_code == 0
+    assert calls == [("groups", ("map", "dead", 20))]
+    assert "count=5" in result.stdout
+    assert "MapParseError: layout changed" in result.stdout
+    assert "(no error message)" in result.stdout
+    assert (
+        "2 failure group(s) in status 'dead' in map_ingestion_state" in result.stdout
+    )
+
+
+def test_failures_passes_status_and_limit_filters(monkeypatch) -> None:
+    calls = _patch_failure_queries(monkeypatch)
+
+    result = runner.invoke(
+        app,
+        ["failures", "--stage", "map", "--status", "partial", "--limit", "5"],
+    )
+
+    assert result.exit_code == 0
+    assert calls == [("rows", ("map", "partial", 5))]
+    assert "No partial rows in map_ingestion_state." in result.stdout
+
+
+def test_failures_rejects_nonpositive_limit(monkeypatch) -> None:
+    calls = _patch_failure_queries(monkeypatch)
+
+    result = runner.invoke(app, ["failures", "--stage", "match", "--limit", "0"])
+
+    assert result.exit_code != 0
+    assert calls == []
+
+
+def test_failures_rejects_processing_status(monkeypatch) -> None:
+    calls = _patch_failure_queries(monkeypatch)
+
+    result = runner.invoke(
+        app, ["failures", "--stage", "match", "--status", "processing"]
+    )
+
+    assert result.exit_code != 0
+    assert calls == []
+
+
+def test_failures_exits_nonzero_when_database_is_unavailable(monkeypatch) -> None:
+    import cs2_analytics.storage.ingestion_state_summary as summary_module
+    from cs2_analytics.exceptions import DatabaseConnectionError
+
+    def _raise(stage, status, limit):
+        raise DatabaseConnectionError("no pool")
+
+    monkeypatch.setattr(summary_module, "fetch_failure_rows", _raise)
+
+    result = runner.invoke(app, ["failures", "--stage", "match"])
+
+    assert result.exit_code == 1
+    assert "Database unavailable" in result.output
 
 
 def test_db_upgrade_defaults_to_head_and_prints_target(monkeypatch) -> None:

@@ -292,10 +292,20 @@ cs2a ingest discover            # scrape results pages, queue new matches
 cs2a ingest discover --mode backfill
 cs2a process --batch 50         # process pending matches, then maps
 cs2a status                     # ingestion-state row counts by status
+cs2a failures --stage match     # recent failed rows with error details
+cs2a failures --stage map --group   # aggregate failures by error message
 cs2a retry --stage match        # requeue failed matches for reprocessing
 cs2a retry --stage map --dry-run
 cs2a retry --stage map --status processing --dry-run   # inspect rows stuck by an interrupted run
 ```
+
+`cs2a failures` is read-only diagnostics for deciding whether to requeue:
+it lists recent `failed` rows (or `dead`/`partial` via `--status`) with
+`failure_count`, `last_failed_at`, and a truncated `last_error_message`,
+ordered most recently failed first (`--limit`, default 20). `--group`
+aggregates rows by error message so dominant failure modes - transient
+scraper noise versus a structural break like a page layout change - are
+obvious before running `cs2a retry`.
 
 `cs2a retry` resets `failed` ingestion-state rows back to `discovered` so
 the next `cs2a process` run picks them up. `dead`, `partial`, and
