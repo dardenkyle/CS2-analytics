@@ -22,9 +22,9 @@ Current priorities:
   Phase 4 legibility tasks because it is the only calendar-sensitive item:
   SCD2 roster history only accrues while it runs, and gaps cannot be
   backfilled. It is delivered by the Scheduled dbt Build workflow.
-- finish the Phase 4 legibility follow-through: dbt docs publish to
-  GitHub Pages (#145) is the remaining item; the README presents the
-  shipped layer (#143) and dbt build runs in CI on every push/PR (#144)
+- the Phase 4 legibility follow-through is complete: the README presents
+  the shipped layer (#143), dbt build runs in CI on every push/PR (#144),
+  and the dbt docs site publishes to GitHub Pages (#145)
 - continue Phase 4.5 (dbt operations and depth) with #132, #147, and #148
   in dependency order; the API read paths already point at the marts
   (#150)
@@ -763,7 +763,10 @@ repo.
       Postgres with seeded fixtures (#144) - the ci.yml dbt-build job
       migrates a service container, seeds a checked-in fixture through
       the real storage layer, and fails on any model or test failure
-- [ ] Publish generated dbt docs (lineage DAG) to GitHub Pages (#145)
+- [x] Publish generated dbt docs (lineage DAG) to GitHub Pages (#145) -
+      the Pages deploy workflow composes one artifact: React frontend at
+      the site root, static dbt docs (generated against the CI fixture)
+      under /dbt-docs/; regenerates when dbt models change on main
 
 ---
 

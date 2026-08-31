@@ -815,6 +815,10 @@ Each model should have:
 
 This makes the project stronger both for maintainability and portfolio presentation.
 
+The generated docs site is published (#145): the Pages deploy workflow
+regenerates it whenever dbt models change on `main`, and it is browsable
+at `https://dardenkyle.github.io/CS2-analytics/dbt-docs/`.
+
 ---
 
 ## Relationship to the API Layer

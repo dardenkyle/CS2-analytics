@@ -357,8 +357,10 @@ uv run dbt docs generate --project-dir dbt --profiles-dir dbt
 uv run dbt docs serve --project-dir dbt --profiles-dir dbt
 ```
 
-The generated site lives in `dbt/target/`, which is gitignored; docs are
-generated on demand, not committed or published.
+The generated site lives in `dbt/target/`, which is gitignored. The docs
+are also published: the Pages deploy workflow regenerates the static site
+whenever dbt models change on `main` and serves it at
+<https://dardenkyle.github.io/CS2-analytics/dbt-docs/>.
 
 To run against a deployed database on purpose, export its `DB_*` values and
 name the `prod` target explicitly:
@@ -489,8 +491,11 @@ run over run, which is why the scheduled daily build exists.
 Every layer carries data tests (uniqueness of the declared grains,
 not-null keys, and relationship tests between models - 63 in total), run
 by `dbt build` locally, in CI against a disposable Postgres, and daily
-against production behind a source-freshness gate. Local run instructions
-are in [section 10](#10-run-dbt-analytics-transformations); model-level
+against production behind a source-freshness gate. The generated dbt docs
+site - interactive lineage DAG and column-level documentation - is
+published at <https://dardenkyle.github.io/CS2-analytics/dbt-docs/>.
+Local run instructions are in
+[section 10](#10-run-dbt-analytics-transformations); model-level
 documentation lives in `docs/dbt_models.md`.
 
 ## Design Decisions & Tradeoffs
