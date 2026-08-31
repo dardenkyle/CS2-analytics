@@ -30,7 +30,7 @@ class Player:
     fk_diff: int
     round_swing: float
     rating: float
-    last_inserted_at: datetime
+    inserted_at: datetime
     last_scraped_at: datetime
     last_updated_at: datetime
     data_complete: bool
@@ -60,7 +60,7 @@ class Player:
             "fk_diff": self.fk_diff,
             "round_swing": self.round_swing,
             "rating": self.rating,
-            "last_inserted_at": self.last_inserted_at,
+            "inserted_at": self.inserted_at,
             "last_scraped_at": self.last_scraped_at,
             "last_updated_at": self.last_updated_at,
             "data_complete": self.data_complete,

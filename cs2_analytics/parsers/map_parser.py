@@ -372,7 +372,7 @@ class MapParser:
         stats: dict[str, int | float],
     ) -> Player:
         """Builds a Player model from a parsed row."""
-        now = dt.datetime.now()
+        now = dt.datetime.now(dt.UTC)
         kills = int(stats["kills"])
         deaths = int(stats["deaths"])
         opening_kills = int(stats["opening_kills"])
@@ -401,7 +401,7 @@ class MapParser:
             fk_diff=opening_kills - opening_deaths,
             round_swing=float(stats["round_swing"]),
             rating=float(stats["rating"]),
-            last_inserted_at=now,
+            inserted_at=now,
             last_scraped_at=now,
             last_updated_at=now,
             data_complete=True,

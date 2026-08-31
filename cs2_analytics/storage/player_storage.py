@@ -11,14 +11,14 @@ INSERT_PLAYERS_QUERY = """
         team_name, kills, headshots, assists, flash_assists, deaths, traded_deaths,
         opening_kills, opening_deaths, multi_kills, clutches_won,
         kast, kd_diff, adr, fk_diff, round_swing, rating,
-        last_inserted_at, last_scraped_at, last_updated_at, data_complete
+        inserted_at, last_scraped_at, last_updated_at, data_complete
     )
     VALUES (
         %(map_id)s, %(player_id)s, %(player_name)s, %(player_url)s, %(map_name)s,
         %(team_name)s, %(kills)s, %(headshots)s, %(assists)s, %(flash_assists)s, %(deaths)s, %(traded_deaths)s,
         %(opening_kills)s, %(opening_deaths)s, %(multi_kills)s, %(clutches_won)s,
         %(kast)s, %(kd_diff)s, %(adr)s, %(fk_diff)s, %(round_swing)s, %(rating)s,
-        %(last_inserted_at)s, %(last_scraped_at)s, %(last_updated_at)s, %(data_complete)s
+        %(inserted_at)s, %(last_scraped_at)s, %(last_updated_at)s, %(data_complete)s
     )
     ON CONFLICT (map_id, player_id) DO UPDATE SET
         player_name = EXCLUDED.player_name,
@@ -92,7 +92,7 @@ def _execute_store_players(cur, players: list[Player]) -> None:
             "fk_diff": p.fk_diff,
             "round_swing": p.round_swing,
             "rating": p.rating,
-            "last_inserted_at": p.last_inserted_at,
+            "inserted_at": p.inserted_at,
             "last_scraped_at": p.last_scraped_at,
             "last_updated_at": p.last_updated_at,
             "data_complete": p.data_complete,

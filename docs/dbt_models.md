@@ -164,8 +164,7 @@ Example fields:
 - match_date
 - forfeit
 - data_complete
-- last_inserted_at, or `inserted_at` after the planned source schema
-  normalization
+- inserted_at
 - last_scraped_at
 - last_updated_at
 
@@ -230,8 +229,7 @@ Example fields:
 - kd_diff
 - fk_diff
 - data_complete
-- last_inserted_at, or `inserted_at` after the planned source schema
-  normalization
+- inserted_at
 - last_scraped_at
 - last_updated_at
 
@@ -658,10 +656,8 @@ The Scheduled dbt Build workflow
 10:00 UTC (plus `workflow_dispatch`) against the deployed database:
 
 1. `dbt source freshness --target prod` - gate. The ingestion sources
-   declare per-table `loaded_at_field`s on `last_scraped_at` (with an
-   explicit `AT TIME ZONE 'UTC'` conversion for the naive TIMESTAMP
-   columns on matches and players, see #132, so freshness age never
-   shifts with the session timezone) and warn-after 3 days /
+   declare a source-level `loaded_at_field` on `last_scraped_at` (all
+   audit columns are TIMESTAMPTZ since #132) with warn-after 3 days /
    error-after 7 days; stale sources fail the workflow loudly instead
    of letting snapshot history freeze while runs stay green.
 2. `dbt build --target prod` - models, snapshots, and data tests.
