@@ -12,12 +12,11 @@ sources:
     # Freshness gates the scheduled prod run (.github/workflows/
     # scheduled-dbt-build.yml): a stale scraper fails the run loudly
     # instead of letting the SCD2 snapshot silently freeze history.
-    # Scraping is manual today, so thresholds are generous. Thresholds
-    # live here at the source level; loaded_at_field is per table because
-    # matches and players store naive UTC TIMESTAMP audit columns (#132)
-    # and need AT TIME ZONE 'UTC' so freshness age never shifts with the
-    # session timezone, while maps is already TIMESTAMPTZ.
+    # Scraping is manual today, so thresholds are generous. All audit
+    # columns are TIMESTAMPTZ (#132), so one source-level
+    # loaded_at_field covers every table.
     config:
+      loaded_at_field: last_scraped_at
       freshness:
         warn_after: { count: 3, period: day }
         error_after: { count: 7, period: day }
@@ -26,8 +25,6 @@ sources:
         description: >
           One row per professional match: teams, series score, winner,
           event, match type, and match date.
-        config:
-          loaded_at_field: "last_scraped_at AT TIME ZONE 'UTC'"
         columns:
           - name: match_id
             description: Primary key; grain of this table.
@@ -38,8 +35,6 @@ sources:
         description: >
           One row per map played within a match, keyed by map_id with a
           foreign key to matches and a per-match map_order.
-        config:
-          loaded_at_field: last_scraped_at
         columns:
           - name: map_id
             description: Primary key; grain of this table.
@@ -50,8 +45,6 @@ sources:
         description: >
           Per-player per-map performance statistics (kills, deaths, ADR,
           KAST, rating, and related fields), keyed by (map_id, player_id).
-        config:
-          loaded_at_field: "last_scraped_at AT TIME ZONE 'UTC'"
         data_tests:
           - dbt_utils.unique_combination_of_columns:
               arguments:

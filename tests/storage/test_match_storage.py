@@ -82,7 +82,7 @@ def _match() -> Match:
         match_type="bo1",
         forfeit=False,
         date="2026-01-01",
-        last_inserted_at=now,
+        inserted_at=now,
         last_scraped_at=now,
         last_updated_at=now,
         data_complete=True,
@@ -129,7 +129,7 @@ def test_store_matches_refreshes_trusted_fields_on_conflict(
     ):
         assert f"{field_name} = EXCLUDED.{field_name}" in conflict_update
 
-    assert "last_inserted_at = EXCLUDED.last_inserted_at" not in conflict_update
+    assert "inserted_at = EXCLUDED.inserted_at" not in conflict_update
     assert params["map_links"] == str(_match().map_links)
     assert params["demo_links"] == str(_match().demo_links)
     assert conn.committed is True

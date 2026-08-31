@@ -54,7 +54,7 @@ def _player() -> Player:
         fk_diff=1,
         round_swing=0.07,
         rating=1.31,
-        last_inserted_at=now,
+        inserted_at=now,
         last_scraped_at=now,
         last_updated_at=now,
         data_complete=True,
@@ -108,7 +108,7 @@ def test_store_players_refreshes_context_and_metrics_on_conflict(
     ):
         assert f"{field_name} = EXCLUDED.{field_name}" in conflict_update
 
-    assert "last_inserted_at = EXCLUDED.last_inserted_at" not in conflict_update
+    assert "inserted_at = EXCLUDED.inserted_at" not in conflict_update
     assert params["map_id"] == 100
     assert params["player_id"] == 200
 

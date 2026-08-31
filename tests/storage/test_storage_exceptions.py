@@ -73,7 +73,7 @@ def test_store_matches_wraps_database_failures(
         match_type="bo1",
         forfeit=False,
         date="2026-01-01",
-        last_inserted_at=now,
+        inserted_at=now,
         last_scraped_at=now,
         last_updated_at=now,
         data_complete=True,

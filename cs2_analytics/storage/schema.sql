@@ -41,9 +41,9 @@ CREATE TABLE IF NOT EXISTS matches (
     match_type TEXT,
     forfeit BOOLEAN DEFAULT FALSE,
     date TIMESTAMP NOT NULL,
-    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_scraped_at TIMESTAMP,
-    last_updated_at TIMESTAMP,
+    inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_scraped_at TIMESTAMPTZ,
+    last_updated_at TIMESTAMPTZ,
     data_complete BOOLEAN
 );
 
@@ -92,9 +92,9 @@ CREATE TABLE IF NOT EXISTS players (
     fk_diff INT,
     round_swing FLOAT,
     rating FLOAT,
-    last_inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_scraped_at TIMESTAMP,
-    last_updated_at TIMESTAMP,
+    inserted_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_scraped_at TIMESTAMPTZ,
+    last_updated_at TIMESTAMPTZ,
     data_complete BOOLEAN DEFAULT TRUE,
     PRIMARY KEY (map_id, player_id)
 );

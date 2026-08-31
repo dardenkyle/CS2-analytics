@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest import mock
 
 import pytest
@@ -181,6 +182,12 @@ def test_match_parser_returns_numeric_match_id() -> None:
         (2, "https://www.hltv.org/stats/matches/mapstatsid/2/test-map")
     ]
     assert demo_links == []
+    for audit_value in (
+        match.inserted_at,
+        match.last_scraped_at,
+        match.last_updated_at,
+    ):
+        assert audit_value.utcoffset() == timedelta(0)
 
 
 def test_match_parser_raises_typed_error_for_missing_match_id_in_url() -> None:

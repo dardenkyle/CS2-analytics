@@ -36,7 +36,7 @@ renamed as (
         fk_diff,
         round_swing,
         rating,
-        last_inserted_at as inserted_at,
+        inserted_at,
         last_scraped_at,
         last_updated_at,
         data_complete

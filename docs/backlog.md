@@ -788,9 +788,12 @@ time-sensitive item and leads this phase.
       workflow (daily 10:00 UTC cron plus workflow_dispatch); the
       deployed database accepts Actions runner connections, so the local
       cron fallback was not needed
-- [ ] Normalize audit-field timestamps on matches and players to
+- [x] Normalize audit-field timestamps on matches and players to
       TIMESTAMPTZ - pulled forward from deferred as the incremental
-      watermark enabler (#132)
+      watermark enabler (#132): migration 0003 renames last_inserted_at
+      to inserted_at and converts the audit trio interpreting stored
+      values as UTC; parsers now write timezone-aware UTC; the dbt
+      freshness config drops its per-table UTC casts
 - [ ] Convert `fact_player_map_stats` to an incremental materialization
       with a `unique_key` and `is_incremental()` watermark filter; evaluate
       `fact_matches` alongside (#147, after #132)

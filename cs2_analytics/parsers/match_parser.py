@@ -115,7 +115,7 @@ class MatchParser:
         match_date: str,
     ) -> Match:
         """Builds a Match model from already-extracted values."""
-        now = dt.datetime.now()
+        now = dt.datetime.now(dt.UTC)
         return Match(
             match_id=match_id,
             match_url=match_url,
@@ -130,7 +130,7 @@ class MatchParser:
             match_type=match_type,
             forfeit=forfeit,
             date=match_date,
-            last_inserted_at=now,
+            inserted_at=now,
             last_scraped_at=now,
             last_updated_at=now,
             data_complete=True,

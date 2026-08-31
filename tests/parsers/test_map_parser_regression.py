@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Any, cast
 
 from bs4 import BeautifulSoup
@@ -95,6 +96,12 @@ def test_parse_map_prefers_visible_over_hidden_metric_cells() -> None:
     assert player.opening_deaths == 2
     assert player.kd_diff == 5
     assert player.fk_diff == 3
+    for audit_value in (
+        player.inserted_at,
+        player.last_scraped_at,
+        player.last_updated_at,
+    ):
+        assert audit_value.utcoffset() == timedelta(0)
 
 
 def test_parse_map_details_extracts_map_metadata() -> None:
