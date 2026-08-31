@@ -294,6 +294,8 @@ cs2a process --batch 50         # process pending matches, then maps
 cs2a status                     # ingestion-state row counts by status
 cs2a failures --stage match     # recent failed rows with error details
 cs2a failures --stage map --group   # aggregate failures by error message
+cs2a inspect match 2394877      # one match: state row + relational presence
+cs2a inspect map 230075         # one map: state row + player-stats count
 cs2a retry --stage match        # requeue failed matches for reprocessing
 cs2a retry --stage map --dry-run
 cs2a retry --stage map --status processing --dry-run   # inspect rows stuck by an interrupted run
@@ -306,6 +308,15 @@ ordered most recently failed first (`--limit`, default 20). `--group`
 aggregates rows by error message so dominant failure modes - transient
 scraper noise versus a structural break like a page layout change - are
 obvious before running `cs2a retry`.
+
+`cs2a inspect` is the single-item companion: given one ID it prints the
+full ingestion-state row (status, lifecycle timestamps, failure fields,
+source, priority) plus whether the relational data actually landed - for
+a match, whether the `matches` row exists, how many `maps` rows
+reference it, and each map's ingestion status; for a map, whether the
+`maps` row exists and its player-stats row count. Unknown IDs exit
+nonzero. Both commands are read-only against whichever database the
+environment points at.
 
 `cs2a retry` resets `failed` ingestion-state rows back to `discovered` so
 the next `cs2a process` run picks them up. `dead`, `partial`, and

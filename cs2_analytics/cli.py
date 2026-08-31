@@ -30,6 +30,11 @@ db_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(db_app, name="db")
+inspect_app = typer.Typer(
+    help="Read-only per-item ingestion diagnostics.",
+    no_args_is_help=True,
+)
+app.add_typer(inspect_app, name="inspect")
 
 
 class DiscoverMode(StrEnum):
@@ -273,6 +278,87 @@ def failures(
             f"  last_failed={last_failed_at or '-'}  {_error_preview(message)}"
         )
     typer.echo(f"{len(rows)} {stage.value} row(s) in status '{status.value}'.")
+
+
+def _echo_state_row(table: str, state: dict[str, object]) -> None:
+    """Print one ingestion-state row as aligned name/value lines."""
+    typer.echo(f"{table}:")
+    for name, value in state.items():
+        typer.echo(f"  {name:<20} {'-' if value is None else value}")
+
+
+@inspect_app.command("match")
+def inspect_match(
+    match_id: Annotated[
+        int,
+        typer.Argument(help="Match ID to inspect."),
+    ],
+) -> None:
+    """Show one match's ingestion-state row and relational presence.
+
+    Answers "this match says processed - is its data actually there?":
+    the full match_ingestion_state row, whether the matches row exists,
+    how many maps rows reference it, and each map's ingestion status.
+    """
+    from cs2_analytics.storage.ingestion_state_summary import fetch_match_inspection
+
+    try:
+        inspection = fetch_match_inspection(match_id)
+    except DatabaseConnectionError as e:
+        typer.echo(f"Database unavailable: {e}", err=True)
+        raise typer.Exit(code=1) from e
+
+    state = inspection["state"]
+    if state is None:
+        typer.echo(f"No match_ingestion_state row for match {match_id}.")
+        if not inspection["match_row_exists"]:
+            typer.echo(f"Match {match_id} not found.", err=True)
+            raise typer.Exit(code=1)
+    else:
+        _echo_state_row("match_ingestion_state", state)
+    typer.echo(
+        f"matches row: {'present' if inspection['match_row_exists'] else 'MISSING'}"
+    )
+    typer.echo(f"maps rows: {inspection['map_rows']}")
+    map_states = inspection["map_states"]
+    if map_states:
+        typer.echo("map ingestion statuses:")
+        for map_id, map_status in map_states:
+            typer.echo(f"  {map_id}  {map_status}")
+
+
+@inspect_app.command("map")
+def inspect_map(
+    map_id: Annotated[
+        int,
+        typer.Argument(help="Map ID to inspect."),
+    ],
+) -> None:
+    """Show one map's ingestion-state row and relational presence.
+
+    The full map_ingestion_state row, whether the maps row exists, and
+    how many player-stats rows the map has.
+    """
+    from cs2_analytics.storage.ingestion_state_summary import fetch_map_inspection
+
+    try:
+        inspection = fetch_map_inspection(map_id)
+    except DatabaseConnectionError as e:
+        typer.echo(f"Database unavailable: {e}", err=True)
+        raise typer.Exit(code=1) from e
+
+    state = inspection["state"]
+    if state is None:
+        typer.echo(f"No map_ingestion_state row for map {map_id}.")
+        if not inspection["map_row_exists"]:
+            typer.echo(f"Map {map_id} not found.", err=True)
+            raise typer.Exit(code=1)
+    else:
+        _echo_state_row("map_ingestion_state", state)
+    typer.echo(
+        f"maps row: {'present' if inspection['map_row_exists'] else 'MISSING'}"
+    )
+    typer.echo(f"players rows: {inspection['player_rows']}")
 
 
 def _alembic_config():

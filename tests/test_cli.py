@@ -49,7 +49,8 @@ def test_help_lists_all_commands() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("ingest", "process", "retry", "failures", "status", "db"):
+    commands = ("ingest", "process", "retry", "failures", "inspect", "status", "db")
+    for command in commands:
         assert command in result.stdout
 
 
@@ -512,6 +513,139 @@ def test_failures_exits_nonzero_when_database_is_unavailable(monkeypatch) -> Non
     monkeypatch.setattr(summary_module, "fetch_failure_rows", _raise)
 
     result = runner.invoke(app, ["failures", "--stage", "match"])
+
+    assert result.exit_code == 1
+    assert "Database unavailable" in result.stderr
+
+
+def _patch_inspections(monkeypatch, match=None, map=None):
+    """Replace the inspection helpers with canned results in their module."""
+    import cs2_analytics.storage.ingestion_state_summary as summary_module
+
+    calls: list[tuple[str, int]] = []
+
+    def _match(match_id):
+        calls.append(("match", match_id))
+        return match
+
+    def _map(map_id):
+        calls.append(("map", map_id))
+        return map
+
+    monkeypatch.setattr(summary_module, "fetch_match_inspection", _match)
+    monkeypatch.setattr(summary_module, "fetch_map_inspection", _map)
+    return calls
+
+
+def test_inspect_match_shows_state_and_relational_presence(monkeypatch) -> None:
+    calls = _patch_inspections(
+        monkeypatch,
+        match={
+            "state": {
+                "match_id": 101,
+                "status": "processed",
+                "failure_count": 0,
+                "last_error_message": None,
+            },
+            "match_row_exists": True,
+            "map_rows": 3,
+            "map_states": [(201, "processed"), (202, "failed")],
+        },
+    )
+
+    result = runner.invoke(app, ["inspect", "match", "101"])
+
+    assert result.exit_code == 0
+    assert calls == [("match", 101)]
+    assert "match_ingestion_state:" in result.stdout
+    assert "processed" in result.stdout
+    assert "last_error_message" in result.stdout
+    assert "-" in result.stdout
+    assert "matches row: present" in result.stdout
+    assert "maps rows: 3" in result.stdout
+    assert "202  failed" in result.stdout
+
+
+def test_inspect_match_unknown_id_exits_nonzero(monkeypatch) -> None:
+    _patch_inspections(
+        monkeypatch,
+        match={
+            "state": None,
+            "match_row_exists": False,
+            "map_rows": 0,
+            "map_states": [],
+        },
+    )
+
+    result = runner.invoke(app, ["inspect", "match", "999"])
+
+    assert result.exit_code == 1
+    assert "No match_ingestion_state row for match 999." in result.stdout
+    assert "Match 999 not found." in result.stderr
+
+
+def test_inspect_match_without_state_row_still_reports_relational(
+    monkeypatch,
+) -> None:
+    _patch_inspections(
+        monkeypatch,
+        match={
+            "state": None,
+            "match_row_exists": True,
+            "map_rows": 2,
+            "map_states": [],
+        },
+    )
+
+    result = runner.invoke(app, ["inspect", "match", "101"])
+
+    assert result.exit_code == 0
+    assert "No match_ingestion_state row for match 101." in result.stdout
+    assert "matches row: present" in result.stdout
+    assert "maps rows: 2" in result.stdout
+
+
+def test_inspect_map_shows_state_and_player_count(monkeypatch) -> None:
+    calls = _patch_inspections(
+        monkeypatch,
+        map={
+            "state": {"map_id": 230075, "status": "failed", "failure_count": 2},
+            "map_row_exists": False,
+            "player_rows": 0,
+        },
+    )
+
+    result = runner.invoke(app, ["inspect", "map", "230075"])
+
+    assert result.exit_code == 0
+    assert calls == [("map", 230075)]
+    assert "map_ingestion_state:" in result.stdout
+    assert "maps row: MISSING" in result.stdout
+    assert "players rows: 0" in result.stdout
+
+
+def test_inspect_map_unknown_id_exits_nonzero(monkeypatch) -> None:
+    _patch_inspections(
+        monkeypatch,
+        map={"state": None, "map_row_exists": False, "player_rows": 0},
+    )
+
+    result = runner.invoke(app, ["inspect", "map", "999"])
+
+    assert result.exit_code == 1
+    assert "Map 999 not found." in result.stderr
+
+
+def test_inspect_exits_nonzero_when_database_is_unavailable(monkeypatch) -> None:
+    import cs2_analytics.storage.ingestion_state_summary as summary_module
+    from cs2_analytics.exceptions import DatabaseConnectionError
+
+    def _raise(item_id):
+        raise DatabaseConnectionError("no pool")
+
+    monkeypatch.setattr(summary_module, "fetch_match_inspection", _raise)
+
+    result = runner.invoke(app, ["inspect", "match", "101"])
 
     assert result.exit_code == 1
     assert "Database unavailable" in result.stderr
