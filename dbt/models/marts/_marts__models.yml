@@ -5,8 +5,11 @@ models:
     description: >
       Player performance facts at the player-map grain. Grain: one row per
       player per map, keyed by (map_id, player_id). Projected from
-      int_match_player_stats. Intended consumers: player performance lookups,
-      player map splits, and rating/ADR trend analysis.
+      int_match_player_stats. Materialized incrementally (delete+insert on
+      the grain key, 3-day lookback on source_updated_at); the grain test
+      below doubles as the guard against incremental duplicate insertion.
+      Intended consumers: player performance lookups, player map splits, and
+      rating/ADR trend analysis.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:
@@ -94,6 +97,13 @@ models:
         description: First-kill differential on this map.
       - name: round_swing
         description: Round swing contribution from the source on this map.
+
+      - name: source_updated_at
+        description: >
+          Incremental watermark carried from int_match_player_stats: greatest
+          source last_updated_at across the player, map, and match rows.
+        data_tests:
+          - not_null
 
   - name: fact_matches
     description: >

@@ -72,7 +72,15 @@ joined as (
         players.adr,
         players.fk_diff,
         players.round_swing,
-        players.rating
+        players.rating,
+
+        -- incremental watermark: latest source update across the three
+        -- joined rows, so a re-scraped match or map re-emits its player rows
+        greatest(
+            players.last_updated_at,
+            maps.last_updated_at,
+            matches.last_updated_at
+        ) as source_updated_at
 
     from players
     inner join maps

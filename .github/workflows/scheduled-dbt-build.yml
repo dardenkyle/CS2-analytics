@@ -12,6 +12,14 @@ on:
   schedule:
     - cron: "0 10 * * *"
   workflow_dispatch:
+    inputs:
+      full_refresh:
+        description: >-
+          Rebuild incremental models from scratch (dbt build --full-refresh).
+          Use after model logic changes or backfills; see docs/dbt_models.md.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -73,3 +81,4 @@ jobs:
         run: >-
           uv run dbt build
           --project-dir dbt --profiles-dir dbt --target prod
+          ${{ inputs.full_refresh && '--full-refresh' || '' }}

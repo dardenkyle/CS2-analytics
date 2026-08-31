@@ -794,9 +794,13 @@ time-sensitive item and leads this phase.
       to inserted_at and converts the audit trio interpreting stored
       values as UTC; parsers now write timezone-aware UTC; the dbt
       freshness config drops its per-table UTC casts
-- [ ] Convert `fact_player_map_stats` to an incremental materialization
+- [x] Convert `fact_player_map_stats` to an incremental materialization
       with a `unique_key` and `is_incremental()` watermark filter; evaluate
-      `fact_matches` alongside (#147, after #132)
+      `fact_matches` alongside (#147, after #132) - delete+insert on the
+      grain with a 3-day lookback on `source_updated_at`; `fact_matches`
+      stays full-refresh (tiny, and map_count aggregates late-arriving
+      child rows); full-refresh policy documented and exposed as a
+      workflow_dispatch input
 - [ ] Deepen data quality: per-source freshness thresholds, warn/error
       test severities, store_failures audit tables, and selective
       distribution tests (#148)
