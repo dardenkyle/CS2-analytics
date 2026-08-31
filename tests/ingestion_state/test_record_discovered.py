@@ -49,6 +49,9 @@ def _state_with(monkeypatch, cursor: _RecordingCursor) -> MatchIngestionState:
 
 def test_record_discovered_upserts_dates_and_counts_new_rows(monkeypatch) -> None:
     # (xmax = 0) is True for a fresh insert, False for a conflict update.
+    # COALESCE argument order is deliberate: EXCLUDED first means the
+    # newest observed date wins on conflict, while a null observation
+    # never erases an existing date.
     cursor = _RecordingCursor(fetchone_results=[(True,), (False,)])
     state = _state_with(monkeypatch, cursor)
     items = [

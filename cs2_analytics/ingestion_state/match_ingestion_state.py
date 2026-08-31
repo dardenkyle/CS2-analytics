@@ -27,10 +27,13 @@ class MatchIngestionState(BaseIngestionState[int]):
 
         Match-specific variant of record_many (#121): stores the
         results-section match_date at discovery time. On conflict the
-        date only fills in when previously null or newly known
-        (COALESCE), so a re-sweep dates old rows and never nulls an
-        existing date. Returns the number of newly inserted rows so the
-        caller can detect an all-known page (incremental early stop).
+        newest observed date wins (the source is authoritative - if it
+        re-files a match under a corrected date, the frontier and
+        coverage must follow), while a null observation never erases an
+        existing date (COALESCE), so a re-sweep dates legacy undated
+        rows and a date-less sweep cannot lose information. Returns the
+        number of newly inserted rows so the caller can detect an
+        all-known page (incremental early stop).
         """
         if not items:
             return 0
