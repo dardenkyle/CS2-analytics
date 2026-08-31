@@ -321,6 +321,19 @@ Then open the host and port configured by `API_HOST` and `API_PORT`, such as
 python -m pytest
 ```
 
+The DB-backed storage integration tests (`tests/storage/test_database.py`)
+write and delete real rows, so they are skipped unless you opt in with
+`CS2_ALLOW_DB_TESTS=true` *and* `DB_HOST` is a local database
+(`localhost`, `127.0.0.1`, or the compose `db` service); they never run
+against a remote database. CI opts in against its disposable service
+container. To run them locally, point `DB_*` at the compose database:
+
+```sh
+docker compose --env-file .env.example up -d db
+env CS2_ALLOW_DB_TESTS=true DB_HOST=127.0.0.1 DB_USER=postgres \
+  DB_PASS=change_me DB_NAME=cs2_db python -m pytest tests/storage/test_database.py
+```
+
 ### 10. Run dbt (analytics transformations)
 
 dbt is installed with the dev dependencies (`uv sync`). Its default target is a
