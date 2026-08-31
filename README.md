@@ -383,7 +383,12 @@ Build workflow (`.github/workflows/scheduled-dbt-build.yml`) runs
 SCD2 roster snapshot observes changes as they happen - missed runs are
 roster history that cannot be backfilled. Each run is gated by
 `dbt source freshness`, so stale ingestion data fails the workflow
-instead of silently freezing snapshot history.
+instead of silently freezing snapshot history. `fact_player_map_stats`
+is an incremental model, so routine runs only reprocess recently updated
+source rows; dispatch the workflow manually with the `full_refresh` input
+set to true to rebuild it from scratch after model logic changes,
+backfills, or bulk source corrections (see the full-refresh policy in
+`docs/dbt_models.md`).
 
 dbt owns analytics transformations only; the ingestion schema stays owned by
 Alembic migrations. Sources are declared for the `matches`, `maps`, and
