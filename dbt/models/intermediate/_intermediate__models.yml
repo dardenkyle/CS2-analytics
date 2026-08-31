@@ -45,7 +45,9 @@ models:
       - name: match_date
         description: Parent match date/time (stg_matches.date).
       - name: map_order
-        description: Position of this map within the match, from 1 to 5.
+        description: >
+          Position of this map within the match, 1-based. Best-of-5 is
+          the longest observed series format today.
       - name: map_name
         description: Canonical map name from stg_maps.
       - name: map_winner

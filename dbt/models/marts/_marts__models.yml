@@ -71,7 +71,10 @@ models:
                 to: ref('dim_maps')
                 field: map_name
       - name: map_order
-        description: Position of this map within the match, from 1 to 5.
+        description: >
+          Position of this map within the match, 1-based. Best-of-5 is the
+          longest observed series format today; the range test allows up
+          to 7 as headroom for longer showmatch formats.
         data_tests:
           - dbt_utils.accepted_range:
               arguments:
