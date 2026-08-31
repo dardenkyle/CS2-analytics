@@ -32,7 +32,7 @@ current codebase.
 - `map_links`, `demo_links`
 - `team1`, `team2`, `score1`, `score2`, `winner`
 - `event`, `match_type`, `forfeit`, `date`
-- `last_inserted_at`, `last_scraped_at`, `last_updated_at`
+- `inserted_at`, `last_scraped_at`, `last_updated_at` (TIMESTAMPTZ)
 - `data_complete`
 
 #### `maps`
@@ -54,7 +54,7 @@ Grain: one row per player per map.
 - `kills`, `headshots`, `assists`, `flash_assists`, `deaths`
 - `traded_deaths`, `opening_kills`, `opening_deaths`, `multi_kills`, `clutches_won`
 - `kast`, `kd_diff`, `adr`, `fk_diff`, `round_swing`, `rating`
-- `last_inserted_at`, `last_scraped_at`, `last_updated_at`
+- `inserted_at`, `last_scraped_at`, `last_updated_at` (TIMESTAMPTZ)
 - `data_complete`
 
 #### `teams`

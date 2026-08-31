@@ -47,9 +47,10 @@ Do not copy ingestion-state lifecycle fields such as `first_seen_at`,
 `failure_count`, or `last_error_message` into these parsed source tables. Those
 belong in `*_ingestion_state`.
 
-The current implementation still uses `last_inserted_at` in the `matches` and
-`players` storage models. Renaming it to `inserted_at` should be handled in the
-focused schema, model, storage, and test update that implements this target.
+This target is implemented (#132): migration 0003 renamed
+`last_inserted_at` to `inserted_at` on `matches` and `players` and
+converted the audit trio to `TIMESTAMPTZ`, with the storage models,
+parsers, and tests updated in the same change.
 
 ## Follow-Up Link Convention
 

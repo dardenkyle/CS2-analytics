@@ -20,7 +20,6 @@ Create Date: 2026-08-31
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20260831_0003"
@@ -32,6 +31,18 @@ AUDIT_TABLES = ("matches", "players")
 AUDIT_COLUMNS = ("inserted_at", "last_scraped_at", "last_updated_at")
 
 
+def _convert_audit_columns(table_name: str, target_type: str) -> None:
+    # One ALTER TABLE carrying all three type changes so PostgreSQL
+    # rewrites the table once, not once per column; the rename is
+    # metadata-only and stays separate.
+    actions = ", ".join(
+        f"ALTER COLUMN {column_name} TYPE {target_type}"
+        f" USING {column_name} AT TIME ZONE 'UTC'"
+        for column_name in AUDIT_COLUMNS
+    )
+    op.execute(f"ALTER TABLE {table_name} {actions}")
+
+
 def upgrade() -> None:
     for table_name in AUDIT_TABLES:
         op.alter_column(
@@ -39,26 +50,12 @@ def upgrade() -> None:
             "last_inserted_at",
             new_column_name="inserted_at",
         )
-        for column_name in AUDIT_COLUMNS:
-            op.alter_column(
-                table_name,
-                column_name,
-                existing_type=sa.TIMESTAMP(timezone=False),
-                type_=sa.TIMESTAMP(timezone=True),
-                postgresql_using=f"{column_name} AT TIME ZONE 'UTC'",
-            )
+        _convert_audit_columns(table_name, "TIMESTAMPTZ")
 
 
 def downgrade() -> None:
     for table_name in AUDIT_TABLES:
-        for column_name in AUDIT_COLUMNS:
-            op.alter_column(
-                table_name,
-                column_name,
-                existing_type=sa.TIMESTAMP(timezone=True),
-                type_=sa.TIMESTAMP(timezone=False),
-                postgresql_using=f"{column_name} AT TIME ZONE 'UTC'",
-            )
+        _convert_audit_columns(table_name, "TIMESTAMP")
         op.alter_column(
             table_name,
             "inserted_at",
