@@ -6,6 +6,7 @@ values (status, limit) are always parametrized.
 """
 
 import datetime as dt
+from typing import TypedDict
 
 from cs2_analytics.storage.db_instance import get_db
 
@@ -76,6 +77,124 @@ def fetch_failure_groups(
         cur.execute(query, (status, limit))
         groups: list[tuple[str | None, int, dt.datetime | None]] = cur.fetchall()
     return groups
+
+
+# Full ingestion-state rows shown by `cs2a inspect`, in display order.
+MATCH_STATE_COLUMNS = (
+    "match_id",
+    "match_url",
+    "status",
+    "first_seen_at",
+    "last_seen_at",
+    "last_attempted_at",
+    "last_processed_at",
+    "last_failed_at",
+    "failure_count",
+    "last_error_message",
+    "source",
+    "priority",
+    "last_updated_at",
+)
+
+MAP_STATE_COLUMNS = (
+    "map_id",
+    "map_url",
+    "match_id",
+    "map_order",
+    "status",
+    "first_seen_at",
+    "last_seen_at",
+    "last_attempted_at",
+    "last_processed_at",
+    "last_failed_at",
+    "failure_count",
+    "last_error_message",
+    "source",
+    "priority",
+    "last_updated_at",
+)
+
+
+class MatchInspection(TypedDict):
+    """One match's ingestion-state row plus relational presence."""
+
+    state: dict[str, object] | None
+    match_row_exists: bool
+    map_rows: int
+    map_states: list[tuple[int, str]]
+
+
+class MapInspection(TypedDict):
+    """One map's ingestion-state row plus relational presence."""
+
+    state: dict[str, object] | None
+    map_row_exists: bool
+    player_rows: int
+
+
+def _fetch_state_row(
+    cur, table: str, id_column: str, columns: tuple[str, ...], item_id: int
+) -> dict[str, object] | None:
+    """Fetch one ingestion-state row as a column->value mapping."""
+    cur.execute(
+        f"SELECT {', '.join(columns)} FROM {table} WHERE {id_column} = %s;",
+        (item_id,),
+    )
+    row = cur.fetchone()
+    if row is None:
+        return None
+    return dict(zip(columns, row, strict=True))
+
+
+def fetch_match_inspection(match_id: int) -> MatchInspection:
+    """Return one match's full ingestion picture.
+
+    Combines the match_ingestion_state row (None when absent) with
+    relational presence: whether the matches row exists, how many maps
+    rows reference it, and each referencing map's ingestion status.
+    """
+    with get_db().get_cursor() as cur:
+        state = _fetch_state_row(
+            cur, "match_ingestion_state", "match_id", MATCH_STATE_COLUMNS, match_id
+        )
+        cur.execute("SELECT 1 FROM matches WHERE match_id = %s;", (match_id,))
+        match_row_exists = cur.fetchone() is not None
+        cur.execute("SELECT COUNT(*) FROM maps WHERE match_id = %s;", (match_id,))
+        map_rows = cur.fetchone()[0]
+        cur.execute(
+            "SELECT map_id, status FROM map_ingestion_state"
+            " WHERE match_id = %s ORDER BY map_id;",
+            (match_id,),
+        )
+        map_states = cur.fetchall()
+    return {
+        "state": state,
+        "match_row_exists": match_row_exists,
+        "map_rows": map_rows,
+        "map_states": map_states,
+    }
+
+
+def fetch_map_inspection(map_id: int) -> MapInspection:
+    """Return one map's full ingestion picture.
+
+    Combines the map_ingestion_state row (None when absent) with
+    relational presence: whether the maps row exists and how many
+    player-stats rows the map has.
+    """
+    with get_db().get_cursor() as cur:
+        state = _fetch_state_row(
+            cur, "map_ingestion_state", "map_id", MAP_STATE_COLUMNS, map_id
+        )
+        cur.execute("SELECT 1 FROM maps WHERE map_id = %s;", (map_id,))
+        map_row_exists = cur.fetchone() is not None
+        cur.execute("SELECT COUNT(*) FROM players WHERE map_id = %s;", (map_id,))
+        player_rows = cur.fetchone()[0]
+    return {
+        "state": state,
+        "map_row_exists": map_row_exists,
+        "player_rows": player_rows,
+    }
 
 
 def fetch_ingestion_state_counts() -> dict[str, dict[str, int]]:
