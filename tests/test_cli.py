@@ -69,6 +69,7 @@ def _assert_discover_call(calls, max_matches, before, after) -> None:
     assert kwargs["max_matches"] == max_matches
     assert kwargs["start_date"] == dt.date(2025, 10, 1)
     assert before <= kwargs["end_date"] <= after
+    assert kwargs["mode"] in ("incremental", "backfill")
 
 
 def test_discover_defaults_to_incremental_cap(monkeypatch) -> None:
@@ -127,6 +128,26 @@ def test_discover_max_matches_overrides_mode(monkeypatch) -> None:
     _assert_discover_call(calls, 7, before, after)
 
 
+def test_discover_since_moves_the_window_floor(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_controller(
+        monkeypatch,
+        "cs2_analytics.controllers.results_controller",
+        "ResultsController",
+        "results",
+        calls,
+    )
+
+    result = runner.invoke(
+        app,
+        ["ingest", "discover", "--mode", "backfill", "--since", "2023-09-27"],
+    )
+
+    assert result.exit_code == 0
+    assert calls[0][1]["start_date"] == dt.date(2023, 9, 27)
+    assert calls[0][1]["mode"] == "backfill"
+
+
 def test_discover_rejects_nonpositive_max_matches(monkeypatch) -> None:
     calls: list[tuple[str, dict]] = []
     _patch_controller(
@@ -167,8 +188,13 @@ def test_ingest_coverage_reports_window_gaps_and_backlog(monkeypatch) -> None:
             "latest_match": dt.datetime(2026, 8, 30, 20, 0),
             "total_matches": 700,
             "window_matches": 45,
-            "period_counts": [(dt.date(2026, 8, 24), 45)],
+            "period_counts": [
+                (dt.date(2026, 5, 18), 5),
+                (dt.date(2026, 8, 24), 40),
+            ],
             "pending_by_status": {"discovered": 561, "failed": 2},
+            "frontier": dt.date(2026, 5, 24),
+            "undated_pending": 462,
         },
     )
 
@@ -185,9 +211,15 @@ def test_ingest_coverage_reports_window_gaps_and_backlog(monkeypatch) -> None:
     assert "Earliest match: 2025-10-02 12:00:00" in result.stdout
     assert "Matches in window: 45 (total in database: 700)" in result.stdout
     assert "Gaps (no matches, per week):" in result.stdout
+    assert "Discovery frontier: 2026-05-24" in result.stdout
+    assert "Swept:   2026-05-24" in result.stdout
+    assert "Unswept: 2025-10-01 .. 2026-05-23" in result.stdout
+    assert "[unswept]" in result.stdout
+    assert "[swept, no matches]" in result.stdout
     assert "Not yet processed (by status):" in result.stdout
     assert "discovered   561" in result.stdout
     assert "Note: gaps may reflect unprocessed backlog" in result.stdout
+    assert "Undated pending rows: 462" in result.stdout
 
 
 def test_ingest_coverage_day_period_and_quiet_when_no_backlog(monkeypatch) -> None:
@@ -203,6 +235,8 @@ def test_ingest_coverage_day_period_and_quiet_when_no_backlog(monkeypatch) -> No
             "window_matches": 0,
             "period_counts": [(day, 1) for day in _all_days_since_start(today)],
             "pending_by_status": {},
+            "frontier": dt.date(2025, 10, 1),
+            "undated_pending": 0,
         },
     )
 
@@ -211,10 +245,12 @@ def test_ingest_coverage_day_period_and_quiet_when_no_backlog(monkeypatch) -> No
     assert result.exit_code == 0
     assert calls[0][2] == "day"
     assert "Earliest match: -" in result.stdout
+    assert "Unswept: none - window covered" in result.stdout
     assert "gap ranges: 0" in result.stdout
     assert "Gaps" not in result.stdout
     assert "Not yet processed" not in result.stdout
     assert "Note:" not in result.stdout
+    assert "Undated pending rows" not in result.stdout
 
 
 def _all_days_since_start(today):

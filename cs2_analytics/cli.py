@@ -7,6 +7,7 @@ do not pay the scraper-stack import cost.
 """
 
 import datetime as dt
+from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated
 
@@ -61,21 +62,45 @@ DISCOVERY_WINDOW_START = dt.date(2025, 10, 1)
 def discover(
     mode: Annotated[
         DiscoverMode,
-        typer.Option(help="incremental caps at 50 matches; backfill at 1000."),
+        typer.Option(
+            help=(
+                "incremental scans newest-first (budget 50) and stops when"
+                " up to date; backfill resumes at the frontier and walks"
+                " backward toward the window floor (budget 1000)."
+            )
+        ),
     ] = DiscoverMode.INCREMENTAL,
     max_matches: Annotated[
         int | None,
-        typer.Option(min=1, help="Override the per-mode match cap."),
+        typer.Option(min=1, help="Override the per-mode run budget."),
+    ] = None,
+    since: Annotated[
+        datetime | None,
+        typer.Option(
+            formats=["%Y-%m-%d"],
+            help=(
+                "Window floor (YYYY-MM-DD); moves the backfill target."
+                " The walk stays contiguous - this extends the goal, it"
+                " does not jump to an island."
+            ),
+        ),
     ] = None,
 ) -> None:
-    """Scrape results pages and queue newly discovered matches."""
+    """Scrape results pages and queue newly discovered matches.
+
+    The budget caps one run's work and is never a completion signal;
+    backfill is complete when the run summary reports window_covered
+    (#121). Progress is visible via `cs2a ingest coverage`.
+    """
     from cs2_analytics.controllers.results_controller import ResultsController
 
     cap = max_matches if max_matches is not None else DISCOVER_MODE_MAX_MATCHES[mode]
+    window_start = since.date() if since is not None else DISCOVERY_WINDOW_START
     ResultsController().run(
         max_matches=cap,
-        start_date=DISCOVERY_WINDOW_START,
+        start_date=window_start,
         end_date=dt.date.today(),
+        mode=mode.value,
     )
 
 
@@ -86,12 +111,35 @@ class CoveragePeriod(StrEnum):
     WEEK = "week"
 
 
+def _gap_label(gap_start, gap_end, frontier_period) -> str:
+    """Classify a zero-match gap range against the discovery frontier.
+
+    Periods below the frontier have not been swept yet (backfill work);
+    periods at or above it were scraped and genuinely yielded nothing.
+    Without a frontier no classification is possible.
+    """
+    if frontier_period is None:
+        return "unclassified"
+    if gap_end < frontier_period:
+        return "unswept"
+    if gap_start >= frontier_period:
+        return "swept, no matches"
+    return "partly unswept"
+
+
 @ingest_app.command("coverage")
 def coverage(
     period: Annotated[
         CoveragePeriod,
         typer.Option(help="Bucket size for per-period counts and gaps."),
     ] = CoveragePeriod.WEEK,
+    since: Annotated[
+        datetime | None,
+        typer.Option(
+            formats=["%Y-%m-%d"],
+            help="Window floor (YYYY-MM-DD) to report against.",
+        ),
+    ] = None,
 ) -> None:
     """Report discovery date coverage of the target window.
 
@@ -107,7 +155,9 @@ def coverage(
         fetch_discovery_coverage,
     )
 
-    window_start = DISCOVERY_WINDOW_START
+    from cs2_analytics.storage.discovery_coverage import align_period_start
+
+    window_start = since.date() if since is not None else DISCOVERY_WINDOW_START
     window_end = dt.date.today()
     try:
         report = fetch_discovery_coverage(window_start, window_end, period.value)
@@ -121,6 +171,17 @@ def coverage(
     typer.echo(
         f"Discovery window: {window_start} .. {window_end} (per {period.value})"
     )
+    frontier = report["frontier"]
+    if frontier is None:
+        typer.echo("Discovery frontier: - (no dated discoveries yet)")
+    else:
+        typer.echo(f"Discovery frontier: {frontier}")
+        typer.echo(f"Swept:   {frontier} .. {window_end}")
+        if frontier > window_start:
+            unswept_end = frontier - dt.timedelta(days=1)
+            typer.echo(f"Unswept: {window_start} .. {unswept_end}")
+        else:
+            typer.echo("Unswept: none - window covered")
     typer.echo(f"Earliest match: {report['earliest_match'] or '-'}")
     typer.echo(f"Latest match:   {report['latest_match'] or '-'}")
     typer.echo(
@@ -130,9 +191,17 @@ def coverage(
     covered = len(report["period_counts"])
     typer.echo(f"Covered periods: {covered}; gap ranges: {len(gaps)}")
     if gaps:
+        frontier_period = (
+            align_period_start(frontier, period.value)
+            if frontier is not None
+            else None
+        )
         typer.echo(f"Gaps (no matches, per {period.value}):")
         for gap_start, gap_end in gaps:
-            typer.echo(f"  {gap_start} .. {gap_end}")
+            typer.echo(
+                f"  {gap_start} .. {gap_end}"
+                f"  [{_gap_label(gap_start, gap_end, frontier_period)}]"
+            )
     pending = report["pending_by_status"]
     if pending:
         typer.echo("Not yet processed (by status):")
@@ -141,6 +210,12 @@ def coverage(
         typer.echo(
             "Note: gaps may reflect unprocessed backlog rather than"
             " undiscovered dates."
+        )
+    if report["undated_pending"]:
+        typer.echo(
+            f"Undated pending rows: {report['undated_pending']}"
+            " (discovered before match dates were recorded; a re-sweep"
+            " dates them)"
         )
 
 

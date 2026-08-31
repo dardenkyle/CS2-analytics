@@ -288,9 +288,10 @@ python main.py
 Or use the `cs2a` CLI installed with the package for individual stages:
 
 ```sh
-cs2a ingest discover            # scrape results pages, queue new matches
-cs2a ingest discover --mode backfill
-cs2a ingest coverage            # discovery date coverage of the target window
+cs2a ingest discover            # incremental: newest results, stops when up to date
+cs2a ingest discover --mode backfill   # resume the backward walk toward the window floor
+cs2a ingest discover --mode backfill --since 2023-09-27   # extend the floor (full CS2 era)
+cs2a ingest coverage            # discovery date coverage: frontier, swept/unswept, gaps
 cs2a process --batch 50         # process pending matches, then maps
 cs2a status                     # ingestion-state row counts by status
 cs2a failures --stage match     # recent failed rows with error details
@@ -310,13 +311,27 @@ aggregates rows by error message so dominant failure modes - transient
 scraper noise versus a structural break like a page layout change - are
 obvious before running `cs2a retry`.
 
+`cs2a ingest discover` has two modes with distinct stop semantics
+(ADR-0016). Incremental scans newest-first and stops as soon as a page
+yields nothing new (`up_to_date`). Backfill resumes at the discovery
+frontier - the oldest recorded match date - and walks backward in
+week-sized date slices toward the window floor, using the source
+listing's date filters so known territory is never re-paged; it exits
+immediately with `window_covered` once the floor is reached. The cap
+(`--max-matches`, defaults 50/1000 per mode) is a per-run budget, never
+a completion signal, and every run summary logs why it stopped.
+`--since` moves the window floor (the walk stays contiguous), which is
+how coverage extends to the full CS2 era without code changes.
+
 `cs2a ingest coverage` reports discovery date coverage: the discovery
-window (the CLI-owned window floor through today), earliest/latest ingested match
+frontier with swept/unswept ranges, earliest/latest ingested match
 dates, how many periods (`--period week` default, or `day`) contain
-matches, contiguous zero-match gap ranges, and the not-yet-processed
-backlog (every non-processed lifecycle status) so "not discovered" is
-distinguishable from "not yet processed". Backfill cursor state joins
-the report once the backfill strategy (#121) lands.
+matches, contiguous zero-match gap ranges classified as `unswept`
+(backfill work remaining) or `swept, no matches`, and the
+not-yet-processed backlog (every non-processed lifecycle status) so
+"not discovered" is distinguishable from "not yet processed". Rows
+discovered before match dates were recorded show as undated pending
+until a re-sweep dates them.
 
 `cs2a inspect` is the single-item companion: given one ID it prints the
 full ingestion-state row (status, lifecycle timestamps, failure fields,

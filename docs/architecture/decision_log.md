@@ -441,3 +441,54 @@ Consequences:
   windows explicitly instead of mutating module constants.
 - Removing public config names is a breaking change for external
   scripts, accepted because a repo-wide grep showed no consumers.
+
+## ADR-0016: Date-Sliced Backfill With A Derived Frontier Cursor
+
+Status:
+Accepted
+
+Date:
+Phase 4.5
+
+Context:
+`--mode backfill` was the incremental scan with a larger cap: every run
+started at page offset 0, already-known matches burned the cap, and
+there was no definition of coverage or record of progress, so
+back-to-back backfill runs re-scanned the same newest pages and never
+approached the target window (#121). Page offsets are also the wrong
+cursor coordinate - they shift as new matches are played.
+
+Decision:
+Backfill is complete when the target date window is fully discovered,
+never when a count is reached; the cap is a per-run budget. The results
+listing's date-range query parameters drive the walk: backfill resumes
+at the frontier and works backward one week-sized date slice at a time
+toward the window floor, exiting immediately with `window_covered` once
+the floor is reached. The frontier is derived, not stored: discovery
+records each match's results-section date in a new nullable
+`match_ingestion_state.match_date` column, and the frontier is
+`min(match_date)`. Because the walk is strictly backward, swept
+territory is contiguous by construction, a crash mid-slice self-heals
+(the frontier day is re-swept idempotently), and the cursor cannot
+disagree with the data. Incremental mode scans newest-first and stops
+early when a page yields nothing new (`up_to_date`); every run summary
+states its stop reason (`window_covered`, `budget_exhausted`,
+`up_to_date`, `empty_page`). `--since` moves the window floor and the
+walk stays contiguous; island scraping is deliberately unsupported.
+
+Consequences:
+- Consecutive backfill runs make guaranteed forward progress with zero
+  re-scanning of known territory, and extending coverage (for example to
+  the full CS2 era) is an operational `--since` choice, not a code change.
+- `cs2a ingest coverage` classifies every window date as swept (with
+  processed/pending counts), swept-empty, or unswept, and reports the
+  frontier - the ambiguity between "scraped and empty" and "never
+  scraped" is resolved for all dates above the frontier.
+- A frontier slice with no matches cannot advance the derived cursor
+  across runs; the walk passes it within a run, so the cost is one cheap
+  re-fetch of the empty span per run start. Accepted instead of an
+  explicit per-date sweep ledger, which would add a second source of
+  truth; the ledger remains the documented follow-up if island sweeps or
+  per-date freshness become real needs.
+- Rows discovered before the column existed carry a null match_date and
+  are reported as undated pending; any idempotent re-sweep dates them.

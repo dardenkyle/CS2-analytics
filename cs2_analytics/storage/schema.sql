@@ -137,6 +137,10 @@ CREATE TABLE IF NOT EXISTS player_transfers (
 CREATE TABLE IF NOT EXISTS match_ingestion_state (
     match_id INT PRIMARY KEY,
     match_url TEXT NOT NULL,
+    -- Results-section date recorded at discovery time (#121); nullable
+    -- for rows discovered before the column existed. min(match_date)
+    -- derives the backfill frontier.
+    match_date DATE,
     status TEXT CHECK (
         status IN (
             'discovered', 'processing', 'processed', 'failed', 'skipped',
