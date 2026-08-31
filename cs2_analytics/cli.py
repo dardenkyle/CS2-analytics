@@ -91,6 +91,13 @@ class RetryStatus(StrEnum):
     FAILED = "failed"
     DEAD = "dead"
     PARTIAL = "partial"
+    PROCESSING = "processing"
+
+
+PROCESSING_RELEASE_WARNING = (
+    "Warning: releasing 'processing' rows while a pipeline run is active can "
+    "cause duplicate processing. Confirm no run is in flight before continuing."
+)
 
 
 RETRY_ERROR_PREVIEW_LENGTH = 60
@@ -116,8 +123,9 @@ def retry(
         RetryStatus,
         typer.Option(
             help=(
-                "Status to requeue. dead and partial rows are only requeued "
-                "when named here explicitly, including with --id."
+                "Status to requeue. dead, partial, and processing rows are only "
+                "requeued when named here explicitly, including with --id. "
+                "processing releases rows orphaned by an interrupted run."
             ),
         ),
     ] = RetryStatus.FAILED,
@@ -138,9 +146,13 @@ def retry(
 
     failure_count and last_error_message are preserved as history; the
     requeue itself is visible via last_updated_at. The next `cs2a process`
-    run picks the requeued rows up.
+    run picks the requeued rows up. --status processing releases rows
+    orphaned in 'processing' by an interrupted run (#142); the operator is
+    responsible for confirming no run is currently in flight.
     """
     state = _retry_state_for(stage)
+    if status is RetryStatus.PROCESSING:
+        typer.echo(PROCESSING_RELEASE_WARNING)
     try:
         candidates = state.fetch_requeue_candidates(
             status.value, limit=limit, id_value=item_id

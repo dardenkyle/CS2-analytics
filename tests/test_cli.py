@@ -476,3 +476,45 @@ def test_db_current_reports_revision_and_prints_target(monkeypatch) -> None:
     assert result.exit_code == 0
     assert calls == [("current", ())]
     assert "Target database:" in result.stdout
+
+
+def test_retry_processing_requires_explicit_status_and_warns(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(7, 0, None)], calls)
+
+    result = runner.invoke(
+        app, ["retry", "--stage", "map", "--status", "processing"], input="y\n"
+    )
+
+    assert result.exit_code == 0
+    assert "duplicate processing" in result.stdout
+    assert calls == [
+        ("fetch", "map", {"status": "processing", "limit": None, "id": None}),
+        ("requeue", "map", {"ids": [7], "expected_status": "processing"}),
+    ]
+
+
+def test_retry_processing_dry_run_previews_without_writing(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(7, 0, None), (8, 2, "boom")], calls)
+
+    result = runner.invoke(
+        app, ["retry", "--stage", "match", "--status", "processing", "--dry-run"]
+    )
+
+    assert result.exit_code == 0
+    assert [call[0] for call in calls] == ["fetch"]
+    assert "duplicate processing" in result.stdout
+    assert "2 match row(s) in status 'processing'" in result.stdout
+    assert "Dry run: no rows were changed." in result.stdout
+
+
+def test_retry_never_touches_processing_unless_named(monkeypatch) -> None:
+    calls: list[tuple[str, str, dict]] = []
+    _patch_retry_states(monkeypatch, [(1, 3, "boom")], calls)
+
+    result = runner.invoke(app, ["retry", "--stage", "match", "--id", "1"], input="y\n")
+
+    assert result.exit_code == 0
+    assert all(call[2].get("status", call[2].get("expected_status")) == "failed" for call in calls)
+    assert "duplicate processing" not in result.stdout
