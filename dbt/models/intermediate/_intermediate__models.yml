@@ -95,6 +95,13 @@ models:
       - name: rating
         description: Performance rating from the source on this map.
 
+      - name: source_updated_at
+        description: >
+          Incremental watermark for downstream facts: the greatest
+          last_updated_at across the joined players, maps, and matches rows,
+          so a re-scraped match or map re-emits its player rows.
+        data_tests:
+          - not_null
   - name: int_player_current_team
     description: >
       Each player's current team as observed in match data. Grain: one row

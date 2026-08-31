@@ -710,21 +710,49 @@ Rules:
 
 ## Materialization Strategy
 
-Materialization can be adjusted later, but the likely default approach is:
+Implemented (dbt_project.yml plus per-model config):
 
 ### staging
 
-- views initially
+- views over the Alembic-owned sources
 
 ### intermediate
 
-- views or tables depending on cost and reuse
+- views (reusable joins); `int_match_player_stats` also exposes
+  `source_updated_at`, the greatest `last_updated_at` across the joined
+  player, map, and match rows, as the incremental watermark for facts
 
 ### marts
 
-- tables, or incremental models later if data volume justifies it
+- tables, except `fact_player_map_stats`, which is incremental (#147):
+  `unique_key` = (map_id, player_id), `incremental_strategy` =
+  delete+insert, `on_schema_change` = append_new_columns, and an
+  `is_incremental()` filter of `source_updated_at >= max(source_updated_at)
+  in the target - 3 days`. The lookback absorbs late-arriving updates and
+  the small residual timezone skew in pre-#132 audit values; because the
+  watermark is the greatest of the three source timestamps, a re-scraped
+  match or map re-emits its player rows, and delete+insert replaces them
+  in place. The existing grain test is the guard against duplicate
+  insertion.
+- `fact_matches` stays full-refresh on purpose: it is one row per match
+  (hundreds of rows), and its `map_count` aggregates child rows that
+  arrive after the match row, so a full rebuild is both cheaper and safer
+  than tracking child arrivals incrementally. Revisit only if match volume
+  makes the rebuild measurable.
 
-This should be decided after actual query patterns and table sizes are understood.
+### Full-refresh policy
+
+Run `dbt build --full-refresh` (locally, or via the Scheduled dbt Build
+workflow's `full_refresh` dispatch input against production) when:
+
+- the logic of `fact_player_map_stats` or anything upstream of it changes
+- a column is removed or retyped upstream (append_new_columns only adds)
+- a backfill or bulk correction touches source rows without bumping
+  `last_updated_at`
+- the incremental table is suspected to have drifted; a full refresh must
+  produce the same rows as the incremental table (parity check)
+
+Routine daily runs stay incremental.
 
 ---
 
