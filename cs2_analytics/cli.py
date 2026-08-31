@@ -78,8 +78,8 @@ def process(
     MapController().run(batch_size=batch)
 
 
-class RetryStage(StrEnum):
-    """Ingestion stage whose state table a requeue targets."""
+class IngestionStage(StrEnum):
+    """Ingestion stage whose state table a command targets."""
 
     MATCH = "match"
     MAP = "map"
@@ -94,21 +94,37 @@ class RetryStatus(StrEnum):
     PROCESSING = "processing"
 
 
+class FailureStatus(StrEnum):
+    """Lifecycle statuses carrying failure diagnostics."""
+
+    FAILED = "failed"
+    DEAD = "dead"
+    PARTIAL = "partial"
+
+
 PROCESSING_RELEASE_WARNING = (
     "Warning: releasing 'processing' rows while a pipeline run is active can "
     "cause duplicate processing. Confirm no run is in flight before continuing."
 )
 
 
-RETRY_ERROR_PREVIEW_LENGTH = 60
+ERROR_PREVIEW_LENGTH = 60
 
 
-def _retry_state_for(stage: RetryStage) -> "BaseIngestionState[int]":
+def _error_preview(message: str | None) -> str:
+    """Truncate an error message for single-line terminal listings."""
+    preview = message or ""
+    if len(preview) > ERROR_PREVIEW_LENGTH:
+        preview = preview[:ERROR_PREVIEW_LENGTH] + "..."
+    return preview
+
+
+def _retry_state_for(stage: IngestionStage) -> "BaseIngestionState[int]":
     """Return the ingestion-state manager for the requested retry stage."""
     from cs2_analytics.ingestion_state.map_ingestion_state import MapIngestionState
     from cs2_analytics.ingestion_state.match_ingestion_state import MatchIngestionState
 
-    if stage is RetryStage.MATCH:
+    if stage is IngestionStage.MATCH:
         return MatchIngestionState()
     return MapIngestionState()
 
@@ -116,7 +132,7 @@ def _retry_state_for(stage: RetryStage) -> "BaseIngestionState[int]":
 @app.command()
 def retry(
     stage: Annotated[
-        RetryStage,
+        IngestionStage,
         typer.Option(help="Ingestion stage whose state rows to requeue."),
     ],
     status: Annotated[
@@ -166,10 +182,9 @@ def retry(
         return
 
     for row_id, failure_count, last_error in candidates:
-        error_preview = last_error or ""
-        if len(error_preview) > RETRY_ERROR_PREVIEW_LENGTH:
-            error_preview = error_preview[:RETRY_ERROR_PREVIEW_LENGTH] + "..."
-        typer.echo(f"  {row_id}  failures={failure_count or 0}  {error_preview}")
+        typer.echo(
+            f"  {row_id}  failures={failure_count or 0}  {_error_preview(last_error)}"
+        )
     typer.echo(f"{len(candidates)} {stage.value} row(s) in status '{status.value}'.")
 
     if dry_run:
@@ -189,6 +204,75 @@ def retry(
         typer.echo(
             f"{skipped} row(s) changed status since the preview and were left alone."
         )
+
+
+@app.command()
+def failures(
+    stage: Annotated[
+        IngestionStage,
+        typer.Option(help="Ingestion stage whose failure rows to show."),
+    ],
+    status: Annotated[
+        FailureStatus,
+        typer.Option(help="Lifecycle status to inspect."),
+    ] = FailureStatus.FAILED,
+    limit: Annotated[
+        int,
+        typer.Option(min=1, help="Show at most this many rows or groups."),
+    ] = 20,
+    group: Annotated[
+        bool,
+        typer.Option(
+            "--group",
+            help="Aggregate rows by error message instead of listing them.",
+        ),
+    ] = False,
+) -> None:
+    """Show recent ingestion failures with their stored error details.
+
+    Read-only: surfaces failure_count, last_failed_at, and a truncated
+    last_error_message so the operator can tell transient scraper noise
+    from a structural break before requeueing anything with `cs2a retry`.
+    """
+    from cs2_analytics.storage.ingestion_state_summary import (
+        FAILURE_STAGE_TABLES,
+        fetch_failure_groups,
+        fetch_failure_rows,
+    )
+
+    table, _ = FAILURE_STAGE_TABLES[stage.value]
+    try:
+        if group:
+            groups = fetch_failure_groups(stage.value, status.value, limit)
+        else:
+            rows = fetch_failure_rows(stage.value, status.value, limit)
+    except DatabaseConnectionError as e:
+        typer.echo(f"Database unavailable: {e}", err=True)
+        raise typer.Exit(code=1) from e
+
+    if group:
+        if not groups:
+            typer.echo(f"No {status.value} rows in {table}.")
+            return
+        for message, row_count, latest_failed_at in groups:
+            typer.echo(
+                f"  count={row_count}  latest={latest_failed_at or '-'}"
+                f"  {_error_preview(message) or '(no error message)'}"
+            )
+        typer.echo(
+            f"{len(groups)} failure group(s) in status '{status.value}' in {table}."
+        )
+        return
+
+    if not rows:
+        typer.echo(f"No {status.value} rows in {table}.")
+        return
+    for row_id, row_status, failure_count, last_failed_at, message in rows:
+        typer.echo(
+            f"  {row_id}  {row_status}  failures={failure_count or 0}"
+            f"  last_failed={last_failed_at or '-'}  {_error_preview(message)}"
+        )
+    typer.echo(f"{len(rows)} {stage.value} row(s) in status '{status.value}'.")
 
 
 def _alembic_config():
