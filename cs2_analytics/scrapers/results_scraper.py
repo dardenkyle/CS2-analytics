@@ -14,7 +14,7 @@ from collections.abc import Iterator
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
 
-from cs2_analytics.config.config import END_DATE, MAX_MATCHES, SOURCE_URL, START_DATE
+from cs2_analytics.config.config import SOURCE_URL
 from cs2_analytics.exceptions import ResultsScrapeError, SessionScrapeError
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -29,11 +29,9 @@ class ResultsScraper:
     """
 
     def __init__(self) -> None:
-        """Initializes the scraper with a SeleniumBase driver and config params."""
+        """Initializes the scraper with a SeleniumBase driver."""
         self.driver = Driver(uc=True, headless=True)
         self.base_url = SOURCE_URL
-        self.start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
-        self.end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
 
     def __enter__(self) -> "ResultsScraper":
         """Enables use as a context manager."""
@@ -44,17 +42,24 @@ class ResultsScraper:
         self.close()
 
     def iter_match_batches(
-        self, max_matches: int = MAX_MATCHES
+        self, max_matches: int, start_date: dt.date, end_date: dt.date
     ) -> Iterator[list[tuple[int, str]]]:
         """
-        Scrapes HLTV results pages and yields discovered matches per page.
+        Scrapes results pages and yields discovered matches per page.
+
+        Run parameters are explicit per call (ADR-0015): the caller owns
+        the discovery window and cap; the scraper holds no run defaults.
 
         Args:
             max_matches (int): Maximum number of matches to discover.
+            start_date (dt.date): Window floor; discovery stops at older dates.
+            end_date (dt.date): Window ceiling; newer dates are skipped.
 
         Yields:
             One list of (match_id, match_url) tuples per results page.
         """
+        self.start_date = start_date
+        self.end_date = end_date
         offset = 0
         total_discovered = 0
 

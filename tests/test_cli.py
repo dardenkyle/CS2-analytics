@@ -6,6 +6,8 @@ replaced in their source modules because the CLI imports them lazily
 inside command bodies.
 """
 
+import datetime as dt
+
 from typer.testing import CliRunner
 
 from cs2_analytics.cli import app
@@ -67,7 +69,7 @@ def test_discover_defaults_to_incremental_cap(monkeypatch) -> None:
     result = runner.invoke(app, ["ingest", "discover"])
 
     assert result.exit_code == 0
-    assert calls == [("results", {"max_matches": 50})]
+    assert calls == [("results", {"max_matches": 50, "start_date": dt.date(2025, 10, 1), "end_date": dt.date.today()})]
 
 
 def test_discover_backfill_raises_the_cap(monkeypatch) -> None:
@@ -83,7 +85,7 @@ def test_discover_backfill_raises_the_cap(monkeypatch) -> None:
     result = runner.invoke(app, ["ingest", "discover", "--mode", "backfill"])
 
     assert result.exit_code == 0
-    assert calls == [("results", {"max_matches": 1000})]
+    assert calls == [("results", {"max_matches": 1000, "start_date": dt.date(2025, 10, 1), "end_date": dt.date.today()})]
 
 
 def test_discover_max_matches_overrides_mode(monkeypatch) -> None:
@@ -101,7 +103,7 @@ def test_discover_max_matches_overrides_mode(monkeypatch) -> None:
     )
 
     assert result.exit_code == 0
-    assert calls == [("results", {"max_matches": 7})]
+    assert calls == [("results", {"max_matches": 7, "start_date": dt.date(2025, 10, 1), "end_date": dt.date.today()})]
 
 
 def test_discover_rejects_nonpositive_max_matches(monkeypatch) -> None:

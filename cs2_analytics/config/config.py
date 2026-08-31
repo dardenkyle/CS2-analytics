@@ -1,6 +1,11 @@
-"""Environment-backed runtime configuration for CS2 Analytics."""
+"""Environment-backed runtime configuration for CS2 Analytics.
 
-import datetime as dt
+Holds environment facts only (database, API, source URL, environment and
+debug flags, log level). Scraping run parameters - discovery window,
+match caps, batch sizes - are explicit arguments supplied by the invoker
+(the CLI today, an orchestrator later); see ADR-0015.
+"""
+
 import logging
 import os
 
@@ -106,7 +111,6 @@ DB_USER = os.getenv("DB_USER", default="postgres")
 DB_PASS = os.getenv("DB_PASS", default="password")
 DB_HOST = os.getenv("DB_HOST", default="localhost")
 DB_PORT = _read_int("DB_PORT", default=5432)
-BATCH_SIZE = 1000
 
 # API Configuration
 API_HOST = os.getenv("API_HOST", default="127.0.0.1")
@@ -122,21 +126,13 @@ API_CORS_ORIGINS = _read_csv(
     ],
 )
 
-# Feature Toggles
-ENABLE_DATA_STORAGE = True
-ENABLE_ANALYTICS = False
-
 # Scraping Config
 SOURCE_URL = os.getenv("SOURCE_URL", default="https://www.hltv.org/results")
-START_DATE = "2025-10-01"
-END_DATE = str(dt.datetime.today().date())
-MAX_MATCHES = 10
 
 # Logging Config
 LOG_LEVEL = logging.INFO
 if DEBUG_MODE:
     LOG_LEVEL = logging.DEBUG
-LOG_FILE = os.path.join(os.getcwd(), "logs", "app.log")
 
 _validate_production_environment(
     environment=ENVIRONMENT,
