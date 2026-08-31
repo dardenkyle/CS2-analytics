@@ -29,6 +29,15 @@ depends_on: str | Sequence[str] | None = None
 
 AUDIT_TABLES = ("matches", "players")
 AUDIT_COLUMNS = ("inserted_at", "last_scraped_at", "last_updated_at")
+DEPENDENT_DBT_VIEWS = ("analytics.stg_matches", "analytics.stg_players")
+
+
+def _drop_dependent_dbt_views() -> None:
+    # dbt-owned staging views select the audit columns, which blocks the
+    # type change; they hold no data and dbt rebuilds them. IF EXISTS keeps
+    # fresh databases (CI, new local setups) working.
+    for view_name in DEPENDENT_DBT_VIEWS:
+        op.execute(f"DROP VIEW IF EXISTS {view_name} CASCADE")
 
 
 def _convert_audit_columns(table_name: str, target_type: str) -> None:
@@ -44,6 +53,7 @@ def _convert_audit_columns(table_name: str, target_type: str) -> None:
 
 
 def upgrade() -> None:
+    _drop_dependent_dbt_views()
     for table_name in AUDIT_TABLES:
         op.alter_column(
             table_name,
@@ -54,6 +64,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    _drop_dependent_dbt_views()
     for table_name in AUDIT_TABLES:
         _convert_audit_columns(table_name, "TIMESTAMP")
         op.alter_column(
