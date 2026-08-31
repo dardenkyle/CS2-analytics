@@ -13,6 +13,14 @@ audit fields. The skew is bounded, affects audit metadata only, and there
 is no per-row discriminator to correct it, so a uniform UTC
 interpretation is used.
 
+Derived-object dependency (issue #157): PostgreSQL refuses to change a
+column's type while a view depends on it, and the dbt staging views
+`analytics.stg_matches` and `analytics.stg_players` select these audit
+columns. The migration therefore drops those views first, with CASCADE
+taking the dependent intermediate views. They are derived, data-free
+objects that dbt recreates on its next build; the marts and the SCD2
+snapshot are tables and are not affected.
+
 Revision ID: 20260831_0003
 Revises: 20260716_0002
 Create Date: 2026-08-31
@@ -33,9 +41,12 @@ DEPENDENT_DBT_VIEWS = ("analytics.stg_matches", "analytics.stg_players")
 
 
 def _drop_dependent_dbt_views() -> None:
-    # dbt-owned staging views select the audit columns, which blocks the
-    # type change; they hold no data and dbt rebuilds them. IF EXISTS keeps
-    # fresh databases (CI, new local setups) working.
+    """Drop the dbt staging views that depend on the audit columns.
+
+    PostgreSQL blocks retyping a column a view selects. The views hold no
+    data and dbt rebuilds them on its next run; IF EXISTS keeps fresh
+    databases (CI, new local setups) working.
+    """
     for view_name in DEPENDENT_DBT_VIEWS:
         op.execute(f"DROP VIEW IF EXISTS {view_name} CASCADE")
 
