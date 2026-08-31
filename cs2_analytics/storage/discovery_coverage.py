@@ -73,7 +73,7 @@ def compute_gap_ranges(
     covering consecutive periods with no counted matches.
     """
     step = dt.timedelta(days=DAYS_PER_PERIOD[period])
-    counted = {period_start for period_start, _ in period_counts}
+    counted = {period_start for period_start, count in period_counts if count > 0}
     gaps: list[tuple[dt.date, dt.date]] = []
     current = align_period_start(window_start, period)
     last_period = align_period_start(window_end, period)
@@ -101,6 +101,10 @@ def fetch_discovery_coverage(
     count. `period` must be one of COVERAGE_PERIODS and is passed to
     date_trunc as a parameter.
     """
+    if period not in COVERAGE_PERIODS:
+        raise ValueError(
+            f"period must be one of {COVERAGE_PERIODS}, got {period!r}."
+        )
     upper_bound = window_end + dt.timedelta(days=1)
     with get_db().get_cursor() as cur:
         cur.execute(MATCH_DATE_BOUNDS_QUERY)

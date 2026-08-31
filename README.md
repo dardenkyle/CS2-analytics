@@ -313,8 +313,8 @@ obvious before running `cs2a retry`.
 `cs2a ingest coverage` reports discovery date coverage: the configured
 window (`START_DATE` through today), earliest/latest ingested match
 dates, how many periods (`--period week` default, or `day`) contain
-matches, contiguous zero-match gap ranges, and the
-discovered-but-unprocessed backlog so "not discovered" is
+matches, contiguous zero-match gap ranges, and the not-yet-processed
+backlog (every non-processed lifecycle status) so "not discovered" is
 distinguishable from "not yet processed". Backfill cursor state joins
 the report once the backfill strategy (#121) lands.
 

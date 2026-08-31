@@ -113,6 +113,35 @@ def test_compute_gap_ranges_week_buckets_align_with_sql_truncation() -> None:
     assert gaps == [(dt.date(2026, 8, 31), dt.date(2026, 9, 7))]
 
 
+def test_compute_gap_ranges_treats_explicit_zero_counts_as_gaps() -> None:
+    window_start = dt.date(2026, 8, 1)
+    window_end = dt.date(2026, 8, 3)
+    counts = [
+        (dt.date(2026, 8, 1), 3),
+        (dt.date(2026, 8, 2), 0),
+        (dt.date(2026, 8, 3), 1),
+    ]
+
+    gaps = compute_gap_ranges(window_start, window_end, "day", counts)
+
+    assert gaps == [(dt.date(2026, 8, 2), dt.date(2026, 8, 2))]
+
+
+def test_fetch_discovery_coverage_rejects_unknown_period(monkeypatch) -> None:
+    monkeypatch.setattr(
+        coverage_module,
+        "get_db",
+        lambda: (_ for _ in ()).throw(AssertionError("must not touch the db")),
+    )
+
+    try:
+        fetch_discovery_coverage(dt.date(2025, 10, 1), dt.date(2026, 8, 31), "month")
+    except ValueError as exc:
+        assert "period must be one of" in str(exc)
+    else:
+        raise AssertionError("Expected an unknown period to be rejected")
+
+
 def test_fetch_discovery_coverage_combines_three_queries(monkeypatch) -> None:
     earliest = dt.datetime(2025, 10, 2, 12, 0)
     latest = dt.datetime(2026, 8, 30, 20, 0)

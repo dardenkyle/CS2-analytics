@@ -86,10 +86,10 @@ def coverage(
 
     Read-only: compares the configured window (START_DATE through today)
     against match dates present in `matches`, lists zero-match periods as
-    gaps, and shows the discovered-but-unprocessed backlog so "not
-    discovered" is distinguishable from "not yet processed". Backfill
-    cursor state joins this report once the backfill strategy (#121)
-    lands.
+    gaps, and shows the not-yet-processed backlog (every non-processed
+    lifecycle status) so "not discovered" is distinguishable from "not
+    yet processed". Backfill cursor state joins this report once the
+    backfill strategy (#121) lands.
     """
     import datetime as dt
 
@@ -127,11 +127,11 @@ def coverage(
             typer.echo(f"  {gap_start} .. {gap_end}")
     pending = report["pending_by_status"]
     if pending:
-        typer.echo("Pending (discovered but not processed):")
+        typer.echo("Not yet processed (by status):")
         for status_name, row_count in pending.items():
             typer.echo(f"  {status_name:<12} {row_count}")
         typer.echo(
-            "Note: gaps may reflect pending backlog rather than"
+            "Note: gaps may reflect unprocessed backlog rather than"
             " undiscovered dates."
         )
 

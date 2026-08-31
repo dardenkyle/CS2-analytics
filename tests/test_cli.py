@@ -162,9 +162,9 @@ def test_ingest_coverage_reports_window_gaps_and_backlog(monkeypatch) -> None:
     assert "Earliest match: 2025-10-02 12:00:00" in result.stdout
     assert "Matches in window: 45 (total in database: 700)" in result.stdout
     assert "Gaps (no matches, per week):" in result.stdout
-    assert "Pending (discovered but not processed):" in result.stdout
+    assert "Not yet processed (by status):" in result.stdout
     assert "discovered   561" in result.stdout
-    assert "Note: gaps may reflect pending backlog" in result.stdout
+    assert "Note: gaps may reflect unprocessed backlog" in result.stdout
 
 
 def test_ingest_coverage_day_period_and_quiet_when_no_backlog(monkeypatch) -> None:
@@ -190,7 +190,7 @@ def test_ingest_coverage_day_period_and_quiet_when_no_backlog(monkeypatch) -> No
     assert "Earliest match: -" in result.stdout
     assert "gap ranges: 0" in result.stdout
     assert "Gaps" not in result.stdout
-    assert "Pending" not in result.stdout
+    assert "Not yet processed" not in result.stdout
     assert "Note:" not in result.stdout
 
 
