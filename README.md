@@ -294,12 +294,17 @@ cs2a process --batch 50         # process pending matches, then maps
 cs2a status                     # ingestion-state row counts by status
 cs2a retry --stage match        # requeue failed matches for reprocessing
 cs2a retry --stage map --dry-run
+cs2a retry --stage map --status processing --dry-run   # inspect rows stuck by an interrupted run
 ```
 
 `cs2a retry` resets `failed` ingestion-state rows back to `discovered` so
-the next `cs2a process` run picks them up. `dead` and `partial` rows are
-only requeued when named explicitly via `--status`, including when
-targeting a single row with `--id`. `--limit` bounds how much work is
+the next `cs2a process` run picks them up. `dead`, `partial`, and
+`processing` rows are only requeued when named explicitly via `--status`,
+including when targeting a single row with `--id`. `--status processing`
+releases rows an interrupted run left behind (controllers also release
+them automatically at startup); the command warns that releasing them
+while a run is active can cause duplicate processing, so confirm no run
+is in flight first. `--limit` bounds how much work is
 requeued and `--dry-run` previews the affected rows without writing.
 Before writing, the command shows the affected row count and the target
 database and asks for confirmation. Requeueing preserves `failure_count`
