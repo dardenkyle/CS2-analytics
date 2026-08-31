@@ -514,7 +514,7 @@ def test_failures_exits_nonzero_when_database_is_unavailable(monkeypatch) -> Non
     result = runner.invoke(app, ["failures", "--stage", "match"])
 
     assert result.exit_code == 1
-    assert "Database unavailable" in result.output
+    assert "Database unavailable" in result.stderr
 
 
 def test_db_upgrade_defaults_to_head_and_prints_target(monkeypatch) -> None:
