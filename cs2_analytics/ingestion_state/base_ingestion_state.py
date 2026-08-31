@@ -281,6 +281,36 @@ class BaseIngestionState[IdT: (int, str)]:
                 f"Failed to fetch requeue candidates from {self.table_name}."
             ) from e
 
+    def release_orphaned_processing(self) -> int:
+        """Resets every 'processing' row back to 'discovered' and returns the count.
+
+        Startup reconciliation for interrupted runs: mark_as_processing commits
+        before the item is processed and the terminal status is written only
+        afterward, so Ctrl+C, a crash, or a kill in that window leaves the row
+        stuck in 'processing' where fetch() never selects it again.
+
+        This assumes the pipeline is single-process: any 'processing' row seen
+        when a controller starts belongs to no live run and is therefore
+        orphaned. If parallel runs are ever introduced, replace this with
+        lease-based claiming; blanket reconciliation cannot tell a peer's live
+        claim from an orphan. failure_count and last_error_message are
+        preserved as history; the release is visible via last_updated_at.
+        """
+        now = dt.datetime.now()
+        query = f"""
+        UPDATE {self.table_name}
+        SET status = 'discovered', last_updated_at = %s
+        WHERE status = 'processing';
+        """
+        try:
+            with self.db.get_cursor() as cur:
+                cur.execute(query, (now,))
+                return int(cur.rowcount)
+        except Exception as e:
+            raise self.error_cls(
+                f"Failed to release orphaned processing rows in {self.table_name}."
+            ) from e
+
     def requeue(self, ids: list[IdT], expected_status: str) -> int:
         """Resets rows back to 'discovered' so processing picks them up again.
 

@@ -67,6 +67,16 @@ Lifecycle fields must stay distinct:
 
 Do not add `inserted_at` or `last_inserted_at` to ingestion-state tables.
 
+Lifecycle reconciliation (#141): the claim is not crash-safe -
+`mark_as_processing` commits before an item is processed and the terminal
+status is written only afterward - so an interrupted run (Ctrl+C, crash,
+kill) leaves rows stuck in `processing`, which `fetch()` never selects.
+`MatchController.run()` and `MapController.run()` therefore start by
+resetting every `processing` row in their table back to `discovered`
+(logging a warning with the count), before batch selection. This relies
+on the pipeline being single-process; parallel runs would require
+lease-based claiming instead.
+
 ## Component Boundaries
 
 Controllers own:
