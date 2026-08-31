@@ -120,6 +120,104 @@ def test_discover_rejects_nonpositive_max_matches(monkeypatch) -> None:
     assert calls == []
 
 
+def _patch_coverage(monkeypatch, report):
+    """Replace the coverage fetch with a canned report in its module."""
+    import cs2_analytics.storage.discovery_coverage as coverage_module
+
+    calls: list[tuple] = []
+
+    def _fetch(window_start, window_end, period):
+        calls.append((window_start, window_end, period))
+        return report
+
+    monkeypatch.setattr(coverage_module, "fetch_discovery_coverage", _fetch)
+    return calls
+
+
+def test_ingest_coverage_reports_window_gaps_and_backlog(monkeypatch) -> None:
+    import datetime as dt
+
+    calls = _patch_coverage(
+        monkeypatch,
+        {
+            "earliest_match": dt.datetime(2025, 10, 2, 12, 0),
+            "latest_match": dt.datetime(2026, 8, 30, 20, 0),
+            "total_matches": 700,
+            "window_matches": 45,
+            "period_counts": [(dt.date(2026, 8, 24), 45)],
+            "pending_by_status": {"discovered": 561, "failed": 2},
+        },
+    )
+
+    result = runner.invoke(app, ["ingest", "coverage"])
+
+    assert result.exit_code == 0
+    assert len(calls) == 1
+    window_start, window_end, period = calls[0]
+    assert window_start == dt.date(2025, 10, 1)
+    assert window_end == dt.date.today()
+    assert period == "week"
+    assert "Discovery window: 2025-10-01" in result.stdout
+    assert "(per week)" in result.stdout
+    assert "Earliest match: 2025-10-02 12:00:00" in result.stdout
+    assert "Matches in window: 45 (total in database: 700)" in result.stdout
+    assert "Gaps (no matches, per week):" in result.stdout
+    assert "Pending (discovered but not processed):" in result.stdout
+    assert "discovered   561" in result.stdout
+    assert "Note: gaps may reflect pending backlog" in result.stdout
+
+
+def test_ingest_coverage_day_period_and_quiet_when_no_backlog(monkeypatch) -> None:
+    import datetime as dt
+
+    today = dt.date.today()
+    calls = _patch_coverage(
+        monkeypatch,
+        {
+            "earliest_match": None,
+            "latest_match": None,
+            "total_matches": 0,
+            "window_matches": 0,
+            "period_counts": [(day, 1) for day in _all_days_since_start(today)],
+            "pending_by_status": {},
+        },
+    )
+
+    result = runner.invoke(app, ["ingest", "coverage", "--period", "day"])
+
+    assert result.exit_code == 0
+    assert calls[0][2] == "day"
+    assert "Earliest match: -" in result.stdout
+    assert "gap ranges: 0" in result.stdout
+    assert "Gaps" not in result.stdout
+    assert "Pending" not in result.stdout
+    assert "Note:" not in result.stdout
+
+
+def _all_days_since_start(today):
+    import datetime as dt
+
+    start = dt.date(2025, 10, 1)
+    return [start + dt.timedelta(days=i) for i in range((today - start).days + 1)]
+
+
+def test_ingest_coverage_exits_nonzero_when_database_is_unavailable(
+    monkeypatch,
+) -> None:
+    import cs2_analytics.storage.discovery_coverage as coverage_module
+    from cs2_analytics.exceptions import DatabaseConnectionError
+
+    def _raise(window_start, window_end, period):
+        raise DatabaseConnectionError("no pool")
+
+    monkeypatch.setattr(coverage_module, "fetch_discovery_coverage", _raise)
+
+    result = runner.invoke(app, ["ingest", "coverage"])
+
+    assert result.exit_code == 1
+    assert "Database unavailable" in result.stderr
+
+
 def test_process_rejects_nonpositive_batch(monkeypatch) -> None:
     calls: list[tuple[str, dict]] = []
     _patch_controller(
