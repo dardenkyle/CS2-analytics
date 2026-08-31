@@ -142,7 +142,7 @@ def test_fetch_discovery_coverage_rejects_unknown_period(monkeypatch) -> None:
         raise AssertionError("Expected an unknown period to be rejected")
 
 
-def test_fetch_discovery_coverage_combines_three_queries(monkeypatch) -> None:
+def test_fetch_discovery_coverage_combines_report_queries(monkeypatch) -> None:
     earliest = dt.datetime(2025, 10, 2, 12, 0)
     latest = dt.datetime(2026, 8, 30, 20, 0)
     cursor = _SequencedCursor(
@@ -150,6 +150,8 @@ def test_fetch_discovery_coverage_combines_three_queries(monkeypatch) -> None:
             (earliest, latest, 700),
             [(dt.date(2026, 8, 24), 40), (dt.date(2026, 8, 31), 5)],
             [("discovered", 561), ("failed", 2)],
+            (dt.date(2026, 5, 24),),
+            (462,),
         ]
     )
     monkeypatch.setattr(coverage_module, "get_db", lambda: _FakeDatabase(cursor))
@@ -167,9 +169,13 @@ def test_fetch_discovery_coverage_combines_three_queries(monkeypatch) -> None:
         (dt.date(2026, 8, 31), 5),
     ]
     assert report["pending_by_status"] == {"discovered": 561, "failed": 2}
+    assert report["frontier"] == dt.date(2026, 5, 24)
+    assert report["undated_pending"] == 462
     bounds_query, bounds_params = cursor.executed[0]
     period_query, period_params = cursor.executed[1]
     pending_query, _ = cursor.executed[2]
+    frontier_query, _ = cursor.executed[3]
+    undated_query, _ = cursor.executed[4]
     assert "FROM matches" in bounds_query
     assert bounds_params is None
     assert "date_trunc" in period_query
@@ -177,3 +183,5 @@ def test_fetch_discovery_coverage_combines_three_queries(monkeypatch) -> None:
     assert period_params == ("week", dt.date(2025, 10, 1), dt.date(2026, 9, 1))
     assert "FROM match_ingestion_state" in pending_query
     assert "!= 'processed'" in pending_query
+    assert "MIN(match_date)" in frontier_query
+    assert "match_date IS NULL" in undated_query

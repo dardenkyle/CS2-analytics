@@ -38,8 +38,11 @@ def scraper(monkeypatch: pytest.MonkeyPatch) -> ResultsScraper:
     return ResultsScraper()
 
 
-def _page(urls: list[str], stop: bool) -> tuple[list[str], bool]:
-    return urls, stop
+_PAGE_DATE = dt.date(2026, 5, 1)
+
+
+def _page(urls: list[str], stop: bool) -> tuple[list[tuple[str, dt.date]], bool]:
+    return [(url, _PAGE_DATE) for url in urls], stop
 
 
 # Explicit run-parameter window for iter_match_batches calls (ADR-0015).
@@ -68,11 +71,12 @@ def test_iter_match_batches_yields_page_batches_with_ids(
 
     assert batches == [
         [
-            (111, "https://www.hltv.org/matches/111/a-vs-b"),
-            (222, "https://www.hltv.org/matches/222/c-vs-d"),
+            (111, "https://www.hltv.org/matches/111/a-vs-b", _PAGE_DATE),
+            (222, "https://www.hltv.org/matches/222/c-vs-d", _PAGE_DATE),
         ],
-        [(333, "https://www.hltv.org/matches/333/e-vs-f")],
+        [(333, "https://www.hltv.org/matches/333/e-vs-f", _PAGE_DATE)],
     ]
+    assert scraper.stop_reason == ResultsScraper.STOP_WINDOW_FLOOR
 
 
 def test_iter_match_batches_stops_at_max_matches(
@@ -80,10 +84,10 @@ def test_iter_match_batches_stops_at_max_matches(
 ) -> None:
     calls = 0
 
-    def fake_extract(_url: str) -> tuple[list[str], bool]:
+    def fake_extract(_url: str) -> tuple[list[tuple[str, dt.date]], bool]:
         nonlocal calls
         calls += 1
-        return [f"https://www.hltv.org/matches/{calls}00/x-vs-y"], False
+        return [(f"https://www.hltv.org/matches/{calls}00/x-vs-y", _PAGE_DATE)], False
 
     monkeypatch.setattr(scraper, "_extract_matches_from_page", fake_extract)
 
@@ -91,15 +95,19 @@ def test_iter_match_batches_stops_at_max_matches(
 
     assert len(batches) == 2
     assert calls == 2
+    assert scraper.stop_reason == ResultsScraper.STOP_BUDGET
 
 
 def test_iter_match_batches_caps_within_a_page(
     scraper: ResultsScraper, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    urls = [f"https://www.hltv.org/matches/{n}/x-vs-y" for n in (101, 102, 103)]
+    urls = [
+        (f"https://www.hltv.org/matches/{n}/x-vs-y", _PAGE_DATE)
+        for n in (101, 102, 103)
+    ]
     calls = 0
 
-    def fake_extract(_url: str) -> tuple[list[str], bool]:
+    def fake_extract(_url: str) -> tuple[list[tuple[str, dt.date]], bool]:
         nonlocal calls
         calls += 1
         return urls, False
@@ -110,8 +118,8 @@ def test_iter_match_batches_caps_within_a_page(
 
     assert batches == [
         [
-            (101, "https://www.hltv.org/matches/101/x-vs-y"),
-            (102, "https://www.hltv.org/matches/102/x-vs-y"),
+            (101, "https://www.hltv.org/matches/101/x-vs-y", _PAGE_DATE),
+            (102, "https://www.hltv.org/matches/102/x-vs-y", _PAGE_DATE),
         ]
     ]
     assert calls == 1
@@ -123,6 +131,7 @@ def test_iter_match_batches_stops_on_empty_page(
     monkeypatch.setattr(scraper, "_extract_matches_from_page", lambda _url: ([], False))
 
     assert list(scraper.iter_match_batches(max_matches=10, **_WINDOW)) == []
+    assert scraper.stop_reason == ResultsScraper.STOP_EMPTY_PAGE
 
 
 def test_iter_match_batches_applies_window_parameters(
@@ -181,7 +190,9 @@ def test_extract_matches_from_page_warns_and_skips_unparseable_date(
         )
 
     warning_mock.assert_called_once_with("Could not parse date: %s", "not-a-date")
-    assert matches == ["https://www.hltv.org/matches/222/c-vs-d"]
+    assert matches == [
+        ("https://www.hltv.org/matches/222/c-vs-d", dt.date(2025, 5, 5))
+    ]
     assert stop is False
 
 
@@ -230,7 +241,10 @@ def test_extract_matches_from_page_parses_ordinal_dates_for_every_month(
         )
 
     warning_mock.assert_not_called()
-    assert matches == ["https://www.hltv.org/matches/333/e-vs-f"]
+    assert [url for url, _date in matches] == [
+        "https://www.hltv.org/matches/333/e-vs-f"
+    ]
+    assert all(date.year == 2026 and date.day == 3 for _url, date in matches)
     assert stop is False
 
 
@@ -264,7 +278,8 @@ def test_extract_matches_from_page_parses_observed_august_headers(
         "https://www.hltv.org/results?offset=0"
     )
 
-    assert [m.rsplit("/", 2)[1] for m in matches] == ["1", "2", "3"]
+    assert [url.rsplit("/", 2)[1] for url, _date in matches] == ["1", "2", "3"]
+    assert [date.day for _url, date in matches] == [31, 22, 1]
     assert stop is False
 
 

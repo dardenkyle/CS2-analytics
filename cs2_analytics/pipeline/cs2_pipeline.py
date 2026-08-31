@@ -31,6 +31,7 @@ class CS2AnalyticsPipeline:
             max_matches=DISCOVER_MODE_MAX_MATCHES[DiscoverMode.INCREMENTAL],
             start_date=DISCOVERY_WINDOW_START,
             end_date=dt.date.today(),
+            mode=DiscoverMode.INCREMENTAL.value,
         )
 
         # Step 2: Process pending matches from match_ingestion_state

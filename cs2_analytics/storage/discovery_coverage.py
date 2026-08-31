@@ -38,6 +38,16 @@ PENDING_COUNTS_QUERY = """
     ORDER BY status;
 """
 
+# The backfill frontier (#121): discovery walks strictly backward, so the
+# oldest recorded match_date bounds swept territory from below.
+FRONTIER_QUERY = "SELECT MIN(match_date) FROM match_ingestion_state;"
+
+UNDATED_PENDING_QUERY = """
+    SELECT COUNT(*)
+    FROM match_ingestion_state
+    WHERE status != 'processed' AND match_date IS NULL;
+"""
+
 
 class CoverageReport(TypedDict):
     """Discovery coverage of the target window, plus pending backlog."""
@@ -48,6 +58,8 @@ class CoverageReport(TypedDict):
     window_matches: int
     period_counts: list[tuple[dt.date, int]]
     pending_by_status: dict[str, int]
+    frontier: dt.date | None
+    undated_pending: int
 
 
 def align_period_start(day: dt.date, period: str) -> dt.date:
@@ -113,6 +125,10 @@ def fetch_discovery_coverage(
         period_counts = [(row[0], row[1]) for row in cur.fetchall()]
         cur.execute(PENDING_COUNTS_QUERY)
         pending = dict(cur.fetchall())
+        cur.execute(FRONTIER_QUERY)
+        frontier_row = cur.fetchone()
+        cur.execute(UNDATED_PENDING_QUERY)
+        undated_row = cur.fetchone()
     return {
         "earliest_match": earliest,
         "latest_match": latest,
@@ -120,4 +136,6 @@ def fetch_discovery_coverage(
         "window_matches": sum(count for _, count in period_counts),
         "period_counts": period_counts,
         "pending_by_status": pending,
+        "frontier": frontier_row[0] if frontier_row is not None else None,
+        "undated_pending": undated_row[0] if undated_row is not None else 0,
     }
