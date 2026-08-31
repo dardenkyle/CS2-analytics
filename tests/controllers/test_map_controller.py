@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 
 from cs2_analytics.controllers import map_controller as map_module
@@ -7,14 +9,23 @@ from tests.support import FakeTransactionDb
 
 
 class _FakeMapState:
+    table_name = "map_ingestion_state"
+    orphaned_processing = 0
+
     def __init__(self) -> None:
         self.failed: list[tuple[int, str]] = []
         self.processed: list[int] = []
         self.processing: list[int] = []
+        self.calls: list[str] = []
+
+    def release_orphaned_processing(self) -> int:
+        self.calls.append("release")
+        return self.orphaned_processing
 
     def fetch_with_match_context(
         self, _limit: int = 25
     ) -> list[tuple[int, str, int | None, int | None]]:
+        self.calls.append("fetch")
         return [
             (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 101, 1),
             (2, "https://www.hltv.org/stats/matches/mapstatsid/2/test", 102, 2),
@@ -333,3 +344,24 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
         and call_args[1:] == (1, 0, 1, 2)
         for call_args, _ in info_calls
     )
+
+
+def test_map_controller_releases_orphaned_processing_before_fetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    controller = _build_map_controller(
+        monkeypatch, _SuccessfulScraper, _SuccessfulParser
+    )
+    monkeypatch.setattr(_FakeMapState, "orphaned_processing", 4)
+
+    with mock.patch.object(map_module.logger, "warning") as warning_mock:
+        controller.run(batch_size=5)
+
+    assert controller.state.calls[:2] == ["release", "fetch"]
+    release_warnings = [
+        call for call in warning_mock.call_args_list
+        if "orphaned" in str(call.args[0])
+    ]
+    assert len(release_warnings) == 1
+    assert release_warnings[0].args[1] == 4
+    assert release_warnings[0].args[2] == "map_ingestion_state"

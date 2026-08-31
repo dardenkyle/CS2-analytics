@@ -53,6 +53,7 @@ class MatchController:
         """Runs the match stage for a batch of pending match URLs."""
         logger.info("Running MatchController with batch size: %d", batch_size)
 
+        self._release_orphaned_processing()
         selected = self.match_state.fetch(limit=batch_size)
         logger.info("%d pending matches selected from ingestion state", len(selected))
 
@@ -74,6 +75,17 @@ class MatchController:
             run_state.retries,
         )
         logger.info("MatchController complete.")
+
+    def _release_orphaned_processing(self) -> None:
+        """Reconciles rows an interrupted run left in 'processing' (#141)."""
+        released = self.match_state.release_orphaned_processing()
+        if released:
+            logger.warning(
+                "Released %d orphaned 'processing' row(s) in %s back to "
+                "'discovered' before selecting this batch.",
+                released,
+                self.match_state.table_name,
+            )
 
     def _rotate_scraper_if_due(self, run_state: BatchRunState[MatchScraper]) -> None:
         """Swaps in a fresh scraper session after enough processed matches."""

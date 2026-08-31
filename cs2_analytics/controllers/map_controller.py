@@ -44,6 +44,7 @@ class MapController:
     def run(self, batch_size: int = 25) -> None:
         logger.info("Running MapController with batch size: %d", batch_size)
 
+        self._release_orphaned_processing()
         selected = self.state.fetch_with_match_context(batch_size)
         logger.info("%d pending maps selected from ingestion state", len(selected))
 
@@ -67,6 +68,17 @@ class MapController:
             run_state.retries,
         )
         logger.info("MapController complete.")
+
+    def _release_orphaned_processing(self) -> None:
+        """Reconciles rows an interrupted run left in 'processing' (#141)."""
+        released = self.state.release_orphaned_processing()
+        if released:
+            logger.warning(
+                "Released %d orphaned 'processing' row(s) in %s back to "
+                "'discovered' before selecting this batch.",
+                released,
+                self.state.table_name,
+            )
 
     def _rotate_scraper_if_due(self, run_state: BatchRunState[MapScraper]) -> None:
         """Swaps in a fresh scraper session after enough processed maps."""

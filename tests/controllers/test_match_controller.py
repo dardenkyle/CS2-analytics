@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 
 from cs2_analytics.controllers import match_controller as match_module
@@ -6,13 +8,22 @@ from tests.support import FakeTransactionDb
 
 
 class _FakeMatchState:
+    table_name = "match_ingestion_state"
+    orphaned_processing = 0
+
     def __init__(self) -> None:
         self.failed: list[tuple[int, str]] = []
         self.processed: list[int] = []
         self.processing: list[int] = []
+        self.calls: list[str] = []
+
+    def release_orphaned_processing(self) -> int:
+        self.calls.append("release")
+        return self.orphaned_processing
 
     def fetch(self, limit: int = 25) -> list[tuple[int, str]]:
         assert limit > 0
+        self.calls.append("fetch")
         return [(1, "https://www.hltv.org/matches/1/test")]
 
     def mark_as_failed(self, item_id: int, reason: str) -> None:
@@ -293,3 +304,39 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
         and call_args[1:] == (1, 1, 0, 2)
         for call_args, _ in info_calls
     )
+
+
+def test_match_controller_releases_orphaned_processing_before_fetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    controller = _build_match_controller(
+        monkeypatch, _SuccessfulScraper, _SuccessfulParser
+    )
+    monkeypatch.setattr(_FakeMatchState, "orphaned_processing", 3)
+
+    with mock.patch.object(match_module.logger, "warning") as warning_mock:
+        controller.run(batch_size=5)
+
+    assert controller.match_state.calls[:2] == ["release", "fetch"]
+    release_warnings = [
+        call for call in warning_mock.call_args_list
+        if "orphaned" in str(call.args[0])
+    ]
+    assert len(release_warnings) == 1
+    assert release_warnings[0].args[1] == 3
+    assert release_warnings[0].args[2] == "match_ingestion_state"
+
+
+def test_match_controller_stays_quiet_when_nothing_is_orphaned(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    controller = _build_match_controller(
+        monkeypatch, _SuccessfulScraper, _SuccessfulParser
+    )
+    monkeypatch.setattr(_FakeMatchState, "orphaned_processing", 0)
+
+    with mock.patch.object(match_module.logger, "warning") as warning_mock:
+        controller.run(batch_size=5)
+
+    assert controller.match_state.calls[0] == "release"
+    assert not any("orphaned" in str(c.args[0]) for c in warning_mock.call_args_list)
