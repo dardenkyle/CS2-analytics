@@ -1,3 +1,14 @@
+"""Integration tests for the storage layer against a disposable database.
+
+These tests write real rows through the storage modules, which commit on
+their own connections, so no rollback can undo them. They therefore run
+only when explicitly opted in (CS2_ALLOW_DB_TESTS) and only against a
+local database host, and they delete their fixed-ID rows before and after
+each test. CI opts in against its service container; a local run with the
+application .env skips.
+"""
+
+import os
 import sys
 import unittest
 from datetime import UTC, datetime
@@ -10,25 +21,73 @@ from cs2_analytics.storage.map_storage import store_maps
 from cs2_analytics.storage.match_storage import store_matches
 from cs2_analytics.storage.player_storage import store_players
 
+OPT_IN_ENV = "CS2_ALLOW_DB_TESTS"
+LOCAL_DB_HOSTS = ("localhost", "127.0.0.1", "db")
+TEST_MATCH_IDS = (999998, 999999)
+TEST_MAP_ID = 999999
+TEST_PLAYER_ID = 888888
+
+
+def db_tests_enabled() -> bool:
+    """True only when opted in and DB_HOST is a local database."""
+    opted_in = os.getenv(OPT_IN_ENV, "").strip().lower() in {"1", "true", "yes"}
+    return opted_in and os.getenv("DB_HOST", "") in LOCAL_DB_HOSTS
+
+
+SKIP_REASON = (
+    f"DB-backed storage tests run only with {OPT_IN_ENV} set and DB_HOST "
+    f"in {LOCAL_DB_HOSTS}; they write and delete real rows."
+)
+
+
+def delete_test_rows(cur) -> None:
+    """Remove the fixed-ID rows these tests write, children first."""
+    cur.execute(
+        "DELETE FROM players WHERE map_id = %s OR player_id = %s;",
+        (TEST_MAP_ID, TEST_PLAYER_ID),
+    )
+    cur.execute(
+        "DELETE FROM maps WHERE map_id = %s OR match_id = ANY(%s);",
+        (TEST_MAP_ID, list(TEST_MATCH_IDS)),
+    )
+    cur.execute("DELETE FROM matches WHERE match_id = ANY(%s);", (list(TEST_MATCH_IDS),))
+
 
 class TestDatabase(unittest.TestCase):
-    """Unit tests for verifying database operations with rollback."""
+    """Integration tests for storage writes against a disposable database."""
 
     @classmethod
     def setUpClass(cls):
-        """Runs once before all tests to initialize the database connection."""
+        """Enforce the opt-in guard, then open the database connection.
+
+        The guard lives here rather than in a pytest marker so it also
+        applies under `python -m unittest` and this file's own entry point.
+        """
+        if not db_tests_enabled():
+            raise unittest.SkipTest(SKIP_REASON)
         print("\n🚀 Setting up database connection for tests...")
         sys.stdout.flush()
         cls.db = Database()
         cls.conn = cls.db.get_connection()
+        cls.conn.autocommit = True
         cls.cur = cls.conn.cursor()
-        cls.conn.autocommit = False  # ✅ Disable autocommit to allow rollbacks
+
+    @classmethod
+    def tearDownClass(cls):
+        """Remove test rows and release the connection."""
+        delete_test_rows(cls.cur)
+        cls.cur.close()
+        cls.db.release_connection(cls.conn)
 
     def setUp(self):
-        """Runs before each test. Rolls back any leftover changes from previous tests."""
-        print("\n🔄 Rolling back previous test data (if any)...")
+        """Runs before each test. Removes leftover test rows so reruns are repeat-safe."""
+        print("\n🔄 Removing previous test data (if any)...")
         sys.stdout.flush()
-        self.conn.rollback()  # ✅ Ensures each test starts fresh
+        delete_test_rows(self.cur)
+
+    def tearDown(self):
+        """Remove the rows this test wrote."""
+        delete_test_rows(self.cur)
 
     def test_store_match(self):
         """Tests inserting a match and retrieving it."""
@@ -175,21 +234,6 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(result[2], "Test Team A")
         self.assertEqual(result[3], 20)
         self.assertEqual(result[4], 8)
-
-    def tearDown(self):
-        """Runs after each test. Rolls back any changes made during the test."""
-        print("\n🛠️ Rolling back test transaction...")
-        sys.stdout.flush()
-        self.conn.rollback()  # ✅ Ensures test data is NOT permanently stored
-
-    @classmethod
-    def tearDownClass(cls):
-        """Runs once after all tests to clean up."""
-        print("\n❌ Closing test database connection...")
-        sys.stdout.flush()
-        cls.cur.close()
-        cls.db.release_connection(cls.conn)
-
 
 if __name__ == "__main__":
     print("\n🔵 Running database tests...\n")

@@ -41,6 +41,9 @@ jobs:
       DB_PASS: change_me
       DB_HOST: 127.0.0.1
       DB_PORT: "5432"
+      # Opt the DB-backed storage tests in; they run only against a local
+      # host (the service container here) and delete their own rows.
+      CS2_ALLOW_DB_TESTS: "true"
 
     steps:
       - name: Check out repository
