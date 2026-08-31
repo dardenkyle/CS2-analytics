@@ -26,6 +26,18 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+# Every data test stores its failing rows in an audit table so a red or
+# yellow run can be triaged by querying the rows, not by re-running the
+# test (#148). With the profile's schema set to "analytics", the custom
+# schema suffix lands the audit tables in "analytics_dbt_test__audit".
+# Severity policy (see docs/dbt_models.md): structural grain/key/
+# relationship tests stay at the default error; distribution-style
+# tests are declared warn at the test site until proven stable.
+data_tests:
+  cs2_analytics:
+    +store_failures: true
+    +schema: dbt_test__audit
+
 models:
   cs2_analytics:
     staging:

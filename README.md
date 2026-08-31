@@ -512,9 +512,13 @@ from observed changes rather than trusting parsed dates. History accrues
 run over run, which is why the scheduled daily build exists.
 
 Every layer carries data tests (uniqueness of the declared grains,
-not-null keys, and relationship tests between models - 63 in total), run
-by `dbt build` locally, in CI against a disposable Postgres, and daily
-against production behind a source-freshness gate. The generated dbt docs
+not-null keys, relationship tests between models, and warn-severity
+distribution checks on the mart stat columns - 76 in total), run by
+`dbt build` locally, in CI against a disposable Postgres, and daily
+against production behind a per-source freshness gate. Structural tests
+fail the build; distribution tests warn until proven stable, and every
+test stores its failing rows in an audit schema for triage (severity
+policy in `docs/dbt_models.md`). The generated dbt docs
 site - interactive lineage DAG and column-level documentation - is
 published at <https://dardenkyle.github.io/CS2-analytics/dbt-docs/>.
 Local run instructions are in

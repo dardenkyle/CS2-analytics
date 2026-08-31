@@ -75,7 +75,9 @@ models:
       - name: map_url
         description: Canonical source URL for the map stats page.
       - name: map_order
-        description: Position of this map within the match, from 1 to 5.
+        description: >
+          Position of this map within the match, 1-based. Best-of-5 is
+          the longest observed series format today.
       - name: map_name
         description: Map name, such as Mirage or Inferno.
         data_tests:

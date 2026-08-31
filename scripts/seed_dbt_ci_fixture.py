@@ -160,7 +160,9 @@ def fixture_players(now: datetime) -> list[Player]:
             opening_deaths=1,
             multi_kills=3,
             clutches_won=1,
-            kast=72.5,
+            # Fraction scale, matching the parser (percentage / 100); the
+            # mart's accepted_range test on kast asserts 0-1.
+            kast=0.725,
             kd_diff=5,
             adr=81.3,
             fk_diff=1,

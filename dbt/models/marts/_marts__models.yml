@@ -16,6 +16,21 @@ models:
             combination_of_columns:
               - map_id
               - player_id
+      # Derivation-consistency checks: the source publishes kd_diff and
+      # fk_diff alongside their operands, so a parser regression that
+      # misreads any of the four columns surfaces here. Null operands
+      # pass (no false alarms on incomplete rows). Warn severity per the
+      # distribution-test policy in docs/dbt_models.md (#148).
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "kd_diff = kills - deaths"
+          config:
+            severity: warn
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "fk_diff = opening_kills - opening_deaths"
+          config:
+            severity: warn
     columns:
       - name: match_id
         description: Parent match identifier.
@@ -56,7 +71,17 @@ models:
                 to: ref('dim_maps')
                 field: map_name
       - name: map_order
-        description: Position of this map within the match, from 1 to 5.
+        description: >
+          Position of this map within the match, 1-based. Best-of-5 is the
+          longest observed series format today; the range test allows up
+          to 7 as headroom for longer showmatch formats.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+                max_value: 7
+              config:
+                severity: warn
       - name: map_date
         description: Map date/time.
       - name: map_winner
@@ -67,8 +92,22 @@ models:
         description: Rounds won by team2 on this map.
       - name: kills
         description: Total kills on this map.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 60
+              config:
+                severity: warn
       - name: deaths
         description: Total deaths on this map.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 60
+              config:
+                severity: warn
       - name: assists
         description: Total assists on this map.
       - name: flash_assists
@@ -86,17 +125,47 @@ models:
       - name: clutches_won
         description: Clutch rounds won on this map.
       - name: kast
-        description: KAST percentage on this map.
+        description: >
+          KAST on this map, stored as a fraction between 0 and 1 (the
+          parser divides the source percentage by 100).
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+              config:
+                severity: warn
       - name: adr
         description: Average damage per round on this map.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 250
+              config:
+                severity: warn
       - name: rating
         description: Performance rating from the source on this map.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 4
+              config:
+                severity: warn
       - name: kd_diff
         description: Kill/death differential on this map.
       - name: fk_diff
         description: First-kill differential on this map.
       - name: round_swing
         description: Round swing contribution from the source on this map.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: -1
+                max_value: 1
+              config:
+                severity: warn
 
       - name: source_updated_at
         description: >
@@ -150,9 +219,17 @@ models:
       - name: forfeit
         description: Whether the match was recorded as a forfeit.
       - name: map_count
-        description: Number of maps recorded for this match in stg_maps.
+        description: >
+          Number of maps recorded for this match in stg_maps. Zero is
+          legitimate while a match's maps are still queued for processing.
         data_tests:
           - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 7
+              config:
+                severity: warn
       - name: data_complete
         description: >
           Whether the source match row satisfies its required-field contract.

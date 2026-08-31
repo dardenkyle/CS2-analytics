@@ -801,9 +801,14 @@ time-sensitive item and leads this phase.
       stays full-refresh (tiny, and map_count aggregates late-arriving
       child rows); full-refresh policy documented and exposed as a
       workflow_dispatch input
-- [ ] Deepen data quality: per-source freshness thresholds, warn/error
+- [x] Deepen data quality: per-source freshness thresholds, warn/error
       test severities, store_failures audit tables, and selective
-      distribution tests (#148)
+      distribution tests (#148) - each source declares warn 3 days /
+      error 7 days on `last_scraped_at`; structural tests stay error
+      while distribution tests (accepted_range bounds, kd_diff/fk_diff
+      derivation checks, a fact row-coverage test) start as warn; every
+      test stores failing rows in `analytics_dbt_test__audit`; policy
+      documented in docs/dbt_models.md
 
 ### After Phase 4.5
 
