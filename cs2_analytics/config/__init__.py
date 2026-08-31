@@ -16,15 +16,9 @@ from .config import (
     DB_PORT,
     DB_USER,
     DEBUG_MODE,
-    ENABLE_ANALYTICS,
-    ENABLE_DATA_STORAGE,
-    END_DATE,
     ENVIRONMENT,
-    LOG_FILE,
     LOG_LEVEL,
-    MAX_MATCHES,
     SOURCE_URL,
-    START_DATE,
 )
 
 __all__ = [
@@ -38,13 +32,7 @@ __all__ = [
     "DB_PASS",
     "DB_PORT",
     "DB_USER",
-    "ENABLE_ANALYTICS",
-    "ENABLE_DATA_STORAGE",
-    "END_DATE",
     "ENVIRONMENT",
-    "LOG_FILE",
     "LOG_LEVEL",
-    "MAX_MATCHES",
     "SOURCE_URL",
-    "START_DATE",
 ]

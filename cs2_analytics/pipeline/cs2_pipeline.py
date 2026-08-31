@@ -1,3 +1,10 @@
+import datetime as dt
+
+from cs2_analytics.cli import (
+    DISCOVER_MODE_MAX_MATCHES,
+    DISCOVERY_WINDOW_START,
+    DiscoverMode,
+)
 from cs2_analytics.controllers.map_controller import MapController
 from cs2_analytics.controllers.match_controller import MatchController
 from cs2_analytics.controllers.results_controller import ResultsController
@@ -16,9 +23,15 @@ class CS2AnalyticsPipeline:
     def run(self) -> None:
         self.logger.info("🚀 CS2 Analytics Pipeline started.")
 
-        # Step 1: Scrape results and record match links
+        # Step 1: Scrape results and record match links. Run parameters
+        # are explicit (ADR-0015); the pipeline uses the CLI's
+        # incremental-mode defaults so both entry points behave the same.
         self.logger.info("🔍 Scraping match results page...")
-        self.results_controller.run()
+        self.results_controller.run(
+            max_matches=DISCOVER_MODE_MAX_MATCHES[DiscoverMode.INCREMENTAL],
+            start_date=DISCOVERY_WINDOW_START,
+            end_date=dt.date.today(),
+        )
 
         # Step 2: Process pending matches from match_ingestion_state
         self.logger.info("🎯 Processing matches...")

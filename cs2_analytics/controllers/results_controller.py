@@ -1,5 +1,6 @@
 """Controller for scraping and recording match result links."""
 
+import datetime as dt
 import time
 from dataclasses import dataclass
 
@@ -37,13 +38,25 @@ class ResultsController:
         self.match_state = MatchIngestionState()
         self.stage_service = ResultsStageService(match_state=self.match_state)
 
-    def run(self, max_matches: int = 50) -> None:
-        """Scrapes result pages and records match URLs for downstream stages."""
-        logger.info("Running ResultsController with max_matches=%d", max_matches)
+    def run(
+        self, max_matches: int, start_date: dt.date, end_date: dt.date
+    ) -> None:
+        """Scrapes result pages and records match URLs for downstream stages.
+
+        Run parameters are explicit (ADR-0015): the invoker owns the
+        discovery window and cap, and the controller passes them through
+        to the scraper unchanged.
+        """
+        logger.info(
+            "Running ResultsController with max_matches=%d window=%s..%s",
+            max_matches,
+            start_date,
+            end_date,
+        )
 
         run_state = _ResultsRunState(scraper=self.scraper)
         try:
-            self._run_attempts(max_matches, run_state)
+            self._run_attempts(max_matches, start_date, end_date, run_state)
         finally:
             self._close_scraper(run_state)
             logger.info(
@@ -54,11 +67,19 @@ class ResultsController:
                 max_matches,
             )
 
-    def _run_attempts(self, max_matches: int, run_state: _ResultsRunState) -> None:
+    def _run_attempts(
+        self,
+        max_matches: int,
+        start_date: dt.date,
+        end_date: dt.date,
+        run_state: _ResultsRunState,
+    ) -> None:
         """Attempts the results stage until it succeeds or retries are exhausted."""
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                recorded = self._record_discovered_batches(max_matches, run_state)
+                recorded = self._record_discovered_batches(
+                    max_matches, start_date, end_date, run_state
+                )
                 run_state.status = "succeeded"
                 logger.info("ResultsController complete. recorded=%d", recorded)
                 return
@@ -66,11 +87,17 @@ class ResultsController:
                 self._handle_attempt_failure(e, attempt, run_state)
 
     def _record_discovered_batches(
-        self, max_matches: int, run_state: _ResultsRunState
+        self,
+        max_matches: int,
+        start_date: dt.date,
+        end_date: dt.date,
+        run_state: _ResultsRunState,
     ) -> int:
         """Streams result pages and records each discovered match batch."""
         recorded = 0
-        for batch in run_state.scraper.iter_match_batches(max_matches=max_matches):
+        for batch in run_state.scraper.iter_match_batches(
+            max_matches=max_matches, start_date=start_date, end_date=end_date
+        ):
             recorded += self.stage_service.record_batch(batch)
         return recorded
 

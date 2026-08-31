@@ -310,8 +310,8 @@ aggregates rows by error message so dominant failure modes - transient
 scraper noise versus a structural break like a page layout change - are
 obvious before running `cs2a retry`.
 
-`cs2a ingest coverage` reports discovery date coverage: the configured
-window (`START_DATE` through today), earliest/latest ingested match
+`cs2a ingest coverage` reports discovery date coverage: the discovery
+window (the CLI-owned window floor through today), earliest/latest ingested match
 dates, how many periods (`--period week` default, or `day`) contain
 matches, contiguous zero-match gap ranges, and the not-yet-processed
 backlog (every non-processed lifecycle status) so "not discovered" is

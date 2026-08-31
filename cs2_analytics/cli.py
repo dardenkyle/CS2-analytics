@@ -6,6 +6,7 @@ imports live inside the command bodies so `cs2a --help` and `cs2a status`
 do not pay the scraper-stack import cost.
 """
 
+import datetime as dt
 from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated
 
@@ -49,6 +50,12 @@ DISCOVER_MODE_MAX_MATCHES = {
     DiscoverMode.BACKFILL: 1000,
 }
 
+# Discovery window floor. Run parameters live with the invoker, not in
+# config (ADR-0015); the pipeline imports these same defaults so both
+# entry points stay aligned. The end of the window is always computed at
+# run time. #121 turns the floor into a real backfill cursor target.
+DISCOVERY_WINDOW_START = dt.date(2025, 10, 1)
+
 
 @ingest_app.command("discover")
 def discover(
@@ -65,7 +72,11 @@ def discover(
     from cs2_analytics.controllers.results_controller import ResultsController
 
     cap = max_matches if max_matches is not None else DISCOVER_MODE_MAX_MATCHES[mode]
-    ResultsController().run(max_matches=cap)
+    ResultsController().run(
+        max_matches=cap,
+        start_date=DISCOVERY_WINDOW_START,
+        end_date=dt.date.today(),
+    )
 
 
 class CoveragePeriod(StrEnum):
@@ -84,22 +95,19 @@ def coverage(
 ) -> None:
     """Report discovery date coverage of the target window.
 
-    Read-only: compares the configured window (START_DATE through today)
-    against match dates present in `matches`, lists zero-match periods as
-    gaps, and shows the not-yet-processed backlog (every non-processed
-    lifecycle status) so "not discovered" is distinguishable from "not
-    yet processed". Backfill cursor state joins this report once the
-    backfill strategy (#121) lands.
+    Read-only: compares the discovery window (DISCOVERY_WINDOW_START
+    through today) against match dates present in `matches`, lists
+    zero-match periods as gaps, and shows the not-yet-processed backlog
+    (every non-processed lifecycle status) so "not discovered" is
+    distinguishable from "not yet processed". Backfill cursor state
+    joins this report once the backfill strategy (#121) lands.
     """
-    import datetime as dt
-
-    from cs2_analytics.config.config import START_DATE
     from cs2_analytics.storage.discovery_coverage import (
         compute_gap_ranges,
         fetch_discovery_coverage,
     )
 
-    window_start = dt.date.fromisoformat(START_DATE)
+    window_start = DISCOVERY_WINDOW_START
     window_end = dt.date.today()
     try:
         report = fetch_discovery_coverage(window_start, window_end, period.value)

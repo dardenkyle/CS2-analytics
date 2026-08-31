@@ -42,6 +42,10 @@ def _page(urls: list[str], stop: bool) -> tuple[list[str], bool]:
     return urls, stop
 
 
+# Explicit run-parameter window for iter_match_batches calls (ADR-0015).
+_WINDOW = {"start_date": dt.date(2025, 1, 1), "end_date": dt.date(2026, 12, 31)}
+
+
 def test_iter_match_batches_yields_page_batches_with_ids(
     scraper: ResultsScraper, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -60,7 +64,7 @@ def test_iter_match_batches_yields_page_batches_with_ids(
     )
     monkeypatch.setattr(scraper, "_extract_matches_from_page", lambda _url: next(pages))
 
-    batches = list(scraper.iter_match_batches(max_matches=50))
+    batches = list(scraper.iter_match_batches(max_matches=50, **_WINDOW))
 
     assert batches == [
         [
@@ -83,7 +87,7 @@ def test_iter_match_batches_stops_at_max_matches(
 
     monkeypatch.setattr(scraper, "_extract_matches_from_page", fake_extract)
 
-    batches = list(scraper.iter_match_batches(max_matches=2))
+    batches = list(scraper.iter_match_batches(max_matches=2, **_WINDOW))
 
     assert len(batches) == 2
     assert calls == 2
@@ -102,7 +106,7 @@ def test_iter_match_batches_caps_within_a_page(
 
     monkeypatch.setattr(scraper, "_extract_matches_from_page", fake_extract)
 
-    batches = list(scraper.iter_match_batches(max_matches=2))
+    batches = list(scraper.iter_match_batches(max_matches=2, **_WINDOW))
 
     assert batches == [
         [
@@ -118,7 +122,24 @@ def test_iter_match_batches_stops_on_empty_page(
 ) -> None:
     monkeypatch.setattr(scraper, "_extract_matches_from_page", lambda _url: ([], False))
 
-    assert list(scraper.iter_match_batches(max_matches=10)) == []
+    assert list(scraper.iter_match_batches(max_matches=10, **_WINDOW)) == []
+
+
+def test_iter_match_batches_applies_window_parameters(
+    scraper: ResultsScraper, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(scraper, "_extract_matches_from_page", lambda _url: ([], False))
+
+    list(
+        scraper.iter_match_batches(
+            max_matches=1,
+            start_date=dt.date(2025, 3, 1),
+            end_date=dt.date(2025, 4, 1),
+        )
+    )
+
+    assert scraper.start_date == dt.date(2025, 3, 1)
+    assert scraper.end_date == dt.date(2025, 4, 1)
 
 
 def test_extract_match_id(scraper: ResultsScraper) -> None:

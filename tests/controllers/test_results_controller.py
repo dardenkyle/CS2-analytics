@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pytest
 
 from cs2_analytics.controllers import results_controller as results_module
@@ -18,7 +20,7 @@ class _RetryThenSucceedScraper:
         self.run_calls = 0
         self.close_calls = 0
 
-    def iter_match_batches(self, max_matches: int = 50):
+    def iter_match_batches(self, max_matches: int, start_date=None, end_date=None):
         self.run_calls += 1
         if self.run_calls == 1:
             raise SessionScrapeError("Session dropped while fetching results page.")
@@ -34,7 +36,7 @@ class _AlwaysFailingRetryableScraper:
         self.run_calls = 0
         self.close_calls = 0
 
-    def iter_match_batches(self, max_matches: int = 50):
+    def iter_match_batches(self, max_matches: int, start_date=None, end_date=None):
         self.run_calls += 1
         raise SessionScrapeError("Session dropped while fetching results page.")
         yield  # pragma: no cover - makes this a generator like the real scraper
@@ -48,7 +50,7 @@ class _NonRetryableFailingScraper:
         self.run_calls = 0
         self.close_calls = 0
 
-    def iter_match_batches(self, max_matches: int = 50):
+    def iter_match_batches(self, max_matches: int, start_date=None, end_date=None):
         self.run_calls += 1
         raise RuntimeError("Unexpected parse failure")
         yield  # pragma: no cover - makes this a generator like the real scraper
@@ -78,7 +80,11 @@ def test_results_controller_retries_retryable_scrape_error(
         lambda scraper: reset_calls.append(scraper) or scraper,
     )
 
-    controller.run(max_matches=25)
+    controller.run(
+        max_matches=25,
+        start_date=dt.date(2025, 10, 1),
+        end_date=dt.date(2026, 8, 31),
+    )
 
     assert controller.scraper.run_calls == 2
     assert len(reset_calls) == 1
@@ -135,7 +141,11 @@ def test_results_controller_raises_pipeline_error_after_exhausting_retries(
         PipelineError,
         match=r"Results stage failed after exhausting retries \(3/3 attempts\)\.",
     ) as exc_info:
-        controller.run(max_matches=25)
+        controller.run(
+            max_matches=25,
+            start_date=dt.date(2025, 10, 1),
+            end_date=dt.date(2026, 8, 31),
+        )
 
     assert isinstance(exc_info.value.__cause__, SessionScrapeError)
     assert controller.scraper.run_calls == 3
@@ -209,7 +219,11 @@ def test_results_controller_raises_pipeline_error_for_non_retryable_failure(
         PipelineError,
         match=r"Results stage failed on non-retryable error at attempt 1/3\.",
     ) as exc_info:
-        controller.run(max_matches=25)
+        controller.run(
+            max_matches=25,
+            start_date=dt.date(2025, 10, 1),
+            end_date=dt.date(2026, 8, 31),
+        )
 
     assert isinstance(exc_info.value.__cause__, RuntimeError)
     assert controller.scraper.run_calls == 1

@@ -402,3 +402,42 @@ Consequences:
 - The demo stage boundary is now preserved by the ingestion-state tables and
   discovery flow rather than a placeholder `DemoStageService`, superseding
   that consequence of ADR-0005.
+
+## ADR-0015: Config Holds Environment Facts; Run Parameters Flow From The Invoker
+
+Status:
+Accepted
+
+Date:
+Phase 4.5
+
+Context:
+`cs2_analytics/config/config.py` mixed environment configuration with
+scraping run parameters and dead entries. `BATCH_SIZE`,
+`ENABLE_DATA_STORAGE`, `ENABLE_ANALYTICS`, and config's `LOG_FILE` were
+consumed by no code (the logger defines its own path). `MAX_MATCHES`
+looked like the discovery cap but only applied to a bare scraper call -
+the CLI passed its own caps. `START_DATE`/`END_DATE` were hardcoded run
+parameters, and `END_DATE` was evaluated once at import time, so a
+long-lived process would scrape against a stale "today" (#126).
+
+Decision:
+Config holds environment facts only: database, API, source URL,
+environment/debug flags, log level. Run parameters flow from the
+invoker. `ResultsScraper.iter_match_batches` takes the match cap and
+date window as required per-call arguments; `ResultsController.run`
+passes them through unchanged. Defaults are owned by the CLI
+(`DISCOVERY_WINDOW_START`, per-mode caps, end date computed at run
+time), and the pipeline imports those same defaults so both entry
+points behave identically. The dead constants were deleted outright.
+
+Consequences:
+- A long-lived process computes its discovery window per run; the
+  import-time `END_DATE` staleness is gone.
+- The orchestrator that later replaces the CLI supplies run parameters
+  explicitly instead of editing config, which is the interface #121's
+  backfill cursor will use (the window floor becomes a cursor target).
+- The scraper stays fetch-only and gains no config coupling; tests pass
+  windows explicitly instead of mutating module constants.
+- Removing public config names is a breaking change for external
+  scripts, accepted because a repo-wide grep showed no consumers.
