@@ -102,20 +102,28 @@ class ResultsScraper:
 
         matches: list[str] = []
         stop_scraping = False
+        sections_seen = 0
+        sections_parsed = 0
 
         for section in soup.find_all("div", class_="results-sublist"):
             date_header = section.find("div", class_="standard-headline")
             if not date_header:
                 continue
+            sections_seen += 1
 
+            # Strip only day ordinals (31st, 2nd); an unanchored strip also
+            # removes the "st" inside "August" and blanks the whole month.
             raw_date = re.sub(
-                r"(st|nd|rd|th)", "", date_header.text.replace("Results for ", "")
+                r"(?<=\d)(st|nd|rd|th)\b",
+                "",
+                date_header.text.replace("Results for ", ""),
             )
             try:
                 match_date = dt.datetime.strptime(raw_date.strip(), "%B %d %Y").date()
             except ValueError:
                 logger.warning("Could not parse date: %s", raw_date)
                 continue
+            sections_parsed += 1
 
             if match_date > self.end_date:
                 continue
@@ -131,6 +139,14 @@ class ResultsScraper:
                     continue
                 full_url = f"https://www.hltv.org{a_tag['href']}"
                 matches.append(full_url)
+
+        if sections_seen and not sections_parsed:
+            logger.warning(
+                "No date sections parsed on %s: %d section(s) skipped, so no "
+                "matches were discovered from this page.",
+                url,
+                sections_seen,
+            )
 
         return matches, stop_scraping
 

@@ -164,6 +164,126 @@ def test_extract_matches_from_page_warns_and_skips_unparseable_date(
     assert stop is False
 
 
+MONTH_NAMES = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
+
+
+@pytest.mark.parametrize("month_name", MONTH_NAMES)
+def test_extract_matches_from_page_parses_ordinal_dates_for_every_month(
+    scraper: ResultsScraper, month_name: str
+) -> None:
+    # Regression: an unanchored ordinal strip turned "August 31st 2026" into
+    # "Augu 31 2026" and silently dropped every August section.
+    scraper.driver = _FakePageDriver(
+        f"""
+        <html>
+          <body>
+            <div class="results-sublist">
+              <div class="standard-headline">Results for {month_name} 3rd 2026</div>
+              <div class="result-con">
+                <a href="/matches/333/e-vs-f"></a>
+              </div>
+            </div>
+          </body>
+        </html>
+        """
+    )
+    scraper.start_date = dt.date(2026, 1, 1)
+    scraper.end_date = dt.date(2026, 12, 31)
+
+    with mock.patch.object(results_scraper_module.logger, "warning") as warning_mock:
+        matches, stop = scraper._extract_matches_from_page(
+            "https://www.hltv.org/results?offset=0"
+        )
+
+    warning_mock.assert_not_called()
+    assert matches == ["https://www.hltv.org/matches/333/e-vs-f"]
+    assert stop is False
+
+
+def test_extract_matches_from_page_parses_observed_august_headers(
+    scraper: ResultsScraper,
+) -> None:
+    scraper.driver = _FakePageDriver(
+        """
+        <html>
+          <body>
+            <div class="results-sublist">
+              <div class="standard-headline">Results for August 31st 2026</div>
+              <div class="result-con"><a href="/matches/1/a-vs-b"></a></div>
+            </div>
+            <div class="results-sublist">
+              <div class="standard-headline">Results for August 22nd 2026</div>
+              <div class="result-con"><a href="/matches/2/c-vs-d"></a></div>
+            </div>
+            <div class="results-sublist">
+              <div class="standard-headline">Results for August 1st 2026</div>
+              <div class="result-con"><a href="/matches/3/e-vs-f"></a></div>
+            </div>
+          </body>
+        </html>
+        """
+    )
+    scraper.start_date = dt.date(2026, 8, 1)
+    scraper.end_date = dt.date(2026, 8, 31)
+
+    matches, stop = scraper._extract_matches_from_page(
+        "https://www.hltv.org/results?offset=0"
+    )
+
+    assert [m.rsplit("/", 2)[1] for m in matches] == ["1", "2", "3"]
+    assert stop is False
+
+
+def test_extract_matches_from_page_warns_when_no_sections_parse(
+    scraper: ResultsScraper,
+) -> None:
+    scraper.driver = _FakePageDriver(
+        """
+        <html>
+          <body>
+            <div class="results-sublist">
+              <div class="standard-headline">Results for not-a-date</div>
+              <div class="result-con"><a href="/matches/1/a-vs-b"></a></div>
+            </div>
+            <div class="results-sublist">
+              <div class="standard-headline">Results for also-not-a-date</div>
+              <div class="result-con"><a href="/matches/2/c-vs-d"></a></div>
+            </div>
+          </body>
+        </html>
+        """
+    )
+    scraper.start_date = dt.date(2026, 1, 1)
+    scraper.end_date = dt.date(2026, 12, 31)
+
+    with mock.patch.object(results_scraper_module.logger, "warning") as warning_mock:
+        matches, stop = scraper._extract_matches_from_page(
+            "https://www.hltv.org/results?offset=0"
+        )
+
+    assert matches == []
+    assert stop is False
+    summary_calls = [
+        call for call in warning_mock.call_args_list
+        if call.args and str(call.args[0]).startswith("No date sections parsed")
+    ]
+    assert len(summary_calls) == 1
+    assert summary_calls[0].args[2] == 2
+
+
 def test_close_failure_raises_typed_error(scraper: ResultsScraper) -> None:
     def failing_quit() -> None:
         raise RuntimeError("browser already gone")
