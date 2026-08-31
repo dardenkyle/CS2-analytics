@@ -13,8 +13,6 @@ import sys
 import unittest
 from datetime import UTC, datetime
 
-import pytest
-
 from cs2_analytics.models.map import Map
 from cs2_analytics.models.match import Match
 from cs2_analytics.models.player import Player
@@ -36,12 +34,9 @@ def db_tests_enabled() -> bool:
     return opted_in and os.getenv("DB_HOST", "") in LOCAL_DB_HOSTS
 
 
-pytestmark = pytest.mark.skipif(
-    not db_tests_enabled(),
-    reason=(
-        f"DB-backed storage tests run only with {OPT_IN_ENV} set and DB_HOST "
-        f"in {LOCAL_DB_HOSTS}; they write and delete real rows."
-    ),
+SKIP_REASON = (
+    f"DB-backed storage tests run only with {OPT_IN_ENV} set and DB_HOST "
+    f"in {LOCAL_DB_HOSTS}; they write and delete real rows."
 )
 
 
@@ -63,7 +58,13 @@ class TestDatabase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Runs once before all tests to initialize the database connection."""
+        """Enforce the opt-in guard, then open the database connection.
+
+        The guard lives here rather than in a pytest marker so it also
+        applies under `python -m unittest` and this file's own entry point.
+        """
+        if not db_tests_enabled():
+            raise unittest.SkipTest(SKIP_REASON)
         print("\n🚀 Setting up database connection for tests...")
         sys.stdout.flush()
         cls.db = Database()
