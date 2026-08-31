@@ -518,7 +518,7 @@ def test_failures_exits_nonzero_when_database_is_unavailable(monkeypatch) -> Non
     assert "Database unavailable" in result.stderr
 
 
-def _patch_inspections(monkeypatch, match=None, map=None):
+def _patch_inspections(monkeypatch, match_result=None, map_result=None):
     """Replace the inspection helpers with canned results in their module."""
     import cs2_analytics.storage.ingestion_state_summary as summary_module
 
@@ -526,11 +526,11 @@ def _patch_inspections(monkeypatch, match=None, map=None):
 
     def _match(match_id):
         calls.append(("match", match_id))
-        return match
+        return match_result
 
     def _map(map_id):
         calls.append(("map", map_id))
-        return map
+        return map_result
 
     monkeypatch.setattr(summary_module, "fetch_match_inspection", _match)
     monkeypatch.setattr(summary_module, "fetch_map_inspection", _map)
@@ -540,7 +540,7 @@ def _patch_inspections(monkeypatch, match=None, map=None):
 def test_inspect_match_shows_state_and_relational_presence(monkeypatch) -> None:
     calls = _patch_inspections(
         monkeypatch,
-        match={
+        match_result={
             "state": {
                 "match_id": 101,
                 "status": "processed",
@@ -569,7 +569,7 @@ def test_inspect_match_shows_state_and_relational_presence(monkeypatch) -> None:
 def test_inspect_match_unknown_id_exits_nonzero(monkeypatch) -> None:
     _patch_inspections(
         monkeypatch,
-        match={
+        match_result={
             "state": None,
             "match_row_exists": False,
             "map_rows": 0,
@@ -589,7 +589,7 @@ def test_inspect_match_without_state_row_still_reports_relational(
 ) -> None:
     _patch_inspections(
         monkeypatch,
-        match={
+        match_result={
             "state": None,
             "match_row_exists": True,
             "map_rows": 2,
@@ -608,7 +608,7 @@ def test_inspect_match_without_state_row_still_reports_relational(
 def test_inspect_map_shows_state_and_player_count(monkeypatch) -> None:
     calls = _patch_inspections(
         monkeypatch,
-        map={
+        map_result={
             "state": {"map_id": 230075, "status": "failed", "failure_count": 2},
             "map_row_exists": False,
             "player_rows": 0,
@@ -627,7 +627,7 @@ def test_inspect_map_shows_state_and_player_count(monkeypatch) -> None:
 def test_inspect_map_unknown_id_exits_nonzero(monkeypatch) -> None:
     _patch_inspections(
         monkeypatch,
-        map={"state": None, "map_row_exists": False, "player_rows": 0},
+        map_result={"state": None, "map_row_exists": False, "player_rows": 0},
     )
 
     result = runner.invoke(app, ["inspect", "map", "999"])
