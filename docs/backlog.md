@@ -838,37 +838,37 @@ item track record.
 
 ### Planned work
 
-- [ ] Ingestion-state lifecycle integration tests against a disposable
+- [ ] (#174) Ingestion-state lifecycle integration tests against a disposable
       Postgres: cover fetch, the mark_as_* transitions,
       release_orphaned_processing, and requeue; gate DB-backed tests
       behind an explicit test database URL so they skip rather than hit
       whatever `.env` points at
-- [ ] Controller circuit breaker: abort the batch after consecutive
+- [ ] (#175) Controller circuit breaker: abort the batch after consecutive
       retryable/challenge errors, leaving rows in `discovered` rather
       than marking them failed, with a cool-off before the next run
-- [ ] Match scraper hardening: replace the fixed post-load sleep with a
+- [ ] (#176) Match scraper hardening: replace the fixed post-load sleep with a
       content-based wait, add challenge-marker detection (parity with the
       map scraper), and log per-item fetch timing
-- [ ] Coverage hygiene: omit Alembic migrations and the thin pipeline
+- [ ] (#177) Coverage hygiene: omit Alembic migrations and the thin pipeline
       entrypoint from coverage, add parser fallback-branch fixtures, and
       raise the coverage floor to 85
-- [ ] dbt singular tests for business invariants: SCD2 validity (no
+- [ ] (#178) dbt singular tests for business invariants: SCD2 validity (no
       overlapping intervals, exactly one current row per player) and
       score consistency (map winner has the higher score, match winner
       holds the map majority)
-- [ ] Docker Compose local development stack: local Postgres with schema
+- [ ] (#179) Docker Compose local development stack: local Postgres with schema
       init and a dbt target, with a documented switch between local and
       production environment files
-- [ ] Always-on processing runner on a dedicated home-server host:
+- [ ] (#180) Always-on processing runner on a dedicated home-server host:
       systemd timer units invoking the CLI, plus a drain mode on
       `cs2a process` that loops batches until no pending work remains
       (breaker-aware)
-- [ ] Retire `main.py` and the entire `cs2_analytics/pipeline/` package
+- [ ] (#181) Retire `main.py` and the entire `cs2_analytics/pipeline/` package
       in favor of the `cs2a` CLI: repoint the docker-compose pipeline
       service command and the manual-pipeline-worker GitHub workflow to
       the equivalent `cs2a` invocations, delete `main.py` and the
       package, and update the docs that reference `python main.py`
-- [ ] README "Design decisions and tradeoffs" section distilled from the
+- [ ] (#182) README "Design decisions and tradeoffs" section distilled from the
       decision log (last v1.0 polish item)
 
 ---
@@ -881,13 +881,13 @@ product surface. Scoped in detail after Phase 5 completes.
 
 ### Planned work
 
-- [ ] Analytical marts built on window functions and CTEs: team form over
+- [ ] (#183-#186) Analytical marts built on window functions and CTEs: team form over
       rolling windows, head-to-head records, map win rates by team, and
       player rating trajectories; EXPLAIN-verified and tested to the
       Phase 5 dbt standard
-- [ ] API endpoints for matches and teams reading the new marts, plus the
+- [ ] (#187, #188) API endpoints for matches and teams reading the new marts, plus the
       first pagination/filtering pattern (pulled up from deferred work)
-- [ ] Frontend Phase B: a teams surface (form, head-to-head, map pool) on
+- [ ] (#189) Frontend Phase B: a teams surface (form, head-to-head, map pool) on
       the deployed dashboard backed by the new endpoints; the
       `docs/frontend_backlog.md` decision question about waiting for
       dbt-backed read models is answered yes
@@ -904,10 +904,10 @@ match stage, map stage, then a dbt build.
 
 ### Planned work
 
-- [ ] Stand up local Airflow via Docker Compose on the always-on host
-- [ ] Define jobs for results, match, and map stages plus the dbt build
-- [ ] Add run scheduling, retries, and monitoring
-- [ ] Pass run-level identifiers through stage execution where useful
+- [ ] (#190) Stand up local Airflow via Docker Compose on the always-on host
+- [ ] (#191) Define jobs for results, match, and map stages plus the dbt build
+- [ ] (#191) Add run scheduling, retries, and monitoring
+- [ ] (#192) Pass run-level identifiers through stage execution where useful
 - [ ] Keep orchestration concerns from leaking back into parser or storage responsibilities
 
 ---
