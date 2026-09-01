@@ -6,35 +6,36 @@ This document tracks the recommended implementation order for the next architect
 
 ## Current Position
 
-Phases 3, 3.5, 3.6, and 3.75 are complete: the active ingestion surface has
-stable stage-service boundaries, controller retry hardening, relational
-match/map/player storage contracts, Alembic-managed schema, a containerized
-runtime, CI gates for both stacks, and a first cloud deployment (Render API
-and PostgreSQL, GitHub Pages frontend). Frontend Phase A is complete and the
-public demo is live. The Phase 4 dbt transformation layer is built end to
-end (#109-#114, #130): staging, intermediate, and mart models, data tests
-on every layer, lineage/docs generation, and the SCD2
-player-roster-history snapshot.
+Phases 1 through 4.5 are complete as of 2026-08-31 with the issue tracker
+at zero: stable stage-service boundaries, Alembic-managed schema, cloud
+deployment (Render API and PostgreSQL, GitHub Pages frontend), the full
+dbt layer (staging / intermediate / mart, SCD2 roster history, data
+quality with freshness gates and stored failures, incremental fact,
+scheduled daily prod build), an operational CLI (`cs2a`
+status/failures/inspect/coverage/retry/process), and a date-sliced
+backfill system with a derived frontier cursor (ADR-0016).
+
+The discovery window 2025-09-01..today is fully swept; a ~11.3k-match
+processing backlog drains in the background via `cs2a process`. The full
+CS2-era backfill (`--since 2023-09-27`) starts after the current drain
+completes - contiguous slices only, never a detached range, because the
+frontier derives from `min(match_date)`.
 
 Current priorities:
 
-- the scheduled prod dbt build (#146) was pulled ahead of the remaining
-  Phase 4 legibility tasks because it is the only calendar-sensitive item:
-  SCD2 roster history only accrues while it runs, and gaps cannot be
-  backfilled. It is delivered by the Scheduled dbt Build workflow.
-- the Phase 4 legibility follow-through is complete: the README presents
-  the shipped layer (#143), dbt build runs in CI on every push/PR (#144),
-  and the dbt docs site publishes to GitHub Pages (#145)
-- continue Phase 4.5 (dbt operations and depth) with #132, #147, and #148
-  in dependency order; the API read paths already point at the marts
-  (#150)
-- keep the ingestion baseline solid: run the scraper locally, persist to
-  the Render database, with controllable quantity (`cs2a` caps and batch
-  sizes) and a schedulable entry point
+- Phase 5 (operations and test depth) is next: run unattended for days
+  without block risk or silent row failures, an honest coverage floor,
+  and no accidental production writes from tests or dev commands
+- Phase 6 (analytics depth and product surface) follows once the dataset
+  is complete: analytical marts, matches/teams API with pagination, and
+  a teams surface on the deployed frontend
+- Phase 7 (Airflow orchestration) closes the stack claim on a dedicated
+  always-on host after Phase 6
+- phases execute one at a time with explicit go-ahead; applications and
+  portfolio work outside this repo keep priority over all of it
 - keep `docs/schema_target_pre_dbt.md` as planning guidance for later parsed
   source schema normalization
-- defer demo expansion, cloud warehouse work, and Airflow (Phase 5) until
-  after Phase 4.5
+- demo expansion and cloud warehouse work stay deferred
 
 ---
 
@@ -822,15 +823,89 @@ time-sensitive item and leads this phase.
 
 ---
 
-## Phase 5: Airflow Orchestration
+## Phase 5: Operations and Test Depth
 
 Goal:
-Introduce orchestration only after dbt exists and the stage boundaries are clean.
+The pipeline can run unattended for days without getting blocked or
+silently failing rows, the test floor is honest, and no test or dev
+command can accidentally write to production.
+
+Sequencing inside the phase: lifecycle integration tests land before any
+change to claim/retry semantics; the always-on runner lands last, once
+the circuit breaker makes unattended runs safe. Inter-item delay tuning
+is explicitly out of scope until the breaker has a clean multi-thousand
+item track record.
 
 ### Planned work
 
-- [ ] Choose orchestration strategy
-- [ ] Define jobs for results, match, and map stages
+- [ ] Ingestion-state lifecycle integration tests against a disposable
+      Postgres: cover fetch, the mark_as_* transitions,
+      release_orphaned_processing, and requeue; gate DB-backed tests
+      behind an explicit test database URL so they skip rather than hit
+      whatever `.env` points at
+- [ ] Controller circuit breaker: abort the batch after consecutive
+      retryable/challenge errors, leaving rows in `discovered` rather
+      than marking them failed, with a cool-off before the next run
+- [ ] Match scraper hardening: replace the fixed post-load sleep with a
+      content-based wait, add challenge-marker detection (parity with the
+      map scraper), and log per-item fetch timing
+- [ ] Coverage hygiene: omit Alembic migrations and the thin pipeline
+      entrypoint from coverage, add parser fallback-branch fixtures, and
+      raise the coverage floor to 85
+- [ ] dbt singular tests for business invariants: SCD2 validity (no
+      overlapping intervals, exactly one current row per player) and
+      score consistency (map winner has the higher score, match winner
+      holds the map majority)
+- [ ] Docker Compose local development stack: local Postgres with schema
+      init and a dbt target, with a documented switch between local and
+      production environment files
+- [ ] Always-on processing runner on a dedicated home-server host:
+      systemd timer units invoking the CLI, plus a drain mode on
+      `cs2a process` that loops batches until no pending work remains
+      (breaker-aware)
+- [ ] Retire `main.py` and the entire `cs2_analytics/pipeline/` package
+      in favor of the `cs2a` CLI: repoint the docker-compose pipeline
+      service command and the manual-pipeline-worker GitHub workflow to
+      the equivalent `cs2a` invocations, delete `main.py` and the
+      package, and update the docs that reference `python main.py`
+- [ ] README "Design decisions and tradeoffs" section distilled from the
+      decision log (last v1.0 polish item)
+
+---
+
+## Phase 6: Analytics Depth and Product Surface
+
+Goal:
+Spend the completed dataset: analytical SQL depth ending in a visible
+product surface. Scoped in detail after Phase 5 completes.
+
+### Planned work
+
+- [ ] Analytical marts built on window functions and CTEs: team form over
+      rolling windows, head-to-head records, map win rates by team, and
+      player rating trajectories; EXPLAIN-verified and tested to the
+      Phase 5 dbt standard
+- [ ] API endpoints for matches and teams reading the new marts, plus the
+      first pagination/filtering pattern (pulled up from deferred work)
+- [ ] Frontend Phase B: a teams surface (form, head-to-head, map pool) on
+      the deployed dashboard backed by the new endpoints; the
+      `docs/frontend_backlog.md` decision question about waiting for
+      dbt-backed read models is answered yes
+
+---
+
+## Phase 7: Airflow Orchestration
+
+Goal:
+Introduce orchestration only after dbt exists and the stage boundaries
+are clean. Runs locally (Docker Compose) on the always-on host from
+Phase 5, replacing its systemd timers with a DAG of results discovery,
+match stage, map stage, then a dbt build.
+
+### Planned work
+
+- [ ] Stand up local Airflow via Docker Compose on the always-on host
+- [ ] Define jobs for results, match, and map stages plus the dbt build
 - [ ] Add run scheduling, retries, and monitoring
 - [ ] Pass run-level identifiers through stage execution where useful
 - [ ] Keep orchestration concerns from leaking back into parser or storage responsibilities
@@ -846,8 +921,8 @@ deployment baseline work, and dbt.
 
 - [ ] Keep minimum API deployment readiness in Phase 3.75, including `/health`,
       environment-driven host/port settings, and CORS configuration
-- [ ] Add endpoints for matches and teams
-- [ ] Add pagination/filtering patterns
+- [ ] Add endpoints for matches and teams - promoted to Phase 6
+- [ ] Add pagination/filtering patterns - promoted to Phase 6
 - [x] Evaluate querying transformed dbt models for read paths after dbt marts
       exist - done (#150): the top players read path is served from the
       marts; future endpoints should read marts by default
@@ -862,7 +937,12 @@ deployment baseline work, and dbt.
 ### Scheduling and Orchestration
 
 - [ ] Keep temporary/manual scraper scheduling in Phase 3.75
-- [ ] Keep Airflow as Phase 5 after dbt exists
+- [ ] Keep Airflow as Phase 7 after dbt exists
+- [ ] Parallel processing runners stay deferred until they are worth it:
+      requires atomic batch claims (`FOR UPDATE SKIP LOCKED`), per-run
+      identifiers replacing the reset-all orphan reconciliation, and
+      separate egress IPs - a single residential IP gains nothing from
+      concurrency given per-item pacing
 
 ### v1.0 Polish
 
