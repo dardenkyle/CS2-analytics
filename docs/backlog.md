@@ -863,6 +863,12 @@ item track record.
       systemd timer units invoking the CLI, plus a drain mode on
       `cs2a process` that loops batches until no pending work remains
       (breaker-aware)
+- [ ] (#194) Map stage blocked by the stats-section bot challenge on the
+      home server: `BROWSER_HEADLESS` config setting and a shared
+      `create_driver` path landed on `claude/issue-194-xvfb-setup-p1e1v2`
+      with a documented `xvfb-run` server run mode; server verification
+      (GPU, Xvfb, a clean 50-map batch) and requeue of the failed rows
+      remain open
 - [ ] (#181) Retire `main.py` and the entire `cs2_analytics/pipeline/` package
       in favor of the `cs2a` CLI: repoint the docker-compose pipeline
       service command and the manual-pipeline-worker GitHub workflow to

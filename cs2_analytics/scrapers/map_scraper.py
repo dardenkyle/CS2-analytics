@@ -4,9 +4,9 @@ from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from seleniumbase import Driver
 
 from cs2_analytics.exceptions import MapScrapeError, SessionScrapeError
+from cs2_analytics.scrapers.browser import create_driver
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -37,7 +37,7 @@ class MapScraper:
         self,
         content_wait_seconds: float = DEFAULT_CONTENT_WAIT_SECONDS,
     ) -> None:
-        self.driver = Driver(uc=True, headless=True)
+        self.driver = create_driver()
         self.content_wait_seconds = content_wait_seconds
 
     def __enter__(self) -> "MapScraper":  # noqa: UP037

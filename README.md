@@ -168,6 +168,7 @@ Optional variables:
 | Variable | Purpose | Default |
 | --- | --- | --- |
 | `SOURCE_URL` | Overrides the results discovery URL used by the results scraper. | Built-in results source |
+| `BROWSER_HEADLESS` | Runs the scraper browser headless (`true`) or headed (`false`). Headed mode on a display-less Linux host needs `xvfb-run`; see [Scrape Host Requirements](docs/deployment.md#scrape-host-requirements). | `true` |
 
 Production mode fails fast when required runtime variables are missing, when
 `DEBUG_MODE=true`, or when `API_CORS_ORIGINS` includes `*`.

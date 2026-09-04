@@ -17,7 +17,7 @@ class _FailingQuitDriver:
 
 
 def test_close_failure_raises_typed_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(match_scraper_module, "Driver", _FailingQuitDriver)
+    monkeypatch.setattr(match_scraper_module, "create_driver", _FailingQuitDriver)
     scraper = MatchScraper()
 
     with pytest.raises(

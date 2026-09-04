@@ -65,6 +65,44 @@ results discovery -> match processing -> map processing
 
 Demo download and parsing remain deferred.
 
+## Scrape Host Requirements
+
+The map stage fetches the source's stats section, which sits behind a
+stricter bot challenge than the match and results pages. Whether a host
+passes it depends on what the browser looks like at runtime, not only on
+the code (#194):
+
+- The scrapers build their browser through one path,
+  `cs2_analytics.scrapers.browser.create_driver`, so display mode is set in
+  one place. `BROWSER_HEADLESS` (default `true`) selects headless or headed.
+- The desktop passes headless because headless Chrome there still runs on a
+  real display and GPU, so WebGL reports real hardware. A display-less host
+  falls back to Chrome's software renderer (SwiftShader), which the stats
+  challenge scores as automation.
+- On Linux, SeleniumBase silently forces headless when `DISPLAY` is unset,
+  so `BROWSER_HEADLESS=false` on its own does nothing on a display-less
+  host. `create_driver` logs a warning in that case. A virtual display
+  (Xvfb) must be provided by the process wrapper.
+- A text console (tty) on the monitor is not a display; only an X server
+  sets `DISPLAY`.
+- An integrated GPU still counts as a GPU. Chrome reaches it through
+  `/dev/dri/renderD128` when the Mesa driver is installed and the process
+  user is in the `render`/`video` group, even under Xvfb.
+
+Run the CLI headed under Xvfb on a display-less host:
+
+```sh
+sudo apt install -y xvfb
+BROWSER_HEADLESS=false xvfb-run -a uv run cs2a process --batch 50
+```
+
+Confirm the run mode from the log line `Starting browser (headless=False,
+display=:99).` and from a map stage summary with zero challenge failures
+(`cs2a failures --stage map` shows no new rows). If the stats challenge still
+blocks under Xvfb, check the WebGL renderer the page sees; a SwiftShader
+renderer means the GPU is not reachable and the host should be scoped to
+non-scraping roles until it is.
+
 ## Deployment Smoke Test
 
 Run the deterministic deployment smoke path after PostgreSQL, migrations, and

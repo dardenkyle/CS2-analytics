@@ -47,7 +47,7 @@ def _build_scraper(
     monkeypatch: pytest.MonkeyPatch,
     driver: _FakeDriver,
 ) -> MapScraper:
-    monkeypatch.setattr(map_scraper_module, "Driver", lambda **_kwargs: driver)
+    monkeypatch.setattr(map_scraper_module, "create_driver", lambda: driver)
     monkeypatch.setattr(map_scraper_module, "WebDriverWait", _FakeWait)
     return MapScraper(content_wait_seconds=0.1)
 

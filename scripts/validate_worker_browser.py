@@ -5,8 +5,7 @@ import subprocess
 import sys
 from importlib import metadata
 
-from seleniumbase import Driver
-
+from cs2_analytics.scrapers.browser import create_driver
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -60,7 +59,7 @@ def main() -> int:
     log_browser_stack_versions()
     driver = None
     try:
-        driver = Driver(uc=True, headless=True)
+        driver = create_driver()
         driver.get(CHECK_URL)
         if driver.title != EXPECTED_TITLE:
             raise RuntimeError(f"Unexpected browser check title: {driver.title!r}")

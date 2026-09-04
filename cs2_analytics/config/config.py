@@ -129,6 +129,11 @@ API_CORS_ORIGINS = _read_csv(
 # Scraping Config
 SOURCE_URL = os.getenv("SOURCE_URL", default="https://www.hltv.org/results")
 
+# Browser display mode for the SeleniumBase scrapers (#194). Headless is the
+# desktop default. A display-less host that fails the source's stats-section
+# challenge can run headed under Xvfb instead; see docs/deployment.md.
+BROWSER_HEADLESS = _read_bool("BROWSER_HEADLESS", default=True)
+
 # Logging Config
 LOG_LEVEL = logging.INFO
 if DEBUG_MODE:

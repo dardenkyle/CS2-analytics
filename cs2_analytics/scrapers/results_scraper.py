@@ -12,10 +12,10 @@ import time
 from collections.abc import Generator
 
 from bs4 import BeautifulSoup
-from seleniumbase import Driver
 
 from cs2_analytics.config.config import SOURCE_URL
 from cs2_analytics.exceptions import ResultsScrapeError, SessionScrapeError
+from cs2_analytics.scrapers.browser import create_driver
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -37,7 +37,7 @@ class ResultsScraper:
 
     def __init__(self) -> None:
         """Initializes the scraper with a SeleniumBase driver."""
-        self.driver = Driver(uc=True, headless=True)
+        self.driver = create_driver()
         self.base_url = SOURCE_URL
         self.stop_reason = self.STOP_EMPTY_PAGE
 

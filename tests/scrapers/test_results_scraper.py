@@ -31,7 +31,7 @@ class _FakePageDriver:
 
 @pytest.fixture
 def scraper(monkeypatch: pytest.MonkeyPatch) -> ResultsScraper:
-    monkeypatch.setattr(results_scraper_module, "Driver", _FakeDriver)
+    monkeypatch.setattr(results_scraper_module, "create_driver", _FakeDriver)
     monkeypatch.setattr(
         results_scraper_module.time, "sleep", lambda *_args, **_kwargs: None
     )

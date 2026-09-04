@@ -127,3 +127,25 @@ def test_development_configuration_allows_defaults(
         debug_mode=True,
         cors_origins=["*"],
     )
+
+
+def test_browser_headless_defaults_to_true() -> None:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.delenv("BROWSER_HEADLESS", raising=False)
+
+        reloaded_config = importlib.reload(config)
+
+        assert reloaded_config.BROWSER_HEADLESS is True
+
+    importlib.reload(config)
+
+
+def test_browser_headless_can_be_disabled_for_xvfb_hosts() -> None:
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setenv("BROWSER_HEADLESS", "false")
+
+        reloaded_config = importlib.reload(config)
+
+        assert reloaded_config.BROWSER_HEADLESS is False
+
+    importlib.reload(config)
