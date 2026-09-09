@@ -270,7 +270,10 @@ def process(
     from cs2_analytics.controllers.map_controller import MapController
     from cs2_analytics.controllers.match_controller import MatchController
 
-    controllers = {ProcessStage.MATCH: MatchController, ProcessStage.MAP: MapController}
+    controllers: dict[ProcessStage, type[MatchController] | type[MapController]] = {
+        ProcessStage.MATCH: MatchController,
+        ProcessStage.MAP: MapController,
+    }
     for process_stage in ProcessStage:
         if process_stage in selected:
             controllers[process_stage]().run(batch_size=batch)
