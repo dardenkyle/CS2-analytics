@@ -859,6 +859,11 @@ item track record.
       and remove the startup reset-all reconciliation (#141) that assumes
       a single process; `cs2a retry --status processing` releases only
       expired leases unless forced
+- [ ] (#200) Migration guard: `cs2a db upgrade` and `downgrade` refuse a
+      non-local host unless `--allow-remote` is passed, so a deployed
+      migration needs the production settings, the flag, and the
+      confirmation prompt together (follow-up from #199, where an env
+      file lost to exported variables and the CLI targeted production)
 - [ ] (#177) Coverage hygiene: omit Alembic migrations and the thin pipeline
       entrypoint from coverage, add parser fallback-branch fixtures, and
       raise the coverage floor to 85
