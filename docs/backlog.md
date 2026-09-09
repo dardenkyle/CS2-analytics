@@ -978,4 +978,4 @@ should be addressed before the repo is considered v1.0.
 - [x] Move non-working demo subsystem to a `feature/demo-parsing` branch; add
       deferral note to README — demo link discovery and `demo_ingestion_state`
       remain on `main` (#81, ADR-0014)
-- [ ] Add a "Design decisions & tradeoffs" section to the README explaining key architectural choices
+- [x] Add a "Design decisions & tradeoffs" section to the README explaining key architectural choices
