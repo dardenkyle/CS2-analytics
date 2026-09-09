@@ -870,6 +870,11 @@ item track record.
       package, and update the docs that reference `python main.py`
 - [ ] (#182) README "Design decisions and tradeoffs" section distilled from the
       decision log (last v1.0 polish item)
+- [x] (#195) `cs2a process --stage` (repeatable: match, map, demo) so a
+      single backlog can be drained without running the other stage;
+      selected stages run in the canonical order regardless of argument
+      order, demo is rejected until a demo controller exists, and the
+      default remains match then map
 
 ---
 

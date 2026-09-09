@@ -151,11 +151,10 @@ def coverage(
     joins this report once the backfill strategy (#121) lands.
     """
     from cs2_analytics.storage.discovery_coverage import (
+        align_period_start,
         compute_gap_ranges,
         fetch_discovery_coverage,
     )
-
-    from cs2_analytics.storage.discovery_coverage import align_period_start
 
     window_start = since.date() if since is not None else DISCOVERY_WINDOW_START
     window_end = dt.date.today()
@@ -219,19 +218,65 @@ def coverage(
         )
 
 
+class ProcessStage(StrEnum):
+    """Processing stage selectable on `cs2a process`, in canonical run order.
+
+    Separate from IngestionStage, which names state tables for retry and
+    failures commands: demo has no state-table command surface yet, and
+    its presence here is an interface placeholder until a demo controller
+    exists.
+    """
+
+    MATCH = "match"
+    MAP = "map"
+    DEMO = "demo"
+
+
+IMPLEMENTED_PROCESS_STAGES = frozenset({ProcessStage.MATCH, ProcessStage.MAP})
+
+
 @app.command()
 def process(
     batch: Annotated[
         int,
         typer.Option(min=1, help="Items to process per stage batch."),
     ] = 50,
+    stage: Annotated[
+        list[ProcessStage] | None,
+        typer.Option(
+            help=(
+                "Stage to run; repeatable. Selected stages always run in the"
+                " canonical order match, map, demo regardless of argument"
+                " order. Default: every implemented stage (match, then map)."
+            )
+        ),
+    ] = None,
 ) -> None:
-    """Process pending matches, then pending maps."""
+    """Process pending matches, then pending maps.
+
+    `--stage` restricts the run to a subset so one backlog can be drained
+    without touching the others (the map backlog grows faster than the
+    match backlog because each match discovers several maps). Stage
+    selection is rejected before any controller is imported, so an
+    unimplemented stage never reaches the database.
+    """
+    selected = frozenset(stage) if stage else IMPLEMENTED_PROCESS_STAGES
+    if ProcessStage.DEMO in selected:
+        raise typer.BadParameter(
+            "the demo stage is not implemented; choose match and/or map.",
+            param_hint="--stage",
+        )
+
     from cs2_analytics.controllers.map_controller import MapController
     from cs2_analytics.controllers.match_controller import MatchController
 
-    MatchController().run(batch_size=batch)
-    MapController().run(batch_size=batch)
+    controllers: dict[ProcessStage, type[MatchController] | type[MapController]] = {
+        ProcessStage.MATCH: MatchController,
+        ProcessStage.MAP: MapController,
+    }
+    for process_stage in ProcessStage:
+        if process_stage in selected:
+            controllers[process_stage]().run(batch_size=batch)
 
 
 class IngestionStage(StrEnum):

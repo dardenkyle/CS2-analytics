@@ -319,6 +319,70 @@ def test_process_runs_matches_then_maps_with_batch(monkeypatch) -> None:
     ]
 
 
+def _patch_process_controllers(monkeypatch, calls):
+    """Replace both process-stage controllers with recording fakes."""
+    _patch_controller(
+        monkeypatch,
+        "cs2_analytics.controllers.match_controller",
+        "MatchController",
+        "match",
+        calls,
+    )
+    _patch_controller(
+        monkeypatch,
+        "cs2_analytics.controllers.map_controller",
+        "MapController",
+        "map",
+        calls,
+    )
+
+
+def test_process_single_stage_runs_only_that_controller(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+
+    result = runner.invoke(app, ["process", "--stage", "map", "--batch", "10"])
+
+    assert result.exit_code == 0
+    assert calls == [("map", {"batch_size": 10})]
+
+
+def test_process_multiple_stages_run_in_canonical_order(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+
+    result = runner.invoke(
+        app, ["process", "--stage", "map", "--stage", "match", "--batch", "10"]
+    )
+
+    assert result.exit_code == 0
+    assert calls == [
+        ("match", {"batch_size": 10}),
+        ("map", {"batch_size": 10}),
+    ]
+
+
+def test_process_rejects_demo_stage_without_running_anything(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+
+    result = runner.invoke(app, ["process", "--stage", "match", "--stage", "demo"])
+
+    assert result.exit_code != 0
+    assert "demo stage is not implemented" in result.output
+    assert calls == []
+
+
+def test_process_rejects_unknown_stage(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+
+    result = runner.invoke(app, ["process", "--stage", "results"])
+
+    assert result.exit_code != 0
+    assert calls == []
+
+
 class _FakeRetryState:
     """Ingestion-state stand-in recording fetch/requeue calls per stage."""
 
