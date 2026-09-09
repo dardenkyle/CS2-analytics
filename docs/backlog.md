@@ -831,8 +831,9 @@ silently failing rows, the test floor is honest, and no test or dev
 command can accidentally write to production.
 
 Sequencing inside the phase: lifecycle integration tests land before any
-change to claim/retry semantics; the always-on runner lands last, once
-the circuit breaker makes unattended runs safe. Inter-item delay tuning
+change to claim/retry semantics; atomic claims (#197) and lease-based
+expiry (#198) then land in that order; the always-on runner lands last,
+once the circuit breaker makes unattended runs safe. Inter-item delay tuning
 is explicitly out of scope until the breaker has a clean multi-thousand
 item track record.
 
@@ -849,6 +850,15 @@ item track record.
 - [ ] (#176) Match scraper hardening: replace the fixed post-load sleep with a
       content-based wait, add challenge-marker detection (parity with the
       map scraper), and log per-item fetch timing
+- [ ] (#197) Atomic batch claims: replace the select-then-mark claim with
+      one `FOR UPDATE SKIP LOCKED` statement, claiming per item inside the
+      controller loop, so two processes can never select the same pending
+      row; no schema change
+- [ ] (#198) Lease-based claim expiry: add `lease_expires_at` to both state
+      tables, make expired leases claimable inside the normal claim path,
+      and remove the startup reset-all reconciliation (#141) that assumes
+      a single process; `cs2a retry --status processing` releases only
+      expired leases unless forced
 - [ ] (#177) Coverage hygiene: omit Alembic migrations and the thin pipeline
       entrypoint from coverage, add parser fallback-branch fixtures, and
       raise the coverage floor to 85
@@ -944,10 +954,10 @@ deployment baseline work, and dbt.
 - [ ] Keep temporary/manual scraper scheduling in Phase 3.75
 - [ ] Keep Airflow as Phase 7 after dbt exists
 - [ ] Parallel processing runners stay deferred until they are worth it:
-      requires atomic batch claims (`FOR UPDATE SKIP LOCKED`), per-run
-      identifiers replacing the reset-all orphan reconciliation, and
-      separate egress IPs - a single residential IP gains nothing from
-      concurrency given per-item pacing
+      atomic batch claims (#197) and lease-based orphan release (#198) are
+      now Phase 5 work; the remaining prerequisite is separate egress IPs -
+      a single residential IP gains nothing from concurrency given
+      per-item pacing
 
 ### v1.0 Polish
 
