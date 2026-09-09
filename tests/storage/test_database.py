@@ -2,10 +2,14 @@
 
 These tests write real rows through the storage modules, which commit on
 their own connections, so no rollback can undo them. They therefore run
-only against the local test database pinned by tests/conftest.py via
-.env.test (never the application .env), skip when that database is not
-running, and delete their fixed-ID rows before and after each test. CI
-runs them against its disposable service container.
+only against a local database and delete their fixed-ID rows before and
+after each test. Under pytest that is the database pinned by
+tests/conftest.py via .env.test, never the application .env. Under the
+`python -m unittest` entry point conftest does not run, config resolves
+from the application .env, and open_test_database refuses to connect
+unless that host is local. Either way the tests skip when the local
+database is not reachable. CI runs them against its disposable service
+container.
 """
 
 import sys

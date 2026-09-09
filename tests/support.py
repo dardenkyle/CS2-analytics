@@ -43,7 +43,8 @@ class FakeTransactionDb:
 LOCAL_DB_HOSTS = ("localhost", "127.0.0.1", "db")
 
 NO_TEST_DB_REASON = (
-    "the local test database is not running; start it with `docker compose "
+    "the local test database is not reachable (not running, or its credentials "
+    "or database name differ from .env.test); start it with `docker compose "
     "-f docker-compose.yml -f docker-compose.test.yml up -d db` (README: Run Tests)"
 )
 
@@ -53,9 +54,11 @@ def open_test_database():
 
     Returns a Database, or None when the local Postgres is not reachable
     so callers can skip. Refuses outright if the configured host is not
-    local: conftest already guarantees this under pytest, and this check
-    extends the same guarantee to the unittest entry point of
-    tests/storage/test_database.py, which conftest does not cover. A
+    local. Under pytest, conftest has already pinned the host; under the
+    unittest entry point of tests/storage/test_database.py, conftest does
+    not run and config resolves from the application .env, so this check
+    is what stops that entry point from ever opening a non-local
+    connection (it errors rather than skips: that is a setup mistake). A
     reachable but unmigrated database is migrated here, on first use:
     the host has passed the local-only guard twice by this point, so the
     migration cannot reach anything but the disposable test database,
