@@ -839,11 +839,14 @@ item track record.
 
 ### Planned work
 
-- [ ] (#174) Ingestion-state lifecycle integration tests against a disposable
-      Postgres: cover fetch, the mark_as_* transitions,
-      release_orphaned_processing, and requeue; gate DB-backed tests
-      behind an explicit test database URL so they skip rather than hit
-      whatever `.env` points at
+- [x] (#174) Ingestion-state lifecycle integration tests against a disposable
+      Postgres: cover queue/record, fetch ordering, the mark_as_*
+      transitions and their timestamps, failure counting, orphan release,
+      and requeue guard rails (#174 second PR); DB-backed tests are gated
+      by `tests/conftest.py`, which pins the committed `.env.test` over
+      the process environment before any project import and refuses a
+      non-local host, so they skip rather than hit whatever `.env` points
+      at (#199)
 - [ ] (#175) Controller circuit breaker: abort the batch after consecutive
       retryable/challenge errors, leaving rows in `discovered` rather
       than marking them failed, with a cool-off before the next run
