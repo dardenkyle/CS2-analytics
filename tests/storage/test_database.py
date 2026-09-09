@@ -2,13 +2,12 @@
 
 These tests write real rows through the storage modules, which commit on
 their own connections, so no rollback can undo them. They therefore run
-only when explicitly opted in (CS2_ALLOW_DB_TESTS) and only against a
-local database host, and they delete their fixed-ID rows before and after
-each test. CI opts in against its service container; a local run with the
-application .env skips.
+only against the local test database pinned by tests/conftest.py via
+.env.test (never the application .env), skip when that database is not
+running, and delete their fixed-ID rows before and after each test. CI
+runs them against its disposable service container.
 """
 
-import os
 import sys
 import unittest
 from datetime import UTC, datetime
@@ -16,28 +15,14 @@ from datetime import UTC, datetime
 from cs2_analytics.models.map import Map
 from cs2_analytics.models.match import Match
 from cs2_analytics.models.player import Player
-from cs2_analytics.storage.database import Database
 from cs2_analytics.storage.map_storage import store_maps
 from cs2_analytics.storage.match_storage import store_matches
 from cs2_analytics.storage.player_storage import store_players
+from tests.support import NO_TEST_DB_REASON, open_test_database
 
-OPT_IN_ENV = "CS2_ALLOW_DB_TESTS"
-LOCAL_DB_HOSTS = ("localhost", "127.0.0.1", "db")
 TEST_MATCH_IDS = (999998, 999999)
 TEST_MAP_ID = 999999
 TEST_PLAYER_ID = 888888
-
-
-def db_tests_enabled() -> bool:
-    """True only when opted in and DB_HOST is a local database."""
-    opted_in = os.getenv(OPT_IN_ENV, "").strip().lower() in {"1", "true", "yes"}
-    return opted_in and os.getenv("DB_HOST", "") in LOCAL_DB_HOSTS
-
-
-SKIP_REASON = (
-    f"DB-backed storage tests run only with {OPT_IN_ENV} set and DB_HOST "
-    f"in {LOCAL_DB_HOSTS}; they write and delete real rows."
-)
 
 
 def delete_test_rows(cur) -> None:
@@ -58,16 +43,18 @@ class TestDatabase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Enforce the opt-in guard, then open the database connection.
+        """Open the local test database connection, or skip.
 
-        The guard lives here rather than in a pytest marker so it also
-        applies under `python -m unittest` and this file's own entry point.
+        open_test_database enforces the local-host guard itself, so the
+        guard also applies under `python -m unittest` and this file's own
+        entry point, where tests/conftest.py does not run.
         """
-        if not db_tests_enabled():
-            raise unittest.SkipTest(SKIP_REASON)
+        database = open_test_database()
+        if database is None:
+            raise unittest.SkipTest(NO_TEST_DB_REASON)
         print("\n🚀 Setting up database connection for tests...")
         sys.stdout.flush()
-        cls.db = Database()
+        cls.db = database
         cls.conn = cls.db.get_connection()
         cls.conn.autocommit = True
         cls.cur = cls.conn.cursor()

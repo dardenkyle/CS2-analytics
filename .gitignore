@@ -32,6 +32,8 @@ logs/*
 .env
 .env.*
 .env.local
+# Committed test environment: local compose defaults only, no secrets.
+!.env.test
 
 # Downloaded files & data
 demos/

@@ -1,0 +1,13 @@
+# Test database override. The base file interpolates the db service from
+# DB_* variables, which a shell export can silently repoint at a deployed
+# database; this file pins the container to literal local values instead.
+# Always pair it with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.test.yml up -d db
+# These values match .env.test, which tests/conftest.py loads before any
+# project module is imported.
+services:
+  db:
+    environment:
+      POSTGRES_DB: cs2_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: change_me

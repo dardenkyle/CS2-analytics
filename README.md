@@ -379,20 +379,25 @@ Then open the host and port configured by `API_HOST` and `API_PORT`, such as
 ### 9. Run Tests
 
 ```sh
-python -m pytest
+uv run pytest --cov
 ```
 
-The DB-backed storage integration tests (`tests/storage/test_database.py`)
-write and delete real rows, so they are skipped unless you opt in with
-`CS2_ALLOW_DB_TESTS=true` *and* `DB_HOST` is a local database
-(`localhost`, `127.0.0.1`, or the compose `db` service); they never run
-against a remote database. CI opts in against its disposable service
-container. To run them locally, point `DB_*` at the compose database:
+Tests never touch the database named in `.env`. `tests/conftest.py` loads
+the committed `.env.test` over the process environment (a shell export
+loses too) before any project module is imported, and refuses to start
+unless `DB_HOST` is a local host (`localhost`, `127.0.0.1`, or the compose
+`db` service). DB-backed tests (the storage integration tests and the
+atomic-transaction acceptance test) take the `test_database` fixture,
+which migrates the local database on first use and skips when it is not
+running; CI runs them against its disposable service container.
+
+To run them locally, start the compose database with the test override,
+which pins the container to literal local values so no environment
+variable can repoint it. No migration step is needed.
 
 ```sh
-docker compose --env-file .env.example up -d db
-env CS2_ALLOW_DB_TESTS=true DB_HOST=127.0.0.1 DB_USER=postgres \
-  DB_PASS=change_me DB_NAME=cs2_db python -m pytest tests/storage/test_database.py
+docker compose -f docker-compose.yml -f docker-compose.test.yml up -d db
+uv run pytest --cov
 ```
 
 ### 10. Run dbt (analytics transformations)

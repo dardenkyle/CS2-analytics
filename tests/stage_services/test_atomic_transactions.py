@@ -117,13 +117,8 @@ class TestAtomicRollbackIntegration:
     MAP_ID = 990001
 
     @pytest.fixture()
-    def db(self):
-        from cs2_analytics.storage.db_instance import get_db
-
-        try:
-            database = get_db()
-        except Exception:
-            pytest.skip("PostgreSQL is not available for integration tests")
+    def db(self, test_database):
+        database = test_database
 
         with database.get_cursor() as cur:
             cur.execute(
