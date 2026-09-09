@@ -293,6 +293,8 @@ cs2a ingest discover --mode backfill   # resume the backward walk toward the win
 cs2a ingest discover --mode backfill --since 2023-09-27   # extend the floor (full CS2 era)
 cs2a ingest coverage            # discovery date coverage: frontier, swept/unswept, gaps
 cs2a process --batch 50         # process pending matches, then maps
+cs2a process --stage map --batch 200   # drain only the map backlog
+cs2a process --stage map --stage match # explicit subset; runs match, then map
 cs2a status                     # ingestion-state row counts by status
 cs2a failures --stage match     # recent failed rows with error details
 cs2a failures --stage map --group   # aggregate failures by error message
@@ -302,6 +304,15 @@ cs2a retry --stage match        # requeue failed matches for reprocessing
 cs2a retry --stage map --dry-run
 cs2a retry --stage map --status processing --dry-run   # inspect rows stuck by an interrupted run
 ```
+
+`cs2a process` runs the match stage and then the map stage with one
+`--batch` size. `--stage` (repeatable: `match`, `map`, `demo`) restricts a
+run to a subset so one backlog can be drained without touching the
+other - each processed match discovers several maps, so the map backlog
+outgrows the match backlog under combined runs. Selected stages always
+run in the canonical order match, map, demo regardless of argument
+order. `demo` is accepted by the parser but rejected with a clear error
+until a demo controller exists; nothing runs and nothing is written.
 
 `cs2a failures` is read-only diagnostics for deciding whether to requeue:
 it lists recent `failed` rows (or `dead`/`partial` via `--status`) with
