@@ -32,6 +32,15 @@ def _url(item_id: int) -> str:
     return URL.format(item_id)
 
 
+def _set_first_seen(database, state, item_id: int, seen_at: dt.datetime) -> None:
+    """Pin first_seen_at so equal-priority ordering does not depend on clock ties."""
+    with database.get_cursor() as cur:
+        cur.execute(
+            f"UPDATE {state.table_name} SET first_seen_at = %s WHERE {state.id_field} = %s;",
+            (seen_at, item_id),
+        )
+
+
 def _row(database, state, item_id: int) -> dict:
     """Read one state row back as a dict, independent of the manager."""
     with database.get_cursor() as cur:
@@ -63,19 +72,26 @@ def state(request, clean_state):
 
 @pytest.fixture()
 def parent_match(clean_state):
-    """A matches row for map rows that carry match context (FK target)."""
+    """A matches row for map rows that carry match context (FK target).
+
+    Only a row this fixture inserted is removed afterwards; a pre-existing
+    row with the same id is left alone.
+    """
     with clean_state.get_cursor() as cur:
         cur.execute(
             """
             INSERT INTO matches (match_id, match_url, team1, team2, winner, date)
             VALUES (%s, %s, 'team_a', 'team_b', 'team_a', %s)
-            ON CONFLICT (match_id) DO NOTHING;
+            ON CONFLICT (match_id) DO NOTHING
+            RETURNING match_id;
             """,
             (PARENT_MATCH_ID, "https://example.test/parent", dt.datetime(2026, 1, 1)),
         )
+        inserted = cur.fetchone() is not None
     yield PARENT_MATCH_ID
-    with clean_state.get_cursor() as cur:
-        cur.execute("DELETE FROM matches WHERE match_id = %s;", (PARENT_MATCH_ID,))
+    if inserted:
+        with clean_state.get_cursor() as cur:
+            cur.execute("DELETE FROM matches WHERE match_id = %s;", (PARENT_MATCH_ID,))
 
 
 # --- queue and fetch -------------------------------------------------------
@@ -135,6 +151,8 @@ def test_fetch_returns_only_discovered_rows_by_priority_then_first_seen(
     state.queue(3, _url(3), priority=5)
     state.queue(4, _url(4), priority=9)
     state.mark_as_processed(4)
+    _set_first_seen(clean_state, state, 2, dt.datetime(2026, 1, 1, 12, 0, 0))
+    _set_first_seen(clean_state, state, 3, dt.datetime(2026, 1, 1, 12, 0, 1))
 
     assert state.fetch(limit=10) == [(2, _url(2)), (3, _url(3)), (1, _url(1))]
     assert state.fetch(limit=2) == [(2, _url(2)), (3, _url(3))]
