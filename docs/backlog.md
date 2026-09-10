@@ -870,8 +870,9 @@ item track record.
 - [x] (#177) Coverage hygiene: omit Alembic migrations and the thin pipeline
       entrypoint from coverage, add parser fallback-branch fixtures, and
       raise the coverage floor to 85 - `[tool.coverage.run] omit` now
-      excludes `cs2_analytics/alembic/*` and `cs2_analytics/pipeline/*`
-      (the latter removed along with the package in #181), the fixture tests in
+      excludes `cs2_analytics/alembic/*` (it also omitted
+      `cs2_analytics/pipeline/*` until #181 deleted that package), the
+      fixture tests in
       `tests/parsers/test_map_parser_fallbacks.py` and
       `tests/parsers/test_match_parser_fallbacks.py` cover the parser
       fallback and secondary-stat branches (map parser 100%, match parser

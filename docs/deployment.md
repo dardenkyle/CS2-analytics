@@ -217,7 +217,6 @@ Observed local Docker worker result:
 
 ```text
 MapController summary: selected=50 succeeded=0 failed=50 retries=0
-CS2 Analytics Pipeline complete.
 ```
 
 The manual GitHub Actions workflow is defined in the repository, but it will
