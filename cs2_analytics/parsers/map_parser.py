@@ -17,7 +17,10 @@ MISSING_METRIC_PLACEHOLDERS = frozenset({"-", "\u2013", "\u2014"})
 
 
 class _PlayerStats(TypedDict):
-    """Per-row metrics parsed from a stats table; only adr is optional."""
+    """Per-row metrics parsed from a stats table.
+
+    Every key is always present; only the adr value may be None (#202).
+    """
 
     kills: int
     headshots: int
