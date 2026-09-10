@@ -867,9 +867,15 @@ item track record.
       migration needs the production settings, the flag, and the
       confirmation prompt together (follow-up from #199, where an env
       file lost to exported variables and the CLI targeted production)
-- [ ] (#177) Coverage hygiene: omit Alembic migrations and the thin pipeline
+- [x] (#177) Coverage hygiene: omit Alembic migrations and the thin pipeline
       entrypoint from coverage, add parser fallback-branch fixtures, and
-      raise the coverage floor to 85
+      raise the coverage floor to 85 - `[tool.coverage.run] omit` now
+      excludes `cs2_analytics/alembic/*` and `cs2_analytics/pipeline/*`
+      (the latter pending its removal in #181), the fixture tests in
+      `tests/parsers/test_map_parser_fallbacks.py` and
+      `tests/parsers/test_match_parser_fallbacks.py` cover the parser
+      fallback and secondary-stat branches (map parser 100%, match parser
+      99%), and `fail_under = 85` at a measured 94.04% total
 - [ ] (#178) dbt singular tests for business invariants: SCD2 validity (no
       overlapping intervals, exactly one current row per player) and
       score consistency (map winner has the higher score, match winner
