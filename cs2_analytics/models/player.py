@@ -26,7 +26,7 @@ class Player:
     clutches_won: int
     kast: float
     kd_diff: int
-    adr: float
+    adr: float | None
     fk_diff: int
     round_swing: float
     rating: float
@@ -35,7 +35,7 @@ class Player:
     last_updated_at: datetime
     data_complete: bool
 
-    def to_dict(self) -> dict[str, int | str | bool | float | datetime]:
+    def to_dict(self) -> dict[str, int | str | bool | float | datetime | None]:
         """Converts the Player object to a dictionary."""
         return {
             "map_id": self.map_id,

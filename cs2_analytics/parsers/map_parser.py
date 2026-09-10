@@ -3,6 +3,7 @@
 import datetime as dt
 import re
 from dataclasses import dataclass
+from typing import TypedDict
 
 from cs2_analytics.exceptions import MapParseError
 from cs2_analytics.models.map import Map
@@ -10,6 +11,31 @@ from cs2_analytics.models.player import Player
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
+
+# Cell text the source renders when it has no figure for a metric.
+MISSING_METRIC_PLACEHOLDERS = frozenset({"-", "\u2013", "\u2014"})
+
+
+class _PlayerStats(TypedDict):
+    """Per-row metrics parsed from a stats table.
+
+    Every key is always present; only the adr value may be None (#202).
+    """
+
+    kills: int
+    headshots: int
+    assists: int
+    flash_assists: int
+    deaths: int
+    traded_deaths: int
+    opening_kills: int
+    opening_deaths: int
+    multi_kills: int
+    clutches_won: int
+    round_swing: float
+    kast: float
+    adr: float | None
+    rating: float
 
 
 @dataclass(frozen=True)
@@ -247,7 +273,7 @@ class MapParser:
 
     def _extract_player_stats(
         self, cols, column_indexes: dict[str, int]
-    ) -> dict[str, int | float]:
+    ) -> _PlayerStats:
         """Extracts parsed combat and utility stats from a player row."""
         kills, headshots = self._extract_kills(cols, column_indexes["kills"])
         assists, flash_assists = self._extract_assists(cols, column_indexes["assists"])
@@ -333,14 +359,22 @@ class MapParser:
         except ValueError as e:
             raise MapParseError(f"Failed to parse KAST value: {kast_text!r}") from e
 
-    def _extract_adr(self, cols, adr_idx: int) -> float:
-        """Extracts ADR as a float value."""
+    def _extract_adr(self, cols, adr_idx: int) -> float | None:
+        """Extracts ADR as a float, or None for the source's dash placeholder.
+
+        The source renders a dash instead of a damage figure when it has
+        none for a player (observed for a player substituted out early on
+        map 221392, #202). That is a missing value, not a parse failure;
+        any other non-numeric text still raises.
+        """
         adr_text = self._extract_metric_text(
             cols,
             adr_idx,
             ["st-adr"],
             prefer_hidden=False,
         )
+        if adr_text.strip() in MISSING_METRIC_PLACEHOLDERS:
+            return None
         try:
             return float(adr_text)
         except ValueError as e:
@@ -369,7 +403,7 @@ class MapParser:
         player_url: str,
         map_name: str,
         team_name: str,
-        stats: dict[str, int | float],
+        stats: _PlayerStats,
     ) -> Player:
         """Builds a Player model from a parsed row."""
         now = dt.datetime.now(dt.UTC)
@@ -397,7 +431,7 @@ class MapParser:
             clutches_won=int(stats["clutches_won"]),
             kast=float(stats["kast"]),
             kd_diff=kills - deaths,
-            adr=float(stats["adr"]),
+            adr=stats["adr"],
             fk_diff=opening_kills - opening_deaths,
             round_swing=float(stats["round_swing"]),
             rating=float(stats["rating"]),
