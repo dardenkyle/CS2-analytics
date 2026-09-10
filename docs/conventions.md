@@ -21,6 +21,11 @@ Current implementation note:
 - No lifecycle-state transitions
 - No storage writes
 - Raise typed parse exceptions with specific helper-level messages
+- Treat the source's dash placeholder as a missing value, not a parse
+  failure, for metrics the source can leave blank: ADR parses to `None`
+  (stored as NULL) when a player was substituted mid-map and has no damage
+  figure (#202). Any other non-numeric text still raises. KAST and rating
+  stay strict until a placeholder is observed in those columns
 
 ## Stage Services
 

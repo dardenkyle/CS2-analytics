@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -136,3 +137,17 @@ def test_store_players_wraps_database_factory_failures(
 
     with pytest.raises(PlayerStorageError, match="Failed to store player records."):
         player_storage_module.store_players([_player()])
+
+
+def test_store_players_binds_null_for_missing_adr(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(player_storage_module, "get_db", lambda: _FakeDb(cursor))
+    player = replace(_player(), adr=None)
+
+    player_storage_module.store_players([player])
+
+    _query, values = cursor.executed[0]
+    assert values[0]["adr"] is None
+    assert player.to_dict()["adr"] is None

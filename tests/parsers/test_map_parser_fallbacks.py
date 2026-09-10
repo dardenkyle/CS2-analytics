@@ -416,3 +416,33 @@ def test_secondary_stats_default_to_zero_with_warning_when_unparseable() -> None
     warning_mock.assert_any_call(
         "Could not parse %s from %r; defaulting to 0", "multi-kills", "-"
     )
+
+
+@pytest.mark.parametrize("placeholder", ["-", "–", "—"])
+def test_adr_dash_placeholder_parses_as_missing_and_keeps_the_row(
+    placeholder: str,
+) -> None:
+    rows = _player_row() + _player_row(
+        player_id=5678, name="SubbedOut", adr=placeholder, kills="0 (0)", deaths="3 (0)"
+    )
+
+    players = _parse_players(_map_soup(tables=_stats_table(rows=rows)))
+
+    assert [player.player_name for player in players] == ["TestPlayer", "SubbedOut"]
+    assert players[0].adr == 95.2
+    assert players[1].adr is None
+    assert (players[1].kills, players[1].deaths, players[1].rating) == (0, 3, 1.24)
+
+
+def test_adr_non_numeric_text_other_than_the_placeholder_still_raises() -> None:
+    row = _player_row(adr="N/A")
+
+    with pytest.raises(MapParseError, match="Failed to parse ADR value: 'N/A'"):
+        _parse_players(_map_soup(tables=_stats_table(rows=row)))
+
+
+def test_adr_missing_cell_still_raises() -> None:
+    row = _player_row().replace('<td class="st-adr">95.2</td>', '<td class="st-adr"></td>')
+
+    with pytest.raises(MapParseError, match="Failed to parse ADR value: ''"):
+        _parse_players(_map_soup(tables=_stats_table(rows=row)))
