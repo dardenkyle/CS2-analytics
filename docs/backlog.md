@@ -871,7 +871,7 @@ item track record.
       entrypoint from coverage, add parser fallback-branch fixtures, and
       raise the coverage floor to 85 - `[tool.coverage.run] omit` now
       excludes `cs2_analytics/alembic/*` and `cs2_analytics/pipeline/*`
-      (the latter pending its removal in #181), the fixture tests in
+      (the latter removed along with the package in #181), the fixture tests in
       `tests/parsers/test_map_parser_fallbacks.py` and
       `tests/parsers/test_match_parser_fallbacks.py` cover the parser
       fallback and secondary-stat branches (map parser 100%, match parser
@@ -887,11 +887,15 @@ item track record.
       systemd timer units invoking the CLI, plus a drain mode on
       `cs2a process` that loops batches until no pending work remains
       (breaker-aware)
-- [ ] (#181) Retire `main.py` and the entire `cs2_analytics/pipeline/` package
+- [x] (#181) Retire `main.py` and the entire `cs2_analytics/pipeline/` package
       in favor of the `cs2a` CLI: repoint the docker-compose pipeline
       service command and the manual-pipeline-worker GitHub workflow to
       the equivalent `cs2a` invocations, delete `main.py` and the
-      package, and update the docs that reference `python main.py`
+      package, and update the docs that reference `python main.py` -
+      both now run `cs2a ingest discover && cs2a process`, which is what the
+      wrapper hardcoded (incremental discovery, then match and map
+      processing at batch 50); the Dockerfile, CI lint/mypy targets, and
+      the #177 coverage omit no longer mention the removed files
 - [ ] (#182) README "Design decisions and tradeoffs" section distilled from the
       decision log (last v1.0 polish item)
 - [x] (#195) `cs2a process --stage` (repeatable: match, map, demo) so a

@@ -161,10 +161,8 @@ omit = [
     "*/test_*.py",
     "*/__init__.py",
     # Not unit-testable: Alembic env/migrations run only against a live
-    # database, and the legacy pipeline entrypoint is slated for removal
-    # in favor of the cs2a CLI (#177, #181).
+    # database (#177).
     "*/cs2_analytics/alembic/*",
-    "*/cs2_analytics/pipeline/*",
 ]
 
 [tool.coverage.report]

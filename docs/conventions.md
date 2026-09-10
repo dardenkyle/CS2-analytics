@@ -51,7 +51,7 @@ Implemented services:
 - Coordinate stage order
 - Invoke controllers rather than reaching into stage internals
 
-The top-level pipeline is intentionally thin and is not the primary architectural cleanup target.
+The `cs2a` CLI entry point is intentionally thin and is not the primary architectural cleanup target.
 
 ## Storage
 

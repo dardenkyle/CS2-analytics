@@ -52,9 +52,9 @@ DISCOVER_MODE_MAX_MATCHES = {
 }
 
 # Discovery window floor. Run parameters live with the invoker, not in
-# config (ADR-0015); the pipeline imports these same defaults so both
-# entry points stay aligned. The end of the window is always computed at
-# run time. #121 turns the floor into a real backfill cursor target.
+# config (ADR-0015); the CLI is the only pipeline entry point (#181). The
+# end of the window is always computed at run time. #121 turns the floor
+# into a real backfill cursor target.
 DISCOVERY_WINDOW_START = dt.date(2025, 10, 1)
 
 

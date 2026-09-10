@@ -5,7 +5,7 @@ The container runs the same entrypoints used locally:
 
 - API: `python run_api.py`
 - migrations: `python manage_db.py --init`
-- pipeline: `python main.py`
+- pipeline: `cs2a ingest discover && cs2a process`
 
 dbt, Airflow, long-running schedulers, and demo expansion remain out of scope.
 
@@ -210,7 +210,7 @@ docker run --rm --shm-size=2g --env-file .env.render `
   -e API_PORT=8000 `
   -e API_CORS_ORIGINS=https://dardenkyle.github.io `
   cs2-analytics:manual-worker `
-  python main.py
+  sh -c "cs2a ingest discover && cs2a process"
 ```
 
 Observed local Docker worker result:
@@ -245,7 +245,7 @@ GitHub Pages frontend
 
 GitHub Actions manual pipeline workflow
 -> build/run the application Docker image
--> execute python main.py inside the container
+-> execute cs2a ingest discover && cs2a process inside the container
 -> Render PostgreSQL
 -> HLTV fetches through the containerized Chromium/Selenium runtime
 ```
@@ -254,7 +254,7 @@ The API and pipeline should continue using the existing entrypoints:
 
 - API: `python run_api.py`
 - migrations: `alembic -c cs2_analytics/alembic.ini upgrade head`
-- pipeline: `python main.py`
+- pipeline: `cs2a ingest discover && cs2a process`
 
 The GitHub Actions pipeline workflow should run the same application image used
 by the local container runtime, so scraper dependencies such as Chromium,
@@ -264,7 +264,8 @@ image rather than by the host runner.
 GitHub Actions is manual-only at first. The workflow lives at
 `.github/workflows/manual-pipeline-worker.yml`, builds the application Docker
 image, validates that Selenium/Chromium can start inside the container, and can
-then run `python main.py` against the configured PostgreSQL database. Scheduled
+then run `cs2a ingest discover && cs2a process` against the configured PostgreSQL
+database. Scheduled
 scraper runs are deferred until the match and map batch behavior is validated,
 especially the handoff from a fetched match batch to the number of discovered
 maps that still need processing.
