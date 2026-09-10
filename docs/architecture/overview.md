@@ -8,7 +8,8 @@ The schema uses PostgreSQL ingestion-state tables directly, and the active resul
 
 ## Current Architectural Focus
 
-- `main.py` and the top-level pipeline remain intentionally thin
+- the `cs2a` CLI is the only pipeline entry point and stays thin: commands
+  map run parameters onto controllers and nothing more
 - `ResultsController`, `MatchController`, and `MapController` own batch-level
   concerns
 - stage services own per-item fetch, parse, persist, and lifecycle outcome work

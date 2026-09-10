@@ -106,8 +106,8 @@ PR marked medium or high risk.
   change affects shared behavior.
 - For docs-only changes, tests are not required unless the docs describe or
   change executable behavior.
-- Smoke test `python main.py` only when the local scraper and database
-  environment is available.
+- Smoke test `cs2a ingest discover && cs2a process` only when the local scraper and
+  database environment is available.
 - Run API work with `python run_api.py` when API behavior needs manual checking.
 
 ## Local Development Notes

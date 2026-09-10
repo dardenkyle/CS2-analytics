@@ -65,7 +65,7 @@ services:
       context: .
     profiles: ["tools"]
     environment: *app_environment
-    command: ["python", "main.py"]
+    command: ["sh", "-c", "cs2a ingest discover && cs2a process"]
     volumes:
       - ./logs:/app/logs
     shm_size: "2gb"

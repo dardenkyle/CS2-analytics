@@ -85,4 +85,4 @@ jobs:
             -e DB_HOST \
             -e DB_PORT \
             "${IMAGE_NAME}" \
-            python main.py
+            sh -c "cs2a ingest discover && cs2a process"

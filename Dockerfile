@@ -33,7 +33,7 @@ COPY scripts ./scripts
 
 RUN python -m pip install --no-deps .
 
-COPY main.py manage_db.py run_api.py ./
+COPY manage_db.py run_api.py ./
 
 RUN site_packages="$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')" \
     && useradd --create-home --uid 10001 appuser \

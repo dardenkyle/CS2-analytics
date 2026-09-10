@@ -70,7 +70,6 @@ The current ingestion architecture uses PostgreSQL-backed ingestion-state tables
 
 ```text
 CS2-Analytics/
-|-- main.py
 |-- run_api.py
 |-- README.md
 |-- pyproject.toml
@@ -85,7 +84,6 @@ CS2-Analytics/
 |   |-- ingestion_state/
 |   |-- models/
 |   |-- parsers/
-|   |-- pipeline/
 |   |-- scrapers/
 |   |-- stage_services/
 |   |-- storage/
@@ -281,11 +279,14 @@ website scraping.
 
 ### 7. Run the Pipeline
 
+The `cs2a` CLI installed with the package is the only pipeline entry
+point. A full incremental run is discovery followed by processing:
+
 ```sh
-python main.py
+cs2a ingest discover && cs2a process
 ```
 
-Or use the `cs2a` CLI installed with the package for individual stages:
+Individual stages:
 
 ```sh
 cs2a ingest discover            # incremental: newest results, stops when up to date
@@ -643,8 +644,8 @@ for the API and PostgreSQL, GitHub Pages for the frontend, and a manual
 GitHub Actions workflow as the scraper runner — no Kubernetes, no Airflow, no
 custom domain. Render builds the repository's own Dockerfile, so production
 runs the same container image and the same entrypoints used locally through
-Docker Compose (`python run_api.py` for the API, `python main.py` for the
-pipeline) — one runtime to debug instead of a separate cloud configuration.
+Docker Compose (`python run_api.py` for the API, `cs2a ingest discover && cs2a process`
+for the pipeline) — one runtime to debug instead of a separate cloud configuration.
 Production validation is read-only by policy: health checks and DB-backed
 reads, with write-based smoke tests restricted to disposable databases. The tradeoff is fewer operational
 capabilities (no ingestion scheduling, manual migrations) in exchange for a
