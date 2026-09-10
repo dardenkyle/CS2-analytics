@@ -867,6 +867,12 @@ item track record.
       migration needs the production settings, the flag, and the
       confirmation prompt together (follow-up from #199, where an env
       file lost to exported variables and the CLI targeted production)
+- [ ] (#207) Targeted reprocessing: `cs2a process --stage <one> --id N`
+      processes a single pending match or map instead of the next rows
+      in fetch order, closing the gap between `retry --id` and
+      `inspect`; a row that is not `discovered` selects nothing and
+      says so, so `retry` stays the only path that resets state
+      (surfaced by the #202 reprocess of map 221392)
 - [x] (#177) Coverage hygiene: omit Alembic migrations and the thin pipeline
       entrypoint from coverage, add parser fallback-branch fixtures, and
       raise the coverage floor to 85 - `[tool.coverage.run] omit` now
