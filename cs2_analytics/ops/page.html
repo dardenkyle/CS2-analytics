@@ -425,7 +425,7 @@
       cumulative.maps += p.maps;
       var x0 = left + i * band;
       var g = svgEl("g", { class: "band" });
-      var hit = svgEl("rect", { x: x0, y: top, width: band, height: plotH, class: "hit", tabindex: "0" });
+      var hit = svgEl("rect", { x: x0, y: top, width: band, height: plotH, class: "hit", tabindex: "0", role: "img" });
       var bars = svgEl("g", { class: "bars" });
       var gx = x0 + (band - groupW) / 2;
       SERIES.forEach(function (s, si) {
@@ -448,6 +448,9 @@
         svg.appendChild(xl);
       }
       var cumA = cumulative.matches, cumB = cumulative.maps;
+      hit.setAttribute("aria-label", labelFn(p.period, true) + ": " + seriesLabels[0] + " " + fmt(p.matches) +
+        ", " + seriesLabels[1] + " " + fmt(p.maps) + "; cumulative " + seriesLabels[0] + " " + fmt(cumA) +
+        ", cumulative " + seriesLabels[1] + " " + fmt(cumB));
       var rows = function () {
         return [
           { key: "s1", label: seriesLabels[0], value: fmt(p.matches) },
@@ -535,6 +538,8 @@
         var q = c.count === 0 ? "zero" : "q" + Math.min(5, Math.max(1, Math.ceil((c.count / max) * 5)));
         var cell = el("div", "cell " + q);
         cell.setAttribute("tabindex", "0");
+        cell.setAttribute("role", "img");
+        cell.setAttribute("aria-label", "Week of " + weekLabel(c.week, true) + ": " + fmt(c.count) + " matches");
         var show = function (evt) {
           cell.classList.add("hover");
           var pt = evt && evt.clientX !== undefined ? { x: evt.clientX, y: evt.clientY } : centerOf(cell);
@@ -612,6 +617,7 @@
       try { section[1](); } catch (err) { failed.push(section[0] + ": " + err.message); }
     });
     if (failed.length) { notice("Could not render " + failed.join("; ") + ". Try Update.", true); }
+    return failed.length === 0;
   }
 
   function load(method, url) {
@@ -628,7 +634,8 @@
     button.disabled = true;
     notice("Querying the database...");
     load("POST", "/ops/refresh").then(function (data) {
-      snapshot = data; render(); notice("");
+      snapshot = data;
+      if (render()) { notice(""); }
     }).catch(function (err) {
       notice("Update failed: " + err.message, true);
     }).then(function () { button.disabled = false; });

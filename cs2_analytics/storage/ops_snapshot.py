@@ -32,7 +32,7 @@ from cs2_analytics.storage.ingestion_state_summary import (
     fetch_failure_details,
     fetch_ingestion_state_counts,
 )
-from cs2_analytics.utils.time_format import format_local
+from cs2_analytics.utils.time_format import DISPLAY_TIMEZONE, format_local
 
 SNAPSHOT_SCHEMA_VERSION = 2
 # Relative to the invocation directory, not the package: from the repo
@@ -283,9 +283,12 @@ def build_snapshot(lifetime_floor: dt.date) -> Snapshot:
     """Query the database once and return the full page snapshot.
 
     lifetime_floor bounds the lifetime coverage panel; the three shorter
-    windows are relative to today.
+    windows are relative to today in the operator's timezone, the same
+    local date `cs2a ingest coverage` ends its window on, so the panels
+    mirror the CLI even when the capture happens after UTC midnight.
     """
     captured = dt.datetime.now(dt.UTC)
+    today = captured.astimezone(DISPLAY_TIMEZONE).date()
     counts = fetch_ingestion_state_counts()
     activity = fetch_activity_summary()
     stages: dict[str, StageSnapshot] = {}
@@ -318,7 +321,7 @@ def build_snapshot(lifetime_floor: dt.date) -> Snapshot:
         "stages": stages,
         "totals": fetch_ingested_totals(),
         "volume": fetch_ingested_volume(),
-        "coverage": build_coverage_windows(lifetime_floor, captured.date()),
+        "coverage": build_coverage_windows(lifetime_floor, today),
         "failures": failures,
     }
 

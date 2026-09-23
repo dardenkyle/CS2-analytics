@@ -13,7 +13,8 @@ def _fixed_now(monkeypatch) -> None:
     class _Clock(dt.datetime):
         @classmethod
         def now(cls, tz=None):
-            return dt.datetime(2026, 9, 23, 20, 15, 0, tzinfo=dt.UTC)
+            # 10:15 PM Central on the 23rd, already the 24th in UTC.
+            return dt.datetime(2026, 9, 24, 3, 15, 0, tzinfo=dt.UTC)
 
     monkeypatch.setattr(snapshot_module.dt, "datetime", _Clock)
 
@@ -90,10 +91,11 @@ def test_build_snapshot_renders_timestamps_and_shapes_sections(monkeypatch) -> N
     assert snapshot["schema_version"] == 2
     assert snapshot["volume"]["monthly"][0]["maps"] == 2
     assert snapshot["coverage"] == [{"label": "Lifetime from 2025-10-01"}]
-    # Coverage windows are anchored on the capture date and the given floor.
+    # Coverage windows end on the operator's local date, as the CLI does,
+    # not on the UTC date of the capture.
     assert coverage_calls == [(dt.date(2025, 10, 1), dt.date(2026, 9, 23))]
-    assert snapshot["captured_at"] == "2026-09-23 03:15:00 PM CDT"
-    assert snapshot["captured_at_utc"] == "2026-09-23T20:15:00+00:00"
+    assert snapshot["captured_at"] == "2026-09-23 10:15:00 PM CDT"
+    assert snapshot["captured_at_utc"] == "2026-09-24T03:15:00+00:00"
     assert snapshot["database"] == {"name": "cs2_db", "host": "127.0.0.1"}
     # Demo stage is not on the page; counts are sorted by status.
     assert list(snapshot["stages"]) == ["match_ingestion_state", "map_ingestion_state"]
