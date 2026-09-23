@@ -612,6 +612,33 @@ def test_status_prints_counts_per_table(monkeypatch) -> None:
     assert "failed" in result.stdout
 
 
+def test_ops_refuses_non_loopback_host(monkeypatch) -> None:
+    import uvicorn
+
+    calls: list[dict] = []
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **kw: calls.append(kw))
+
+    result = runner.invoke(app, ["ops", "--host", "0.0.0.0"])
+
+    assert result.exit_code == 1
+    assert "local-only" in result.stderr
+    assert calls == []
+
+
+def test_ops_serves_on_loopback_with_the_given_port(monkeypatch) -> None:
+    import uvicorn
+
+    calls: list[dict] = []
+    monkeypatch.setattr(uvicorn, "run", lambda app_obj, **kw: calls.append(kw))
+
+    result = runner.invoke(app, ["ops", "--port", "9001"])
+
+    assert result.exit_code == 0
+    assert "Target database:" in result.stdout
+    assert "http://127.0.0.1:9001/" in result.stdout
+    assert calls == [{"host": "127.0.0.1", "port": 9001, "log_level": "warning"}]
+
+
 def test_status_exits_nonzero_when_database_is_unavailable(monkeypatch) -> None:
     import cs2_analytics.storage.ingestion_state_summary as summary_module
     from cs2_analytics.exceptions import DatabaseConnectionError

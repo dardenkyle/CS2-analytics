@@ -307,6 +307,7 @@ cs2a failures --stage match     # recent failed rows with error details
 cs2a failures --stage map --group   # aggregate failures by error message
 cs2a inspect match 2394877      # one match: state row + relational presence
 cs2a inspect map 230075         # one map: state row + player-stats count
+cs2a ops                        # local ops page: status, volume, failed rows with links
 cs2a retry --stage match        # requeue failed matches for reprocessing
 cs2a retry --stage map --dry-run
 cs2a retry --stage map --status processing --dry-run   # inspect rows stuck by an interrupted run
@@ -340,6 +341,17 @@ immediately with `window_covered` once the floor is reached. The cap
 a completion signal, and every run summary logs why it stopped.
 `--since` moves the window floor (the walk stays contiguous), which is
 how coverage extends to the full CS2 era without code changes.
+
+`cs2a ops` serves a local-only operations page at
+`http://127.0.0.1:8765/` (`--port` to change it; any non-loopback
+`--host` is refused). It shows the ingestion-state counts and last
+activity per table, raw-table row totals, and every failed, dead, or
+partial match and map row with its full error message and a link to the
+source page, filterable by stage and status. The page opens from the
+last saved snapshot in the gitignored `ops_snapshots/` directory without
+querying the database; the update button re-queries and saves a new
+snapshot. Timestamps are rendered in Central time, matching the CLI.
+Read-only: it has no retry or requeue actions.
 
 `cs2a ingest coverage` reports discovery date coverage: the discovery
 frontier with swept/unswept ranges, earliest/latest ingested match

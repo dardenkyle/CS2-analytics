@@ -686,3 +686,41 @@ def status() -> None:
             typer.echo("  (no rows)")
         for state_name, row_count in sorted(statuses.items()):
             typer.echo(f"  {state_name:<12} {row_count}")
+
+
+# The ops page reads whatever database the environment points at, which is
+# production by default, so it is never exposed beyond this machine.
+OPS_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+OPS_DEFAULT_PORT = 8765
+
+
+@app.command()
+def ops(
+    port: Annotated[
+        int, typer.Option("--port", help="Port to serve the ops page on.")
+    ] = OPS_DEFAULT_PORT,
+    host: Annotated[
+        str,
+        typer.Option("--host", help="Bind address; must be a loopback host."),
+    ] = "127.0.0.1",
+) -> None:
+    """Serve the local operations page: status, volume, and failed rows (#209).
+
+    The page opens on the last saved snapshot without querying the
+    database; its update button re-queries and saves a new one. Read-only.
+    """
+    if host not in OPS_LOOPBACK_HOSTS:
+        typer.echo(
+            f"Refusing to bind the ops page to {host!r}; it is local-only. "
+            f"Use one of {sorted(OPS_LOOPBACK_HOSTS)}.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    import uvicorn
+
+    from cs2_analytics.ops.app import create_ops_app
+
+    _echo_target_database()
+    typer.echo(f"Serving the ops page at http://{host}:{port}/ (Ctrl+C to stop)")
+    uvicorn.run(create_ops_app(), host=host, port=port, log_level="warning")

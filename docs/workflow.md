@@ -194,6 +194,11 @@ interfaces.
 
 ## Verification
 
+For a one-page view of ingestion health during manual verification, run
+`cs2a ops` and open the page it prints; it is loopback-only, read-only,
+and reads whatever database the environment points at, which the header
+names. See the README `cs2a ops` section.
+
 Docs-only changes do not require tests unless they describe executable behavior.
 
 For code changes, run targeted tests first when appropriate, then

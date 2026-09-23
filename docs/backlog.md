@@ -894,6 +894,13 @@ item track record.
       attribute, then reconcile the 174 disagreeing rows against the
       corrected `matches.date` (after #214; coordinate with #194's driver
       changes)
+- [ ] (#209) Local ops page: `cs2a ops` serves a loopback-only page from
+      a saved snapshot with an update button that re-queries the
+      database; shipped in two PRs - first the snapshot builder, the
+      failure-detail and activity queries, the raw-table totals, and the
+      page's header, ingestion tables, volume figures, and failed-rows
+      table with source links and filters; second the monthly and weekly
+      SVG charts and the four coverage panels
 - [ ] (#207) Targeted reprocessing: `cs2a process --stage <one> --id N`
       processes a single pending match or map instead of the next rows
       in fetch order, closing the gap between `retry --id` and
