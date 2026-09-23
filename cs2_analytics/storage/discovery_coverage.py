@@ -73,6 +73,24 @@ def align_period_start(day: dt.date, period: str) -> dt.date:
     return day
 
 
+def classify_gap(
+    gap_start: dt.date, gap_end: dt.date, frontier_period: dt.date | None
+) -> str:
+    """Classify a zero-match gap range against the discovery frontier.
+
+    Periods below the frontier have not been swept yet (backfill work);
+    periods at or above it were scraped and genuinely yielded nothing.
+    Without a frontier no classification is possible.
+    """
+    if frontier_period is None:
+        return "unclassified"
+    if gap_end < frontier_period:
+        return "unswept"
+    if gap_start >= frontier_period:
+        return "swept, no matches"
+    return "partly unswept"
+
+
 def compute_gap_ranges(
     window_start: dt.date,
     window_end: dt.date,
