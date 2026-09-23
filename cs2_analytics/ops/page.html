@@ -581,6 +581,25 @@
     }).map(function (box) { return box.value; });
   }
 
+  // URLs inside stored error messages become links; every other part of
+  // the message stays text, built with DOM nodes, never HTML strings.
+  var URL_PATTERN = /https?:\/\/[^\s<>"')\]]+/g;
+  function messageCell(message) {
+    var cell = el("td", "msg");
+    if (!message) { cell.textContent = "(no error message)"; return cell; }
+    var last = 0, match;
+    URL_PATTERN.lastIndex = 0;
+    while ((match = URL_PATTERN.exec(message)) !== null) {
+      if (match.index > last) { cell.appendChild(document.createTextNode(message.slice(last, match.index))); }
+      var link = el("a", null, match[0]);
+      link.href = match[0]; link.target = "_blank"; link.rel = "noopener noreferrer";
+      cell.appendChild(link);
+      last = match.index + match[0].length;
+    }
+    if (last < message.length) { cell.appendChild(document.createTextNode(message.slice(last))); }
+    return cell;
+  }
+
   function renderFailures() {
     var body = $("failures");
     body.textContent = "";
@@ -603,7 +622,7 @@
       tr.appendChild(el("td", "status-" + row.status, row.status));
       tr.appendChild(el("td", "num", fmt(row.failure_count)));
       tr.appendChild(el("td", "mono", row.last_failed_at));
-      tr.appendChild(el("td", "msg", row.last_error_message || "(no error message)"));
+      tr.appendChild(messageCell(row.last_error_message));
       body.appendChild(tr);
     });
   }
