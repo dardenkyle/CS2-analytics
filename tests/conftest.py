@@ -21,10 +21,6 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-# tests.support imports only cs2_analytics.exceptions, which never touches
-# config, so importing it here cannot pre-empt the environment pin below.
-from tests.support import LOCAL_DB_HOSTS
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TEST_ENV_FILE = PROJECT_ROOT / ".env.test"
 CONFIG_MODULE = "cs2_analytics.config.config"
@@ -40,11 +36,17 @@ def _pin_test_environment() -> None:
     if not TEST_ENV_FILE.is_file():
         raise RuntimeError(f"{TEST_ENV_FILE} is missing; tests refuse to run without it.")
     load_dotenv(TEST_ENV_FILE, override=True)
+    # Imported only now, after the pin: this is the first load of the
+    # config module in the process, so it reads the pinned environment.
+    # The set is shared with `cs2a db`, which refuses the same hosts (#200).
+    from cs2_analytics.config.config import LOCAL_DB_HOSTS
+
     host = os.environ.get("DB_HOST", "")
     if host not in LOCAL_DB_HOSTS:
         raise RuntimeError(
             f"DB_HOST={host!r} after loading {TEST_ENV_FILE.name} is not one of "
-            f"{LOCAL_DB_HOSTS}; refusing to run tests against a non-local database."
+            f"{sorted(LOCAL_DB_HOSTS)}; refusing to run tests against a non-local "
+            "database."
         )
 
 

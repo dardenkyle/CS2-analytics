@@ -339,6 +339,14 @@ For the first cloud deploy, migrations are a manual release step:
    alembic -c cs2_analytics/alembic.ini upgrade head
    ```
 
+   Or through the CLI, which prints the target and asks for confirmation.
+   Against a non-local host it refuses without `--allow-remote`, so the
+   flag is required here:
+
+   ```sh
+   cs2a db upgrade --allow-remote
+   ```
+
 4. Confirm the database revision is current:
 
    ```sh

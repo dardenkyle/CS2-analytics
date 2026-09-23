@@ -196,10 +196,15 @@ obvious whether the environment points at a local or production database:
 cs2a db current                  # show the database's current revision
 cs2a db upgrade                  # apply migrations up to head; confirms first
 cs2a db downgrade <revision>     # revert to a revision; confirms first
+cs2a db upgrade --allow-remote   # required when DB_HOST is not a local host
 ```
 
 These wrap the same `alembic -c cs2_analytics/alembic.ini ...` commands with
-the same environment-driven connection settings.
+the same environment-driven connection settings. `upgrade` and `downgrade`
+refuse a host outside the local set (`localhost`, `127.0.0.1`, `db`) unless
+`--allow-remote` is passed, and they do so before the confirmation prompt, so
+a deployed migration needs the deployed settings, the flag, and the prompt
+together. `current` is read-only and never needs the flag.
 
 For an existing database that was already initialized from the current
 `schema.sql`, first confirm the live schema matches the initial Alembic

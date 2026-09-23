@@ -112,6 +112,11 @@ DB_PASS = os.getenv("DB_PASS", default="password")
 DB_HOST = os.getenv("DB_HOST", default="localhost")
 DB_PORT = _read_int("DB_PORT", default=5432)
 
+# Hosts that can only ever be a local or compose database. Schema commands
+# refuse any other host unless explicitly allowed (#200), and the test
+# bootstrap refuses to run against any other host at all (#199).
+LOCAL_DB_HOSTS = frozenset({"localhost", "127.0.0.1", "db"})
+
 # API Configuration
 API_HOST = os.getenv("API_HOST", default="127.0.0.1")
 API_PORT = _read_int("API_PORT", default=8000)

@@ -946,6 +946,90 @@ def test_db_current_reports_revision_and_prints_target(monkeypatch) -> None:
     assert "Target database:" in result.stdout
 
 
+REMOTE_HOST = "cs2-db.example.internal"
+
+
+def _patch_remote_host(monkeypatch) -> None:
+    import cs2_analytics.config.config as config
+
+    monkeypatch.setattr(config, "DB_HOST", REMOTE_HOST)
+
+
+def test_db_upgrade_refuses_remote_host_before_prompting(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+    _patch_remote_host(monkeypatch)
+
+    result = runner.invoke(app, ["db", "upgrade"], input="y\n")
+
+    assert result.exit_code == 1
+    assert calls == []
+    assert "Target database:" in result.stdout
+    assert "Upgrade the database" not in result.stdout
+    assert REMOTE_HOST in result.stderr
+    assert "--allow-remote" in result.stderr
+
+
+def test_db_downgrade_refuses_remote_host_before_prompting(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+    _patch_remote_host(monkeypatch)
+
+    result = runner.invoke(app, ["db", "downgrade", "20260521_0001"], input="y\n")
+
+    assert result.exit_code == 1
+    assert calls == []
+    assert "Downgrade the database" not in result.stdout
+    assert REMOTE_HOST in result.stderr
+    assert "--allow-remote" in result.stderr
+
+
+def test_db_upgrade_allow_remote_still_prints_target_and_confirms(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+    _patch_remote_host(monkeypatch)
+
+    refused = runner.invoke(app, ["db", "upgrade", "--allow-remote"], input="n\n")
+    confirmed = runner.invoke(app, ["db", "upgrade", "--allow-remote"], input="y\n")
+
+    assert refused.exit_code != 0
+    assert "Target database:" in refused.stdout
+    assert confirmed.exit_code == 0
+    assert calls == [("upgrade", ("head",))]
+
+
+def test_db_downgrade_allow_remote_runs_after_confirmation(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+    _patch_remote_host(monkeypatch)
+
+    result = runner.invoke(
+        app, ["db", "downgrade", "20260521_0001", "--allow-remote"], input="y\n"
+    )
+
+    assert result.exit_code == 0
+    assert calls == [("downgrade", ("20260521_0001",))]
+
+
+def test_db_local_host_needs_no_flag() -> None:
+    from cs2_analytics.config.config import DB_HOST, LOCAL_DB_HOSTS
+
+    # The pinned test environment is a local host, so the upgrade and
+    # downgrade tests above that pass no flag are exercising the local path.
+    assert DB_HOST in LOCAL_DB_HOSTS
+
+
+def test_db_current_is_not_guarded_on_remote_host(monkeypatch) -> None:
+    calls: list[tuple[str, tuple]] = []
+    _patch_alembic_command(monkeypatch, calls)
+    _patch_remote_host(monkeypatch)
+
+    result = runner.invoke(app, ["db", "current"])
+
+    assert result.exit_code == 0
+    assert calls == [("current", ())]
+
+
 def test_retry_processing_requires_explicit_status_and_warns(monkeypatch) -> None:
     calls: list[tuple[str, str, dict]] = []
     _patch_retry_states(monkeypatch, [(7, 0, None)], calls)
