@@ -650,7 +650,7 @@ def test_failures_lists_rows_with_truncated_error(monkeypatch) -> None:
     calls = _patch_failure_queries(
         monkeypatch,
         rows=[
-            (940123, "failed", 3, "2026-08-30 10:00:00+00:00", long_error),
+            (940123, "failed", 3, dt.datetime(2026, 8, 30, 10, 0, tzinfo=dt.UTC), long_error),
             (940124, "failed", 1, None, None),
         ],
     )
@@ -661,7 +661,7 @@ def test_failures_lists_rows_with_truncated_error(monkeypatch) -> None:
     assert calls == [("rows", ("match", "failed", 20))]
     assert "940123" in result.stdout
     assert "failures=3" in result.stdout
-    assert "2026-08-30 10:00:00+00:00" in result.stdout
+    assert "last_failed=2026-08-30 05:00:00 AM CDT" in result.stdout
     assert "..." in result.stdout
     assert long_error not in result.stdout
     assert "last_failed=-" in result.stdout
@@ -672,7 +672,7 @@ def test_failures_group_aggregates_by_error_message(monkeypatch) -> None:
     calls = _patch_failure_queries(
         monkeypatch,
         groups=[
-            ("MapParseError: layout changed", 5, "2026-08-30 10:00:00+00:00"),
+            ("MapParseError: layout changed", 5, dt.datetime(2026, 8, 30, 10, 0, tzinfo=dt.UTC)),
             (None, 1, None),
         ],
     )
@@ -683,7 +683,8 @@ def test_failures_group_aggregates_by_error_message(monkeypatch) -> None:
 
     assert result.exit_code == 0
     assert calls == [("groups", ("map", "dead", 20))]
-    assert "count=5" in result.stdout
+    assert "count=5  latest=2026-08-30 05:00:00 AM CDT" in result.stdout
+    assert "latest=-" in result.stdout
     assert "MapParseError: layout changed" in result.stdout
     assert "(no error message)" in result.stdout
     assert (
@@ -765,6 +766,7 @@ def test_inspect_match_shows_state_and_relational_presence(monkeypatch) -> None:
             "state": {
                 "match_id": 101,
                 "status": "processed",
+                "last_processed_at": dt.datetime(2026, 8, 30, 10, 0, tzinfo=dt.UTC),
                 "failure_count": 0,
                 "last_error_message": None,
             },
@@ -782,6 +784,7 @@ def test_inspect_match_shows_state_and_relational_presence(monkeypatch) -> None:
     assert "processed" in result.stdout
     assert "last_error_message" in result.stdout
     assert "-" in result.stdout
+    assert "last_processed_at    2026-08-30 05:00:00 AM CDT" in result.stdout
     assert "matches row: present" in result.stdout
     assert "maps rows: 3" in result.stdout
     assert "202  failed" in result.stdout

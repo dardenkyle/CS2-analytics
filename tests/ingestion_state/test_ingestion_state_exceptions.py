@@ -126,8 +126,7 @@ def test_match_ingestion_state_marks_failures_with_lifecycle_fields(
     assert "last_failed_at" in cursor.execute_query
     assert "last_error_message" in cursor.execute_query
     assert "failure_count = COALESCE(failure_count, 0) + 1" in cursor.execute_query
-    assert cursor.execute_values is not None
-    assert cursor.execute_values[2:] == ("boom", 1)
+    assert cursor.execute_values == ("boom", 1)
 
 
 def test_match_ingestion_state_marks_dead_with_reason(
@@ -143,8 +142,7 @@ def test_match_ingestion_state_marks_dead_with_reason(
     assert "status = 'dead'" in cursor.execute_query
     assert "last_updated_at" in cursor.execute_query
     assert "last_error_message" in cursor.execute_query
-    assert cursor.execute_values is not None
-    assert cursor.execute_values[1:] == ("retries exhausted", 1)
+    assert cursor.execute_values == ("retries exhausted", 1)
 
 
 def test_match_ingestion_state_marks_partial(
@@ -160,8 +158,7 @@ def test_match_ingestion_state_marks_partial(
     assert "status = 'partial'" in cursor.execute_query
     assert "last_processed_at" in cursor.execute_query
     assert "last_updated_at" in cursor.execute_query
-    assert cursor.execute_values is not None
-    assert cursor.execute_values[2:] == (1,)
+    assert cursor.execute_values == (1,)
 
 
 def test_map_ingestion_state_records_parent_match_context(

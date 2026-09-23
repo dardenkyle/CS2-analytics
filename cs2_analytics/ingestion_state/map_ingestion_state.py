@@ -1,6 +1,5 @@
 """Map ingestion state manager."""
 
-import datetime as dt
 
 from cs2_analytics.exceptions import MapIngestionStateError
 from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
@@ -55,13 +54,12 @@ class MapIngestionState(BaseIngestionState[int]):
         and the caller owns commit/rollback (ADR-0013); otherwise the write
         runs in its own transaction as before.
         """
-        now = dt.datetime.now()
         query = """
         INSERT INTO map_ingestion_state (
             map_id, map_url, match_id, map_order, status, source, priority,
             first_seen_at, last_seen_at, last_updated_at
         )
-        VALUES (%s, %s, %s, %s, 'discovered', %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, 'discovered', %s, %s, now(), now(), now())
         ON CONFLICT (map_id) DO UPDATE
         SET map_url = EXCLUDED.map_url,
             match_id = COALESCE(EXCLUDED.match_id, map_ingestion_state.match_id),
@@ -81,9 +79,6 @@ class MapIngestionState(BaseIngestionState[int]):
             map_order,
             source,
             priority,
-            now,
-            now,
-            now,
         )
         try:
             if cur is not None:

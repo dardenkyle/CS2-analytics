@@ -66,6 +66,20 @@ The `cs2a` CLI entry point is intentionally thin and is not the primary architec
 - Structured data stays in relational tables
 - Raise typed storage/database exceptions instead of logging terminal errors
 
+## Timestamps
+
+- Store and compute in UTC. The source audit columns on `matches`,
+  `maps`, and `players` (#132) and the lifecycle columns on the three
+  ingestion-state tables (#213) are `TIMESTAMPTZ`; the parsers write
+  aware UTC and the ingestion-state writers let the database stamp rows
+  with `now()`, so no client clock or timezone reaches storage. Older
+  tables still declare plain `TIMESTAMP` columns and are converted as
+  they are touched
+- Never pass a Python `datetime.now()` as a lifecycle timestamp parameter
+- Convert only at the presentation layer: operator output goes through
+  `cs2_analytics.utils.time_format.format_local`, which renders
+  America/Chicago in 12-hour form. Queries, logs, and JSON stay in UTC
+
 ## Ingestion and Discovery State Tables
 
 - Stored in PostgreSQL

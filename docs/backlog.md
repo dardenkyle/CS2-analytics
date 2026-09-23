@@ -870,6 +870,30 @@ item track record.
       the refusal runs after the target print and before the prompt;
       `LOCAL_DB_HOSTS` now lives in the config package and is shared by
       the CLI guard and the test bootstrap; `db current` stays unguarded
+- [x] (#213) Ingestion-state timestamps: the six lifecycle columns on the
+      three state tables are `TIMESTAMPTZ`, stamped by the database's
+      `now()` instead of the writing machine's clock; migration
+      `20260923_0006` converts each historical value by the clock that
+      wrote it (UTC containers witnessed by the parser stamps, Central
+      otherwise); `demo_ingestion_state` gains `match_id` (migration
+      `20260923_0005`, backfilled from `matches.demo_links`) so demo rows
+      join their parent like map rows do; `cs2a failures` and `inspect` render local time through
+      one shared formatter, which the #209 ops page reuses
+- [ ] (#212) Initialize guard: `python -m cs2_analytics.storage.initialize_db`
+      and `manage_db.py` refuse a non-local host; the migration modes gain
+      the same `--allow-remote` override as `cs2a db`, and `--wipe` refuses
+      a non-local host with no override at all (follow-up from #200, which
+      left this second migration entry point unguarded)
+- [ ] (#214) Match date zone: the match parser derives `matches.date` in
+      the writing machine's timezone and drops the time of day; pin the
+      conversion to UTC like the map parser, keep the time, and correct
+      the 13 rows whose date disagrees with their first map's UTC time
+- [ ] (#215) Discovery date zone: the results scraper records
+      `match_date` from the page's date header, which the source renders
+      in the browser's timezone; pin the browser zone or use a per-match
+      attribute, then reconcile the 174 disagreeing rows against the
+      corrected `matches.date` (after #214; coordinate with #194's driver
+      changes)
 - [ ] (#207) Targeted reprocessing: `cs2a process --stage <one> --id N`
       processes a single pending match or map instead of the next rows
       in fetch order, closing the gap between `retry --id` and

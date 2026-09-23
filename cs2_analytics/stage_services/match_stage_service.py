@@ -85,4 +85,6 @@ class MatchStageService:
                 cur=cur,
             )
         for demo_id, demo_url in demo_links:
-            self.demo_state.queue(demo_id, demo_url, source="match_parser", cur=cur)
+            self.demo_state.queue(
+                demo_id, demo_url, source="match_parser", match_id=match_id, cur=cur
+            )

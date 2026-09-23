@@ -43,7 +43,7 @@ class MatchIngestionState(BaseIngestionState[int]):
             match_id, match_url, match_date, status, source, priority,
             first_seen_at, last_seen_at, last_updated_at
         )
-        VALUES (%s, %s, %s, 'discovered', %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, 'discovered', %s, %s, now(), now(), now())
         ON CONFLICT (match_id) DO UPDATE
         SET match_url = EXCLUDED.match_url,
             match_date = COALESCE(EXCLUDED.match_date,
@@ -57,15 +57,11 @@ class MatchIngestionState(BaseIngestionState[int]):
             last_updated_at = EXCLUDED.last_updated_at
         RETURNING (xmax = 0) AS inserted;
         """
-        now = dt.datetime.now()
         new_rows = 0
         try:
             with self.db.get_cursor() as cur:
                 for match_id, url, match_date in items:
-                    cur.execute(
-                        query,
-                        (match_id, url, match_date, source, priority, now, now, now),
-                    )
+                    cur.execute(query, (match_id, url, match_date, source, priority))
                     row = cur.fetchone()
                     if row is not None and row[0]:
                         new_rows += 1
@@ -101,15 +97,14 @@ class MatchIngestionState(BaseIngestionState[int]):
         when it was processed but not all of its maps reached a terminal
         state.
         """
-        now = dt.datetime.now()
         query = """
         UPDATE match_ingestion_state
-        SET status = 'partial', last_processed_at = %s, last_updated_at = %s
+        SET status = 'partial', last_processed_at = now(), last_updated_at = now()
         WHERE match_id = %s;
         """
         try:
             with self.db.get_cursor() as cur:
-                cur.execute(query, (now, now, id_value))
+                cur.execute(query, (id_value,))
         except Exception as e:
             raise self.error_cls(
                 "Failed to mark item as partial in match_ingestion_state."
