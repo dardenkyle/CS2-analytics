@@ -40,8 +40,6 @@ class FakeTransactionDb:
             raise DatabaseOperationError("Failed during database transaction.") from e
 
 
-LOCAL_DB_HOSTS = ("localhost", "127.0.0.1", "db")
-
 NO_TEST_DB_REASON = (
     "the local test database is not reachable (not running, or its credentials "
     "or database name differ from .env.test); start it with `docker compose "
@@ -64,13 +62,13 @@ def open_test_database():
     migration cannot reach anything but the disposable test database,
     and no manual migration command needs to exist for it.
     """
-    from cs2_analytics.config.config import DB_HOST
+    from cs2_analytics.config.config import DB_HOST, LOCAL_DB_HOSTS
     from cs2_analytics.exceptions import DatabaseConnectionError
     from cs2_analytics.storage.database import Database
 
     if DB_HOST not in LOCAL_DB_HOSTS:
         raise RuntimeError(
-            f"DB_HOST={DB_HOST!r} is not a local database host {LOCAL_DB_HOSTS};"
+            f"DB_HOST={DB_HOST!r} is not a local database host {sorted(LOCAL_DB_HOSTS)};"
             " refusing to open a test database connection."
         )
     try:

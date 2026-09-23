@@ -17,6 +17,7 @@ from .config import (
     DB_USER,
     DEBUG_MODE,
     ENVIRONMENT,
+    LOCAL_DB_HOSTS,
     LOG_LEVEL,
     SOURCE_URL,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "DB_PORT",
     "DB_USER",
     "ENVIRONMENT",
+    "LOCAL_DB_HOSTS",
     "LOG_LEVEL",
     "SOURCE_URL",
 ]

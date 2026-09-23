@@ -583,17 +583,48 @@ def _echo_target_database() -> None:
     typer.echo(f"Target database: {DB_NAME} on {DB_HOST}:{DB_PORT}")
 
 
+ALLOW_REMOTE_HELP = (
+    "Permit migrating a database host outside the local set. Without it, a "
+    "non-local host is refused before the confirmation prompt (#200)."
+)
+
+
+def _refuse_remote_host_unless_allowed(allow_remote: bool) -> None:
+    """Exit before prompting when the target host is non-local and not allowed.
+
+    The target print and the confirmation prompt were not enough on their
+    own: a scripted answer satisfies the prompt, and an exported variable
+    beats an env file, so a command meant for the local database can
+    reach the deployed one unread. The flag is a separate acknowledgement
+    that cannot be supplied by accident.
+    """
+    from cs2_analytics.config.config import DB_HOST, LOCAL_DB_HOSTS
+
+    if allow_remote or DB_HOST in LOCAL_DB_HOSTS:
+        return
+    typer.echo(
+        f"Refusing to migrate non-local database host {DB_HOST!r}. "
+        "Pass --allow-remote to migrate a deployed database.",
+        err=True,
+    )
+    raise typer.Exit(code=1)
+
+
 @db_app.command("upgrade")
 def db_upgrade(
     revision: Annotated[
         str,
         typer.Argument(help="Target revision to migrate up to."),
     ] = "head",
+    allow_remote: Annotated[
+        bool, typer.Option("--allow-remote", help=ALLOW_REMOTE_HELP)
+    ] = False,
 ) -> None:
     """Apply schema migrations up to the given revision, after confirming."""
     from alembic import command
 
     _echo_target_database()
+    _refuse_remote_host_unless_allowed(allow_remote)
     typer.confirm(f"Upgrade the database to revision '{revision}'?", abort=True)
     command.upgrade(_alembic_config(), revision)
 
@@ -604,11 +635,15 @@ def db_downgrade(
         str,
         typer.Argument(help="Revision to revert the schema down to."),
     ],
+    allow_remote: Annotated[
+        bool, typer.Option("--allow-remote", help=ALLOW_REMOTE_HELP)
+    ] = False,
 ) -> None:
     """Revert schema migrations down to the given revision, after confirming."""
     from alembic import command
 
     _echo_target_database()
+    _refuse_remote_host_unless_allowed(allow_remote)
     typer.confirm(f"Downgrade the database to revision '{revision}'?", abort=True)
     command.downgrade(_alembic_config(), revision)
 

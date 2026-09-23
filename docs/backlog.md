@@ -862,11 +862,14 @@ item track record.
       and remove the startup reset-all reconciliation (#141) that assumes
       a single process; `cs2a retry --status processing` releases only
       expired leases unless forced
-- [ ] (#200) Migration guard: `cs2a db upgrade` and `downgrade` refuse a
+- [x] (#200) Migration guard: `cs2a db upgrade` and `downgrade` refuse a
       non-local host unless `--allow-remote` is passed, so a deployed
       migration needs the production settings, the flag, and the
       confirmation prompt together (follow-up from #199, where an env
-      file lost to exported variables and the CLI targeted production)
+      file lost to exported variables and the CLI targeted production) -
+      the refusal runs after the target print and before the prompt;
+      `LOCAL_DB_HOSTS` now lives in the config package and is shared by
+      the CLI guard and the test bootstrap; `db current` stays unguarded
 - [ ] (#207) Targeted reprocessing: `cs2a process --stage <one> --id N`
       processes a single pending match or map instead of the next rows
       in fetch order, closing the gap between `retry --id` and
