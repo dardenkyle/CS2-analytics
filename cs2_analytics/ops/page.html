@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS2 Analytics ops</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --ink: #1c1f24;
+    --muted: #5f6673;
+    --line: #e1e4ea;
+    --accent: #2f5fd6;
+    --accent-ink: #ffffff;
+    --bad: #b42318;
+    --warn: #b54708;
+    --ok: #067647;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121417;
+      --panel: #1b1e23;
+      --ink: #e8eaee;
+      --muted: #9aa3b0;
+      --line: #2b3038;
+      --accent: #6b93f2;
+      --accent-ink: #0d1220;
+      --bad: #f2716a;
+      --warn: #f0a04b;
+      --ok: #4fc38a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+  header {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 20px;
+    margin-bottom: 20px;
+  }
+  header h1 { font-size: 20px; margin: 0; }
+  header .meta { color: var(--muted); font-variant-numeric: tabular-nums; }
+  header .meta code { font-family: var(--mono); font-size: 13px; }
+  header .spacer { flex: 1; }
+  button {
+    font: inherit; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  }
+  button[disabled] { opacity: .6; cursor: progress; }
+  .notice { color: var(--muted); margin: 0 0 16px; }
+  .notice.error { color: var(--bad); }
+  section { margin-bottom: 28px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+  .panel h3 { margin: 0 0 8px; font-size: 13px; font-family: var(--mono); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin-top: 10px; color: var(--muted); }
+  .kv b { color: var(--ink); font-weight: 500; }
+  .stats { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  .stat .value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 10px; color: var(--muted); }
+  .filters label { display: inline-flex; gap: 6px; align-items: center; }
+  .filters select { font: inherit; padding: 3px 6px; }
+  .failures-wrap { overflow: auto; max-height: 70vh; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+  .failures-wrap table { min-width: 900px; }
+  .failures-wrap th { position: sticky; top: 0; background: var(--panel); }
+  .failures-wrap th, .failures-wrap td { padding: 6px 10px; }
+  td.msg { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; max-width: 520px; }
+  td.mono { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  .status-failed { color: var(--bad); }
+  .status-dead { color: var(--muted); }
+  .status-partial { color: var(--warn); }
+  a { color: var(--accent); }
+  .empty { color: var(--muted); padding: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>CS2 Analytics ops</h1>
+    <span class="meta" id="captured">No snapshot loaded</span>
+    <span class="meta" id="target"></span>
+    <span class="spacer"></span>
+    <button id="refresh" type="button">Update</button>
+  </header>
+  <p class="notice" id="notice" hidden></p>
+
+  <section id="stages-section">
+    <h2>Ingestion tables</h2>
+    <div class="grid" id="stages"></div>
+  </section>
+
+  <section id="totals-section">
+    <h2>Ingested volume</h2>
+    <div class="stats" id="totals"></div>
+  </section>
+
+  <section id="failures-section">
+    <h2>Failed rows <span class="meta" id="failure-count"></span></h2>
+    <div class="filters">
+      <label>Stage
+        <select id="filter-stage">
+          <option value="">all</option>
+          <option value="match">match</option>
+          <option value="map">map</option>
+        </select>
+      </label>
+      <label><input type="checkbox" class="filter-status" value="failed" checked> failed</label>
+      <label><input type="checkbox" class="filter-status" value="dead" checked> dead</label>
+      <label><input type="checkbox" class="filter-status" value="partial" checked> partial</label>
+    </div>
+    <div class="failures-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Stage</th><th>Id</th><th>Parent match</th><th>Status</th>
+            <th class="num">Failures</th><th>Last failed</th><th>Error</th>
+          </tr>
+        </thead>
+        <tbody id="failures"></tbody>
+      </table>
+      <div class="empty" id="failures-empty" hidden>No rows match.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var snapshot = null;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function text(node, value) { node.textContent = value; }
+  function el(tag, cls, content) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (content !== undefined) { node.textContent = content; }
+    return node;
+  }
+  function notice(message, isError) {
+    var node = $("notice");
+    node.hidden = !message;
+    node.textContent = message || "";
+    node.className = "notice" + (isError ? " error" : "");
+  }
+  function fmt(n) { return Number(n).toLocaleString("en-US"); }
+
+  function renderHeader() {
+    text($("captured"), "Captured " + snapshot.captured_at);
+    var target = $("target");
+    target.textContent = "";
+    target.appendChild(document.createTextNode("Database "));
+    target.appendChild(el("code", null, snapshot.database.name + " on " + snapshot.database.host));
+  }
+
+  function renderStages() {
+    var host = $("stages");
+    host.textContent = "";
+    Object.keys(snapshot.stages).forEach(function (table) {
+      var stage = snapshot.stages[table];
+      var panel = el("div", "panel");
+      panel.appendChild(el("h3", null, table));
+      var tbl = el("table");
+      var body = el("tbody");
+      var statuses = Object.keys(stage.counts);
+      if (!statuses.length) {
+        var tr0 = el("tr"); tr0.appendChild(el("td", null, "(no rows)")); body.appendChild(tr0);
+      }
+      statuses.forEach(function (status) {
+        var tr = el("tr");
+        tr.appendChild(el("td", null, status));
+        tr.appendChild(el("td", "num", fmt(stage.counts[status])));
+        body.appendChild(tr);
+      });
+      tbl.appendChild(body);
+      panel.appendChild(tbl);
+      var kv = el("div", "kv");
+      kv.appendChild(el("span", null, "Last activity"));
+      kv.appendChild(el("b", null, stage.last_activity_at));
+      kv.appendChild(el("span", null, "Oldest pending"));
+      kv.appendChild(el("b", null, stage.oldest_pending_first_seen_at));
+      panel.appendChild(kv);
+      host.appendChild(panel);
+    });
+  }
+
+  function renderTotals() {
+    var host = $("totals");
+    host.textContent = "";
+    Object.keys(snapshot.totals).forEach(function (table) {
+      var stat = el("div", "panel stat");
+      stat.appendChild(el("div", "label", table));
+      stat.appendChild(el("div", "value", fmt(snapshot.totals[table])));
+      host.appendChild(stat);
+    });
+  }
+
+  function activeStatuses() {
+    return Array.prototype.filter.call(document.querySelectorAll(".filter-status"), function (box) {
+      return box.checked;
+    }).map(function (box) { return box.value; });
+  }
+
+  function renderFailures() {
+    var body = $("failures");
+    body.textContent = "";
+    var stageFilter = $("filter-stage").value;
+    var statuses = activeStatuses();
+    var rows = snapshot.failures.filter(function (row) {
+      return (!stageFilter || row.stage === stageFilter) && statuses.indexOf(row.status) !== -1;
+    });
+    text($("failure-count"), rows.length + " of " + snapshot.failures.length);
+    $("failures-empty").hidden = rows.length > 0;
+    rows.forEach(function (row) {
+      var tr = el("tr");
+      tr.appendChild(el("td", null, row.stage));
+      var idCell = el("td", "mono");
+      var link = el("a", null, String(row.id));
+      link.href = row.url; link.target = "_blank"; link.rel = "noopener noreferrer";
+      idCell.appendChild(link);
+      tr.appendChild(idCell);
+      tr.appendChild(el("td", "mono", row.match_id === null ? "-" : String(row.match_id)));
+      tr.appendChild(el("td", "status-" + row.status, row.status));
+      tr.appendChild(el("td", "num", fmt(row.failure_count)));
+      tr.appendChild(el("td", "mono", row.last_failed_at));
+      tr.appendChild(el("td", "msg", row.last_error_message || "(no error message)"));
+      body.appendChild(tr);
+    });
+  }
+
+  function render() {
+    renderHeader();
+    renderStages();
+    renderTotals();
+    renderFailures();
+  }
+
+  function load(method, url) {
+    return fetch(url, { method: method }).then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok) { throw new Error(data.detail || ("HTTP " + response.status)); }
+        return data;
+      });
+    });
+  }
+
+  $("refresh").addEventListener("click", function () {
+    var button = $("refresh");
+    button.disabled = true;
+    notice("Querying the database...");
+    load("POST", "/ops/refresh").then(function (data) {
+      snapshot = data; render(); notice("");
+    }).catch(function (err) {
+      notice("Update failed: " + err.message, true);
+    }).then(function () { button.disabled = false; });
+  });
+  $("filter-stage").addEventListener("change", function () { if (snapshot) { renderFailures(); } });
+  Array.prototype.forEach.call(document.querySelectorAll(".filter-status"), function (box) {
+    box.addEventListener("change", function () { if (snapshot) { renderFailures(); } });
+  });
+
+  load("GET", "/ops/snapshot").then(function (data) {
+    snapshot = data; render();
+  }).catch(function (err) {
+    notice(err.message, false);
+  });
+})();
+</script>
+</body>
+</html>

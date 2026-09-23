@@ -57,6 +57,7 @@ dev = [
     {include-group = "dbt"},
 ]
 test = [
+    "httpx2>=2.13.1",
     "pytest>=9.0.0",
     "pytest-cov",
 ]
@@ -72,7 +73,12 @@ include = ["cs2_analytics*", "api*"]
 exclude = ["tests*"]
 
 [tool.setuptools.package-data]
-cs2_analytics = ["storage/schema.sql", "alembic.ini", "alembic/script.py.mako"]
+cs2_analytics = [
+    "storage/schema.sql",
+    "alembic.ini",
+    "alembic/script.py.mako",
+    "ops/page.html",
+]
 
 # MyPy Configuration
 [tool.mypy]

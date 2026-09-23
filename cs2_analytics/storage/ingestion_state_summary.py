@@ -62,6 +62,111 @@ def fetch_failure_rows(
     return rows
 
 
+# Failure rows with their source link and parent, for the ops page (#209).
+# Match rows have no parent, so the parent column is a typed NULL to keep
+# both stages' rows the same shape.
+FAILURE_DETAIL_TABLES = {
+    "match": ("match_ingestion_state", "match_id", "match_url", "NULL::int"),
+    "map": ("map_ingestion_state", "map_id", "map_url", "match_id"),
+}
+
+FAILURE_DETAIL_QUERY = """
+    SELECT {id_column}, {url_column}, {parent_column}, status, failure_count,
+           last_failed_at, last_error_message
+    FROM {table}
+    WHERE status = ANY(%s)
+    ORDER BY last_failed_at DESC NULLS LAST, {id_column};
+"""
+
+
+class FailureDetail(TypedDict):
+    """One failed, dead, or partial row with enough context to open it."""
+
+    stage: str
+    id: int
+    url: str
+    match_id: int | None
+    status: str
+    failure_count: int
+    last_failed_at: dt.datetime | None
+    last_error_message: str | None
+
+
+def fetch_failure_details(statuses: tuple[str, ...]) -> list[FailureDetail]:
+    """Return every match and map row in the given statuses, newest failure first.
+
+    Unlike fetch_failure_rows this has no row cap and carries the source
+    URL and, for maps, the parent match id, so an operator can go from a
+    failure straight to the page that produced it. Rows from both stages
+    are merged and ordered by last_failed_at descending, rows without a
+    failure timestamp last.
+    """
+    details: list[FailureDetail] = []
+    with get_db().get_cursor() as cur:
+        for stage, (table, id_column, url_column, parent_column) in (
+            FAILURE_DETAIL_TABLES.items()
+        ):
+            cur.execute(
+                FAILURE_DETAIL_QUERY.format(
+                    table=table,
+                    id_column=id_column,
+                    url_column=url_column,
+                    parent_column=parent_column,
+                ),
+                (list(statuses),),
+            )
+            for row in cur.fetchall():
+                details.append(
+                    {
+                        "stage": stage,
+                        "id": row[0],
+                        "url": row[1],
+                        "match_id": row[2],
+                        "status": row[3],
+                        "failure_count": row[4] or 0,
+                        "last_failed_at": row[5],
+                        "last_error_message": row[6],
+                    }
+                )
+    details.sort(
+        key=lambda d: (
+            d["last_failed_at"] is None,
+            -(d["last_failed_at"].timestamp() if d["last_failed_at"] else 0),
+            d["stage"],
+            d["id"],
+        )
+    )
+    return details
+
+
+ACTIVITY_SUMMARY_QUERY = """
+    SELECT MAX(last_updated_at),
+           MIN(first_seen_at) FILTER (WHERE status = 'discovered')
+    FROM {table};
+"""
+
+
+class ActivitySummary(TypedDict):
+    """Latest write and oldest still-pending discovery for one state table."""
+
+    last_activity_at: dt.datetime | None
+    oldest_pending_first_seen_at: dt.datetime | None
+
+
+def fetch_activity_summary() -> dict[str, ActivitySummary]:
+    """Return, per ingestion-state table, the latest write and the oldest pending row."""
+    summary: dict[str, ActivitySummary] = {}
+    with get_db().get_cursor() as cur:
+        for table in INGESTION_STATE_TABLES:
+            cur.execute(ACTIVITY_SUMMARY_QUERY.format(table=table))
+            latest, oldest_pending = cur.fetchone()
+            summary[table] = {
+                "last_activity_at": latest,
+                "oldest_pending_first_seen_at": oldest_pending,
+            }
+    return summary
+
+
 def fetch_failure_groups(
     stage: str, status: str, limit: int
 ) -> list[tuple[str | None, int, dt.datetime | None]]:

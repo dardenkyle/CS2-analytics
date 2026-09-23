@@ -38,6 +38,8 @@ logs/*
 # Downloaded files & data
 demos/
 downloaded_files/
+# Local ops page snapshots (cs2a ops)
+ops_snapshots/
 parsed_data/
 
 # OS
