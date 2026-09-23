@@ -181,16 +181,14 @@ Run the non-destructive migration path:
 python manage_db.py --init
 ```
 
-Running `python manage_db.py` with no flags also applies migrations. Deployed
-environments should run the equivalent Alembic command during release startup:
+Running `python manage_db.py` with no flags also applies migrations. Both
+forms are for a local database: they print no target and ask no
+confirmation, and neither is covered by the remote-host guard below.
 
-```sh
-alembic -c cs2_analytics/alembic.ini upgrade head
-```
-
-Day-to-day migration operations are also exposed through the CLI. Each
-command first prints the target database (name, host, and port) so it is
-obvious whether the environment points at a local or production database:
+Deployed environments are migrated through the CLI, which is the only
+guarded migration path. Each command first prints the target database
+(name, host, and port) so it is obvious whether the environment points at a
+local or production database:
 
 ```sh
 cs2a db current                  # show the database's current revision
@@ -204,7 +202,10 @@ the same environment-driven connection settings. `upgrade` and `downgrade`
 refuse a host outside the local set (`localhost`, `127.0.0.1`, `db`) unless
 `--allow-remote` is passed, and they do so before the confirmation prompt, so
 a deployed migration needs the deployed settings, the flag, and the prompt
-together. `current` is read-only and never needs the flag.
+together. `current` is read-only and never needs the flag. Running
+`alembic -c cs2_analytics/alembic.ini upgrade head` directly, or
+`manage_db.py`, bypasses this guard entirely; reserve those for a local
+database.
 
 For an existing database that was already initialized from the current
 `schema.sql`, first confirm the live schema matches the initial Alembic

@@ -333,24 +333,23 @@ For the first cloud deploy, migrations are a manual release step:
 1. Confirm the target database is the intended Render PostgreSQL instance.
 2. Confirm or create a Render PostgreSQL recovery point where the database plan
    supports it, or take an exported logical backup before continuing.
-3. Apply migrations from a controlled local environment:
-
-   ```sh
-   alembic -c cs2_analytics/alembic.ini upgrade head
-   ```
-
-   Or through the CLI, which prints the target and asks for confirmation.
-   Against a non-local host it refuses without `--allow-remote`, so the
-   flag is required here:
+3. Apply migrations from a controlled local environment through the CLI,
+   which prints the target, refuses a non-local host unless
+   `--allow-remote` is passed, and then asks for confirmation:
 
    ```sh
    cs2a db upgrade --allow-remote
    ```
 
+   Do not substitute `alembic -c cs2_analytics/alembic.ini upgrade head` or
+   `python manage_db.py --init` here. Both reach the same database with the
+   same settings but bypass the host guard and the prompt, so they are
+   outside the protected release procedure.
+
 4. Confirm the database revision is current:
 
    ```sh
-   alembic -c cs2_analytics/alembic.ini current
+   cs2a db current
    ```
 
 5. Deploy or restart the Render API service.
