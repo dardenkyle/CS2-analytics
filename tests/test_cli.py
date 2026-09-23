@@ -625,6 +625,19 @@ def test_ops_refuses_non_loopback_host(monkeypatch) -> None:
     assert calls == []
 
 
+def test_ops_brackets_an_ipv6_loopback_in_the_printed_url(monkeypatch) -> None:
+    import uvicorn
+
+    calls: list[dict] = []
+    monkeypatch.setattr(uvicorn, "run", lambda app_obj, **kw: calls.append(kw))
+
+    result = runner.invoke(app, ["ops", "--host", "::1"])
+
+    assert result.exit_code == 0
+    assert "http://[::1]:8765/" in result.stdout
+    assert calls[0]["host"] == "::1"
+
+
 def test_ops_serves_on_loopback_with_the_given_port(monkeypatch) -> None:
     import uvicorn
 

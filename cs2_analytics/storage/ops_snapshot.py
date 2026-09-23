@@ -13,6 +13,8 @@ CLI exactly; `captured_at_utc` is the one machine-readable instant.
 
 import datetime as dt
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import TypedDict
 
@@ -26,8 +28,11 @@ from cs2_analytics.storage.ingestion_state_summary import (
 from cs2_analytics.utils.time_format import format_local
 
 SNAPSHOT_SCHEMA_VERSION = 1
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SNAPSHOT_PATH = PROJECT_ROOT / "ops_snapshots" / "latest.json"
+# Relative to the invocation directory, not the package: from the repo
+# root that is the gitignored ops_snapshots/, and from anywhere else it
+# is still a writable location (a wheel's site-packages may not be).
+SNAPSHOT_DIRNAME = "ops_snapshots"
+DEFAULT_SNAPSHOT_PATH = Path(SNAPSHOT_DIRNAME) / "latest.json"
 
 # Stages shown on the page; the demo stage is not processed yet (#209).
 PAGE_STAGE_TABLES = ("match_ingestion_state", "map_ingestion_state")
@@ -117,9 +122,24 @@ def build_snapshot() -> Snapshot:
 
 
 def save_snapshot(snapshot: Snapshot, path: Path = DEFAULT_SNAPSHOT_PATH) -> Path:
-    """Write the snapshot as JSON, creating the directory if needed."""
+    """Write the snapshot as JSON, atomically, creating the directory if needed.
+
+    The page can be loading the file while a refresh rewrites it, so the
+    JSON goes to a temporary file in the same directory and replaces the
+    target in one step: readers see the previous or the complete snapshot,
+    never a truncated one.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
+    fd, temp_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(snapshot, handle, indent=2)
+        os.replace(temp_name, path)
+    except BaseException:
+        Path(temp_name).unlink(missing_ok=True)
+        raise
     return path
 
 

@@ -98,6 +98,15 @@ def test_build_snapshot_renders_timestamps_and_shapes_sections(monkeypatch) -> N
     json.dumps(snapshot)  # everything is JSON-serialisable
 
 
+def test_save_replaces_atomically_and_leaves_no_temp_file(tmp_path) -> None:
+    path = tmp_path / "latest.json"
+    snapshot_module.save_snapshot({"schema_version": 1, "failures": []}, path)  # type: ignore[arg-type]
+    snapshot_module.save_snapshot({"schema_version": 2, "failures": []}, path)  # type: ignore[arg-type]
+
+    assert snapshot_module.load_snapshot(path) == {"schema_version": 2, "failures": []}
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["latest.json"]
+
+
 def test_save_and_load_round_trip(tmp_path) -> None:
     path = tmp_path / "nested" / "latest.json"
     snapshot = {"schema_version": 1, "captured_at": "x", "failures": []}
@@ -112,11 +121,22 @@ def test_save_and_load_round_trip(tmp_path) -> None:
 # --- queries against the local test database ------------------------------
 
 
+PARENT_MATCH_ID = 7009
+
+
 @pytest.fixture()
 def seeded_failures(test_database):
     """One failed match, one dead map with a parent, one processed match."""
     with test_database.get_cursor() as cur:
         cur.execute("TRUNCATE match_ingestion_state, map_ingestion_state;")
+        cur.execute(
+            """
+            INSERT INTO matches (match_id, match_url, team1, team2, winner, date)
+            VALUES (%s, %s, 'team_a', 'team_b', 'team_a', '2026-01-01')
+            ON CONFLICT (match_id) DO NOTHING;
+            """,
+            (PARENT_MATCH_ID, f"https://example.test/m/{PARENT_MATCH_ID}"),
+        )
         cur.execute(
             """
             INSERT INTO match_ingestion_state
@@ -138,14 +158,16 @@ def seeded_failures(test_database):
                 (map_id, map_url, match_id, status, failure_count, last_failed_at,
                  last_error_message, first_seen_at, last_updated_at)
             VALUES
-                (8001, 'https://example.test/p/8001', NULL, 'dead', 3,
+                (8001, 'https://example.test/p/8001', %s, 'dead', 3,
                  '2026-09-21 11:00:00+00', 'gone', '2026-09-19 09:30:00+00',
                  '2026-09-21 11:00:00+00');
-            """
+            """,
+            (PARENT_MATCH_ID,),
         )
     yield test_database
     with test_database.get_cursor() as cur:
         cur.execute("TRUNCATE match_ingestion_state, map_ingestion_state;")
+        cur.execute("DELETE FROM matches WHERE match_id = %s;", (PARENT_MATCH_ID,))
 
 
 def test_fetch_failure_details_merges_stages_newest_first(seeded_failures) -> None:
@@ -154,6 +176,7 @@ def test_fetch_failure_details_merges_stages_newest_first(seeded_failures) -> No
     assert [(r["stage"], r["id"]) for r in rows] == [("map", 8001), ("match", 7001)]
     assert rows[0]["url"] == "https://example.test/p/8001"
     assert rows[0]["failure_count"] == 3
+    assert rows[0]["match_id"] == PARENT_MATCH_ID
     assert rows[1]["match_id"] is None
     assert rows[1]["last_error_message"] == "boom"
     assert rows[1]["last_failed_at"].tzinfo is not None

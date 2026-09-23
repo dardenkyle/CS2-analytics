@@ -722,5 +722,8 @@ def ops(
     from cs2_analytics.ops.app import create_ops_app
 
     _echo_target_database()
-    typer.echo(f"Serving the ops page at http://{host}:{port}/ (Ctrl+C to stop)")
+    display_host = f"[{host}]" if ":" in host else host
+    typer.echo(
+        f"Serving the ops page at http://{display_host}:{port}/ (Ctrl+C to stop)"
+    )
     uvicorn.run(create_ops_app(), host=host, port=port, log_level="warning")

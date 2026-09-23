@@ -348,8 +348,8 @@ how coverage extends to the full CS2 era without code changes.
 activity per table, raw-table row totals, and every failed, dead, or
 partial match and map row with its full error message and a link to the
 source page, filterable by stage and status. The page opens from the
-last saved snapshot in the gitignored `ops_snapshots/` directory without
-querying the database; the update button re-queries and saves a new
+last saved snapshot in `ops_snapshots/` under the current directory
+(gitignored at the repo root) without querying the database; the update button re-queries and saves a new
 snapshot. Timestamps are rendered in Central time, matching the CLI.
 Read-only: it has no retry or requeue actions.
 
