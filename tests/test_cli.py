@@ -638,6 +638,24 @@ def test_ops_brackets_an_ipv6_loopback_in_the_printed_url(monkeypatch) -> None:
     assert calls[0]["host"] == "::1"
 
 
+def test_ops_passes_the_lifetime_floor_to_the_app(monkeypatch) -> None:
+    import uvicorn
+
+    import cs2_analytics.ops.app as ops_app_module
+
+    floors: list[dt.date] = []
+    monkeypatch.setattr(uvicorn, "run", lambda app_obj, **kw: None)
+    monkeypatch.setattr(
+        ops_app_module, "create_ops_app", lambda *a, lifetime_floor, **kw: floors.append(lifetime_floor)
+    )
+
+    default = runner.invoke(app, ["ops"])
+    explicit = runner.invoke(app, ["ops", "--since", "2023-09-27"])
+
+    assert default.exit_code == 0 and explicit.exit_code == 0
+    assert floors == [dt.date(2025, 10, 1), dt.date(2023, 9, 27)]
+
+
 def test_ops_serves_on_loopback_with_the_given_port(monkeypatch) -> None:
     import uvicorn
 

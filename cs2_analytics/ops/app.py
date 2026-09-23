@@ -6,6 +6,7 @@ no build step, rendered from the saved snapshot so opening it costs no
 database query; the update button rebuilds and saves a new one.
 """
 
+import datetime as dt
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -22,8 +23,16 @@ from cs2_analytics.storage.ops_snapshot import (
 PAGE_PATH = Path(__file__).with_name("page.html")
 
 
-def create_ops_app(snapshot_path: Path = DEFAULT_SNAPSHOT_PATH) -> FastAPI:
-    """Create the ops app reading and writing the given snapshot file."""
+def create_ops_app(
+    snapshot_path: Path = DEFAULT_SNAPSHOT_PATH,
+    *,
+    lifetime_floor: dt.date,
+) -> FastAPI:
+    """Create the ops app reading and writing the given snapshot file.
+
+    lifetime_floor is the discovery window floor for the lifetime
+    coverage panel, the same value `cs2a ingest coverage --since` takes.
+    """
     app = FastAPI(title="CS2 Analytics ops", docs_url=None, redoc_url=None)
     page_html = PAGE_PATH.read_text(encoding="utf-8")
 
@@ -37,14 +46,16 @@ def create_ops_app(snapshot_path: Path = DEFAULT_SNAPSHOT_PATH) -> FastAPI:
         if saved is None:
             return JSONResponse(
                 status_code=404,
-                content={"detail": "No snapshot captured yet; use the update button."},
+                content={
+                    "detail": "No snapshot from this page version yet; use the update button."
+                },
             )
         return JSONResponse(content=saved)
 
     @app.post("/ops/refresh")
     def refresh() -> JSONResponse:
         try:
-            fresh = build_snapshot()
+            fresh = build_snapshot(lifetime_floor)
         except DatabaseConnectionError as e:
             return JSONResponse(
                 status_code=503, content={"detail": f"Database unavailable: {e}"}

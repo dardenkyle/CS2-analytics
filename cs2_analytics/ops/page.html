@@ -7,6 +7,7 @@
 <link rel="icon" href="data:,">
 <style>
   :root {
+    color-scheme: light;
     --bg: #f6f7f9;
     --panel: #ffffff;
     --ink: #1c1f24;
@@ -18,9 +19,21 @@
     --warn: #b54708;
     --ok: #067647;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    /* Chart roles: categorical slots 1 and 2, validated on the panel surface. */
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --grid: #e1e4ea;
+    --axis: #c3c2b7;
+    /* Sequential blue, light to dark, for the per-week coverage strips. */
+    --seq-1: #86b6ef;
+    --seq-2: #5598e7;
+    --seq-3: #2a78d6;
+    --seq-4: #1c5cab;
+    --seq-5: #104281;
   }
   @media (prefers-color-scheme: dark) {
     :root {
+      color-scheme: dark;
       --bg: #121417;
       --panel: #1b1e23;
       --ink: #e8eaee;
@@ -31,6 +44,16 @@
       --bad: #f2716a;
       --warn: #f0a04b;
       --ok: #4fc38a;
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --grid: #2b3038;
+      --axis: #383835;
+      /* On the dark surface more is lighter, so the ramp anchor flips. */
+      --seq-1: #184f95;
+      --seq-2: #256abf;
+      --seq-3: #3987e5;
+      --seq-4: #6da7ec;
+      --seq-5: #9ec5f4;
     }
   }
   * { box-sizing: border-box; }
@@ -54,11 +77,16 @@
     border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
   }
   button[disabled] { opacity: .6; cursor: progress; }
+  button.linklike {
+    background: none; border: 0; padding: 0; color: var(--accent); font-size: 12px;
+    text-decoration: underline; cursor: pointer;
+  }
   .notice { color: var(--muted); margin: 0 0 16px; }
   .notice.error { color: var(--bad); }
   section { margin-bottom: 28px; }
   h2 { font-size: 15px; margin: 0 0 10px; }
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .grid.wide { grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
   .panel h3 { margin: 0 0 8px; font-size: 13px; font-family: var(--mono); font-weight: 600; }
   table { width: 100%; border-collapse: collapse; }
@@ -68,9 +96,9 @@
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin-top: 10px; color: var(--muted); }
   .kv b { color: var(--ink); font-weight: 500; }
-  .stats { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .stats { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 16px; }
   .stat .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
-  .stat .value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .stat .value { font-size: 28px; font-weight: 600; margin-top: 2px; }
   .filters { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 10px; color: var(--muted); }
   .filters label { display: inline-flex; gap: 6px; align-items: center; }
   .filters select { font: inherit; padding: 3px 6px; }
@@ -85,6 +113,63 @@
   .status-partial { color: var(--warn); }
   a { color: var(--accent); }
   .empty { color: var(--muted); padding: 12px; }
+
+  /* Charts */
+  figure.chart { margin: 0; }
+  figure.chart figcaption { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  figure.chart .chart-title { font-weight: 600; font-size: 13px; }
+  figure.chart .chart-sub { color: var(--muted); font-size: 12px; }
+  figure.chart .chart-spacer { flex: 1; }
+  .legend { display: flex; gap: 16px; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .swatch.s1 { background: var(--series-1); }
+  .swatch.s2 { background: var(--series-2); }
+  .plot { position: relative; width: 100%; min-width: 0; }
+  .plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .plot .gridline { stroke: var(--grid); stroke-width: 1; }
+  .plot .baseline { stroke: var(--axis); stroke-width: 1; }
+  .plot .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .plot .bar.s1 { fill: var(--series-1); }
+  .plot .bar.s2 { fill: var(--series-2); }
+  .plot .band.hover .bar { opacity: .72; }
+  .plot .hit { fill: transparent; cursor: default; outline: none; }
+  .plot .hit:focus-visible + .bars .bar { opacity: .72; }
+  .plot .empty-note { fill: var(--muted); font-size: 12px; }
+  .chart-table { margin-top: 8px; font-size: 12px; }
+  .chart-table th, .chart-table td { padding: 3px 8px 3px 0; }
+  .chart-table-wrap { max-height: 260px; overflow: auto; }
+
+  /* Coverage */
+  .coverage-panel .range { color: var(--muted); font-family: var(--mono); font-size: 12px; margin: -4px 0 8px; }
+  .coverage-panel .kv { margin-top: 6px; }
+  .coverage-panel .gaps { margin: 8px 0 0; padding: 0; list-style: none; font-family: var(--mono); font-size: 12px; }
+  .coverage-panel .gaps li { display: flex; gap: 10px; padding: 2px 0; }
+  .coverage-panel .gaps .gap-label { color: var(--muted); font-family: system-ui, sans-serif; }
+  .coverage-panel .gaps .gap-label.unswept { color: var(--warn); }
+  .strip { display: flex; gap: 1px; margin-top: 10px; height: 16px; }
+  .strip .cell { flex: 1 1 0; min-width: 0; border-radius: 2px; background: var(--seq-3); outline: none; }
+  .strip .cell.zero { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+  .strip .cell.q1 { background: var(--seq-1); }
+  .strip .cell.q2 { background: var(--seq-2); }
+  .strip .cell.q3 { background: var(--seq-3); }
+  .strip .cell.q4 { background: var(--seq-4); }
+  .strip .cell.q5 { background: var(--seq-5); }
+  .strip .cell.hover, .strip .cell:focus-visible { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--ink); }
+  .strip-axis { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; font-family: var(--mono); margin-top: 4px; }
+
+  /* Tooltip shared by charts and strips */
+  .tooltip {
+    position: fixed; z-index: 10; pointer-events: none;
+    background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    min-width: 150px;
+  }
+  .tooltip .tt-title { color: var(--muted); margin-bottom: 4px; }
+  .tooltip .tt-row { display: flex; align-items: center; gap: 8px; }
+  .tooltip .tt-row b { font-variant-numeric: tabular-nums; margin-left: auto; }
+  .tooltip .tt-key { display: inline-block; width: 12px; height: 2px; border-radius: 1px; }
+  .tooltip .tt-key.s1 { background: var(--series-1); }
+  .tooltip .tt-key.s2 { background: var(--series-2); }
 </style>
 </head>
 <body>
@@ -106,6 +191,35 @@
   <section id="totals-section">
     <h2>Ingested volume</h2>
     <div class="stats" id="totals"></div>
+    <div class="grid wide">
+      <figure class="panel chart" id="chart-monthly" data-period="month">
+        <figcaption>
+          <span class="chart-title">Matches and maps by month</span>
+          <span class="chart-sub">by match date</span>
+          <span class="chart-spacer"></span>
+          <button class="linklike table-toggle" type="button">Table</button>
+        </figcaption>
+        <div class="legend"><span><i class="swatch s1"></i>matches</span><span><i class="swatch s2"></i>maps</span></div>
+        <div class="plot"></div>
+        <div class="chart-table-wrap" hidden><table class="chart-table"></table></div>
+      </figure>
+      <figure class="panel chart" id="chart-weekly" data-period="week">
+        <figcaption>
+          <span class="chart-title">Rows processed per week</span>
+          <span class="chart-sub">by processing time, weeks from Monday</span>
+          <span class="chart-spacer"></span>
+          <button class="linklike table-toggle" type="button">Table</button>
+        </figcaption>
+        <div class="legend"><span><i class="swatch s1"></i>match rows</span><span><i class="swatch s2"></i>map rows</span></div>
+        <div class="plot"></div>
+        <div class="chart-table-wrap" hidden><table class="chart-table"></table></div>
+      </figure>
+    </div>
+  </section>
+
+  <section id="coverage-section">
+    <h2>Discovery coverage</h2>
+    <div class="grid wide" id="coverage"></div>
   </section>
 
   <section id="failures-section">
@@ -136,18 +250,26 @@
     </div>
   </section>
 </main>
+<div class="tooltip" id="tooltip" hidden></div>
 
 <script>
 (function () {
   "use strict";
   var snapshot = null;
   var $ = function (id) { return document.getElementById(id); };
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   function text(node, value) { node.textContent = value; }
   function el(tag, cls, content) {
     var node = document.createElement(tag);
     if (cls) { node.className = cls; }
     if (content !== undefined) { node.textContent = content; }
+    return node;
+  }
+  function svgEl(tag, attrs) {
+    var node = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs || {}).forEach(function (k) { node.setAttribute(k, attrs[k]); });
     return node;
   }
   function notice(message, isError) {
@@ -157,7 +279,56 @@
     node.className = "notice" + (isError ? " error" : "");
   }
   function fmt(n) { return Number(n).toLocaleString("en-US"); }
+  function parseDate(iso) {
+    var p = iso.split("-");
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+  function monthLabel(iso, showYear) {
+    var d = parseDate(iso);
+    return MONTHS[d.getMonth()] + (showYear ? " " + d.getFullYear() : "");
+  }
+  function weekLabel(iso, showYear) {
+    var d = parseDate(iso);
+    return MONTHS[d.getMonth()] + " " + d.getDate() + (showYear ? ", " + d.getFullYear() : "");
+  }
+  function niceTicks(max, count) {
+    if (max <= 0) { return [0]; }
+    var rough = max / count;
+    var mag = Math.pow(10, Math.floor(Math.log10(rough)));
+    var norm = rough / mag;
+    var step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+    var ticks = [];
+    for (var v = 0; v <= max + step * 0.999; v += step) { ticks.push(Math.round(v)); }
+    return ticks;
+  }
 
+  /* ---- tooltip --------------------------------------------------------- */
+  var tooltip = $("tooltip");
+  function showTooltip(x, y, title, rows) {
+    tooltip.textContent = "";
+    tooltip.appendChild(el("div", "tt-title", title));
+    rows.forEach(function (r) {
+      var row = el("div", "tt-row");
+      if (r.key) { row.appendChild(el("span", "tt-key " + r.key)); }
+      row.appendChild(el("span", null, r.label));
+      row.appendChild(el("b", null, r.value));
+      tooltip.appendChild(row);
+    });
+    tooltip.hidden = false;
+    var w = tooltip.offsetWidth, h = tooltip.offsetHeight;
+    var left = x + 14, top = y + 14;
+    if (left + w > window.innerWidth - 8) { left = x - w - 14; }
+    if (top + h > window.innerHeight - 8) { top = y - h - 14; }
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  }
+  function hideTooltip() { tooltip.hidden = true; }
+  function centerOf(node) {
+    var r = node.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top };
+  }
+
+  /* ---- header, stages, totals ------------------------------------------ */
   function renderHeader() {
     text($("captured"), "Captured " + snapshot.captured_at);
     var target = $("target");
@@ -208,6 +379,197 @@
     });
   }
 
+  /* ---- grouped column charts ------------------------------------------- */
+  var SERIES = [{ key: "matches", cls: "s1" }, { key: "maps", cls: "s2" }];
+
+  function renderColumnChart(figure, points, labelFn, seriesLabels) {
+    var plot = figure.querySelector(".plot");
+    plot.textContent = "";
+    var width = Math.max(plot.clientWidth || 0, 320);
+    var plotH = 200, top = 8, right = 8, bottom = 26, left = 48;
+    var height = plotH + top + bottom;
+    var svg = svgEl("svg", { viewBox: "0 0 " + width + " " + height, width: width, height: height, role: "img" });
+    var title = figure.querySelector(".chart-title").textContent;
+    svg.setAttribute("aria-label", title);
+    plot.appendChild(svg);
+    if (!points.length) {
+      svg.appendChild(svgEl("line", { x1: left, x2: width - right, y1: top + plotH, y2: top + plotH, class: "baseline" }));
+      var note = svgEl("text", { x: left + 8, y: top + plotH / 2, class: "empty-note" });
+      note.textContent = "No data yet";
+      svg.appendChild(note);
+      return;
+    }
+    var max = 0;
+    points.forEach(function (p) { SERIES.forEach(function (s) { max = Math.max(max, p[s.key]); }); });
+    var ticks = niceTicks(max, 4);
+    var yMax = ticks[ticks.length - 1] || 1;
+    var innerW = width - left - right;
+    var band = innerW / points.length;
+    var gap = 2;
+    var barW = Math.min(24, Math.max(1, Math.floor((band - 3 * gap) / 2)));
+    var groupW = barW * 2 + gap;
+    var y = function (v) { return top + plotH - (v / yMax) * plotH; };
+
+    ticks.forEach(function (t) {
+      var yy = y(t);
+      svg.appendChild(svgEl("line", { x1: left, x2: width - right, y1: yy, y2: yy, class: t === 0 ? "baseline" : "gridline" }));
+      var label = svgEl("text", { x: left - 8, y: yy + 4, "text-anchor": "end", class: "tick" });
+      label.textContent = fmt(t);
+      svg.appendChild(label);
+    });
+
+    var labelEvery = Math.max(1, Math.ceil(56 / band));
+    var cumulative = { matches: 0, maps: 0 };
+    points.forEach(function (p, i) {
+      cumulative.matches += p.matches;
+      cumulative.maps += p.maps;
+      var x0 = left + i * band;
+      var g = svgEl("g", { class: "band" });
+      var hit = svgEl("rect", { x: x0, y: top, width: band, height: plotH, class: "hit", tabindex: "0" });
+      var bars = svgEl("g", { class: "bars" });
+      var gx = x0 + (band - groupW) / 2;
+      SERIES.forEach(function (s, si) {
+        var v = p[s.key];
+        var bx = gx + si * (barW + gap);
+        var by = y(v);
+        var h = top + plotH - by;
+        if (h <= 0) { return; }
+        var r = Math.min(4, barW / 2, h);
+        var d = "M" + bx + "," + (top + plotH) +
+          " V" + (by + r) + " Q" + bx + "," + by + " " + (bx + r) + "," + by +
+          " H" + (bx + barW - r) + " Q" + (bx + barW) + "," + by + " " + (bx + barW) + "," + (by + r) +
+          " V" + (top + plotH) + " Z";
+        bars.appendChild(svgEl("path", { d: d, class: "bar " + s.cls }));
+      });
+      var showYear = i === 0 || parseDate(p.period).getMonth() === 0;
+      if (i % labelEvery === 0) {
+        var xl = svgEl("text", { x: x0 + band / 2, y: top + plotH + 18, "text-anchor": "middle", class: "tick" });
+        xl.textContent = labelFn(p.period, showYear);
+        svg.appendChild(xl);
+      }
+      var cumA = cumulative.matches, cumB = cumulative.maps;
+      var rows = function () {
+        return [
+          { key: "s1", label: seriesLabels[0], value: fmt(p.matches) },
+          { key: "s2", label: seriesLabels[1], value: fmt(p.maps) },
+          { label: "cumulative " + seriesLabels[0], value: fmt(cumA) },
+          { label: "cumulative " + seriesLabels[1], value: fmt(cumB) }
+        ];
+      };
+      var show = function (evt) {
+        g.classList.add("hover");
+        var pt = evt && evt.clientX !== undefined ? { x: evt.clientX, y: evt.clientY } : centerOf(hit);
+        showTooltip(pt.x, pt.y, labelFn(p.period, true), rows());
+      };
+      var hide = function () { g.classList.remove("hover"); hideTooltip(); };
+      hit.addEventListener("pointermove", show);
+      hit.addEventListener("pointerleave", hide);
+      hit.addEventListener("focus", show);
+      hit.addEventListener("blur", hide);
+      g.appendChild(hit);
+      g.appendChild(bars);
+      svg.appendChild(g);
+    });
+
+    var table = figure.querySelector(".chart-table");
+    table.textContent = "";
+    var thead = el("thead"), hr = el("tr");
+    ["Period", seriesLabels[0], seriesLabels[1], "Cumulative " + seriesLabels[0], "Cumulative " + seriesLabels[1]].forEach(function (h, i) {
+      hr.appendChild(el("th", i ? "num" : null, h));
+    });
+    thead.appendChild(hr); table.appendChild(thead);
+    var tbody = el("tbody"), ca = 0, cb = 0;
+    points.forEach(function (p) {
+      ca += p.matches; cb += p.maps;
+      var tr = el("tr");
+      tr.appendChild(el("td", "mono", p.period));
+      [p.matches, p.maps, ca, cb].forEach(function (v) { tr.appendChild(el("td", "num", fmt(v))); });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+  }
+
+  function renderVolumeCharts() {
+    var volume = snapshot.volume || { monthly: [], weekly: [] };
+    renderColumnChart($("chart-monthly"), volume.monthly || [], monthLabel, ["matches", "maps"]);
+    renderColumnChart($("chart-weekly"), volume.weekly || [], weekLabel, ["match rows", "map rows"]);
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".table-toggle"), function (button) {
+    button.addEventListener("click", function () {
+      var figure = button.closest("figure");
+      var wrap = figure.querySelector(".chart-table-wrap");
+      wrap.hidden = !wrap.hidden;
+      button.textContent = wrap.hidden ? "Table" : "Hide table";
+    });
+  });
+
+  /* ---- coverage panels ------------------------------------------------- */
+  function kvRow(kv, label, value) {
+    kv.appendChild(el("span", null, label));
+    kv.appendChild(el("b", null, value));
+  }
+
+  function renderCoverage() {
+    var host = $("coverage");
+    host.textContent = "";
+    (snapshot.coverage || []).forEach(function (w) {
+      var panel = el("div", "panel coverage-panel");
+      panel.appendChild(el("h3", null, w.label));
+      panel.appendChild(el("div", "range", w.window_start + " .. " + w.window_end + " (per week)"));
+      var kv = el("div", "kv");
+      kvRow(kv, "Frontier", w.frontier || "- (no dated discoveries yet)");
+      kvRow(kv, "Swept", w.swept || "-");
+      kvRow(kv, "Unswept", w.frontier ? (w.unswept || "none, window covered") : "-");
+      kvRow(kv, "Matches in window", fmt(w.window_matches) + " of " + fmt(w.total_matches) + " total");
+      kvRow(kv, "Covered weeks", fmt(w.covered_periods) + " of " + fmt(w.weeks.length) + "; gap ranges " + fmt(w.gaps.length));
+      var pending = Object.keys(w.pending_by_status).map(function (s) { return s + " " + fmt(w.pending_by_status[s]); });
+      kvRow(kv, "Not yet processed", pending.length ? pending.join(", ") : "none");
+      if (w.undated_pending) { kvRow(kv, "Undated pending", fmt(w.undated_pending)); }
+      panel.appendChild(kv);
+
+      var strip = el("div", "strip");
+      var max = 0;
+      w.weeks.forEach(function (c) { max = Math.max(max, c.count); });
+      w.weeks.forEach(function (c) {
+        var q = c.count === 0 ? "zero" : "q" + Math.min(5, Math.max(1, Math.ceil((c.count / max) * 5)));
+        var cell = el("div", "cell " + q);
+        cell.setAttribute("tabindex", "0");
+        var show = function (evt) {
+          cell.classList.add("hover");
+          var pt = evt && evt.clientX !== undefined ? { x: evt.clientX, y: evt.clientY } : centerOf(cell);
+          showTooltip(pt.x, pt.y, "Week of " + weekLabel(c.week, true), [{ label: "matches", value: fmt(c.count) }]);
+        };
+        var hide = function () { cell.classList.remove("hover"); hideTooltip(); };
+        cell.addEventListener("pointermove", show);
+        cell.addEventListener("pointerleave", hide);
+        cell.addEventListener("focus", show);
+        cell.addEventListener("blur", hide);
+        strip.appendChild(cell);
+      });
+      panel.appendChild(strip);
+      if (w.weeks.length) {
+        var axis = el("div", "strip-axis");
+        axis.appendChild(el("span", null, w.weeks[0].week));
+        axis.appendChild(el("span", null, w.weeks[w.weeks.length - 1].week));
+        panel.appendChild(axis);
+      }
+
+      if (w.gaps.length) {
+        var list = el("ul", "gaps");
+        w.gaps.forEach(function (g) {
+          var li = el("li");
+          li.appendChild(el("span", null, g.start + " .. " + g.end));
+          li.appendChild(el("span", "gap-label" + (g.label.indexOf("unswept") !== -1 ? " unswept" : ""), g.label));
+          list.appendChild(li);
+        });
+        panel.appendChild(list);
+      }
+      host.appendChild(panel);
+    });
+  }
+
+  /* ---- failures -------------------------------------------------------- */
   function activeStatuses() {
     return Array.prototype.filter.call(document.querySelectorAll(".filter-status"), function (box) {
       return box.checked;
@@ -241,11 +603,15 @@
     });
   }
 
+  /* ---- orchestration --------------------------------------------------- */
   function render() {
-    renderHeader();
-    renderStages();
-    renderTotals();
-    renderFailures();
+    var failed = [];
+    [["header", renderHeader], ["ingestion tables", renderStages], ["totals", renderTotals],
+     ["volume charts", renderVolumeCharts], ["coverage", renderCoverage], ["failed rows", renderFailures]
+    ].forEach(function (section) {
+      try { section[1](); } catch (err) { failed.push(section[0] + ": " + err.message); }
+    });
+    if (failed.length) { notice("Could not render " + failed.join("; ") + ". Try Update.", true); }
   }
 
   function load(method, url) {
@@ -270,6 +636,12 @@
   $("filter-stage").addEventListener("change", function () { if (snapshot) { renderFailures(); } });
   Array.prototype.forEach.call(document.querySelectorAll(".filter-status"), function (box) {
     box.addEventListener("change", function () { if (snapshot) { renderFailures(); } });
+  });
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (!snapshot) { return; }
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderVolumeCharts, 150);
   });
 
   load("GET", "/ops/snapshot").then(function (data) {

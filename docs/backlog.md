@@ -894,13 +894,17 @@ item track record.
       attribute, then reconcile the 174 disagreeing rows against the
       corrected `matches.date` (after #214; coordinate with #194's driver
       changes)
-- [ ] (#209) Local ops page: `cs2a ops` serves a loopback-only page from
+- [x] (#209) Local ops page: `cs2a ops` serves a loopback-only page from
       a saved snapshot with an update button that re-queries the
       database; shipped in two PRs - first the snapshot builder, the
       failure-detail and activity queries, the raw-table totals, and the
       page's header, ingestion tables, volume figures, and failed-rows
-      table with source links and filters; second the monthly and weekly
-      SVG charts and the four coverage panels
+      table with source links and filters (PR #222); second the monthly
+      and weekly SVG column charts with hover readouts and table views,
+      the four coverage panels with per-week strips, and `--since` for
+      the lifetime floor; the cumulative line the issue sketched is a
+      tooltip and table value instead, since a cumulative series over
+      monthly bars needs a second axis
 - [ ] (#207) Targeted reprocessing: `cs2a process --stage <one> --id N`
       processes a single pending match or map instead of the next rows
       in fetch order, closing the gap between `retry --id` and

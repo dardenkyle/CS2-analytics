@@ -112,22 +112,6 @@ class CoveragePeriod(StrEnum):
     WEEK = "week"
 
 
-def _gap_label(gap_start, gap_end, frontier_period) -> str:
-    """Classify a zero-match gap range against the discovery frontier.
-
-    Periods below the frontier have not been swept yet (backfill work);
-    periods at or above it were scraped and genuinely yielded nothing.
-    Without a frontier no classification is possible.
-    """
-    if frontier_period is None:
-        return "unclassified"
-    if gap_end < frontier_period:
-        return "unswept"
-    if gap_start >= frontier_period:
-        return "swept, no matches"
-    return "partly unswept"
-
-
 @ingest_app.command("coverage")
 def coverage(
     period: Annotated[
@@ -153,6 +137,7 @@ def coverage(
     """
     from cs2_analytics.storage.discovery_coverage import (
         align_period_start,
+        classify_gap,
         compute_gap_ranges,
         fetch_discovery_coverage,
     )
@@ -200,7 +185,7 @@ def coverage(
         for gap_start, gap_end in gaps:
             typer.echo(
                 f"  {gap_start} .. {gap_end}"
-                f"  [{_gap_label(gap_start, gap_end, frontier_period)}]"
+                f"  [{classify_gap(gap_start, gap_end, frontier_period)}]"
             )
     pending = report["pending_by_status"]
     if pending:
@@ -703,8 +688,15 @@ def ops(
         str,
         typer.Option("--host", help="Bind address; must be a loopback host."),
     ] = "127.0.0.1",
+    since: Annotated[
+        datetime | None,
+        typer.Option(
+            formats=["%Y-%m-%d"],
+            help="Lifetime coverage floor (YYYY-MM-DD), as for ingest coverage.",
+        ),
+    ] = None,
 ) -> None:
-    """Serve the local operations page: status, volume, and failed rows (#209).
+    """Serve the local operations page: status, volume, coverage, failures (#209).
 
     The page opens on the last saved snapshot without querying the
     database; its update button re-queries and saves a new one. Read-only.
@@ -721,9 +713,15 @@ def ops(
 
     from cs2_analytics.ops.app import create_ops_app
 
+    lifetime_floor = since.date() if since is not None else DISCOVERY_WINDOW_START
     _echo_target_database()
     display_host = f"[{host}]" if ":" in host else host
     typer.echo(
         f"Serving the ops page at http://{display_host}:{port}/ (Ctrl+C to stop)"
     )
-    uvicorn.run(create_ops_app(), host=host, port=port, log_level="warning")
+    uvicorn.run(
+        create_ops_app(lifetime_floor=lifetime_floor),
+        host=host,
+        port=port,
+        log_level="warning",
+    )
