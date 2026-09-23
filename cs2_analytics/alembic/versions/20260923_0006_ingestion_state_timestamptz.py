@@ -22,12 +22,22 @@ clock; both child tables join their parent by `match_id` (demo rows
 gained the column in 20260923_0005). Each witnessed instant is recorded
 in a temporary anchor column.
 
-Rule. A value within an hour of one of its row's anchors was written by
-the anchor's UTC clock; every other value was written from Central,
-which is the majority writer and the only one since 2026-09-05. Values
-with no witness (for example the discovery stamp of a match later
-processed by a container) fall to Central, which is the documented
-residual. The anchors are dropped once the conversion is done.
+Rule. Each column follows the witness that applies to it, never a
+witness for a different event on the same row (#219): `first_seen_at`
+follows the discovery witness; `last_processed_at` follows the
+processing witness alone; `last_attempted_at`, `last_failed_at`, and
+`last_updated_at` follow the processing witness only when they sit
+within the hour of `last_processed_at`, and the discovery witness only
+when they still equal the discovery stamp the writer set in the same
+statement. `last_seen_at` follows the discovery witness only while it
+still equals `first_seen_at`. Everything else was written from Central,
+which is the majority writer and the only one since 2026-09-05. Deciding
+by proximity to any UTC value on the row is not enough: a map discovered
+by a container and processed from the desktop five hours later carries
+two naive stamps within an hour of each other, written by different
+clocks. Values with no witness (a match discovered by one run and
+processed by a container in another) fall to Central, which is the
+documented residual. The anchors are dropped once the conversion is done.
 
 Downgrade restores naive TIMESTAMP rendered in America/Chicago for every
 value, which is what the pre-#213 desktop writers produced; the original
@@ -140,6 +150,25 @@ def _mark_discovery_witnesses() -> None:
         )
 
 
+def _mark_same_run_match_discovery() -> None:
+    """Anchor a match's discovery when the same container run discovered it.
+
+    Match rows have no parent to witness discovery. A container's
+    `ingest discover && process` run discovers a batch and processes it
+    minutes later, so a discovery stamp within the hour before a
+    UTC-witnessed processing stamp came from that run's clock.
+    """
+    op.execute(
+        f"""
+        UPDATE match_ingestion_state
+        SET {DISCOVERY_ANCHOR} = first_seen_at
+        WHERE {PROCESSING_ANCHOR} IS NOT NULL
+          AND first_seen_at BETWEEN
+                {PROCESSING_ANCHOR} - {WITNESS_TOLERANCE} AND {PROCESSING_ANCHOR}
+        """
+    )
+
+
 def _near(column_name: str, anchor: str) -> str:
     # NULL anchor makes BETWEEN NULL, which the CASE treats as false.
     return (
@@ -148,10 +177,26 @@ def _near(column_name: str, anchor: str) -> str:
     )
 
 
+# Per column: the condition under which the value was written by a UTC
+# clock. Anything else converts as the local writer zone.
+_DISCOVERED_UTC = f"{DISCOVERY_ANCHOR} IS NOT NULL"
+_STILL_DISCOVERY_STAMP = f"last_seen_at = first_seen_at AND {_DISCOVERED_UTC}"
+UTC_CONDITIONS = {
+    "first_seen_at": _DISCOVERED_UTC,
+    "last_seen_at": _STILL_DISCOVERY_STAMP,
+    "last_processed_at": f"{PROCESSING_ANCHOR} IS NOT NULL",
+    "last_attempted_at": _near("last_attempted_at", PROCESSING_ANCHOR),
+    "last_failed_at": _near("last_failed_at", PROCESSING_ANCHOR),
+    "last_updated_at": (
+        f"({_near('last_updated_at', PROCESSING_ANCHOR)})"
+        f" OR (last_updated_at = last_seen_at AND {_STILL_DISCOVERY_STAMP})"
+    ),
+}
+
+
 def _upgrade_expression(column_name: str) -> str:
     return (
-        f"CASE WHEN ({_near(column_name, PROCESSING_ANCHOR)})"
-        f" OR ({_near(column_name, DISCOVERY_ANCHOR)})"
+        f"CASE WHEN {UTC_CONDITIONS[column_name]}"
         f" THEN {column_name} AT TIME ZONE 'UTC'"
         f" ELSE {column_name} AT TIME ZONE '{LOCAL_WRITER_ZONE}' END"
     )
@@ -176,6 +221,7 @@ def upgrade() -> None:
     _add_anchor_columns()
     _mark_processing_witnesses()
     _mark_discovery_witnesses()
+    _mark_same_run_match_discovery()
     for table_name in STATE_TABLES:
         _convert_columns(table_name, "TIMESTAMPTZ", _upgrade_expression)
     _drop_anchor_columns()

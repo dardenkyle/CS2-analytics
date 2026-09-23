@@ -31,7 +31,7 @@ STATE_COLUMNS = (
 STATE_TABLES = ("match_ingestion_state", "map_ingestion_state", "demo_ingestion_state")
 
 UTC_MATCH, CDT_MATCH, CST_MATCH, PENDING_MATCH = 9001, 9002, 9003, 9004
-UTC_MAP, CDT_MAP, UTC_PROCESSED_MAP = 8001, 8002, 8003
+UTC_MAP, CDT_MAP, UTC_PROCESSED_MAP, COLLISION_MAP = 8001, 8002, 8003, 8004
 # Demo ids are numeric strings, as the source issues them and as the
 # demo_links backfill regexp expects.
 UTC_DEMO, CDT_DEMO = "909001", "909002"
@@ -74,21 +74,23 @@ def _seed(database) -> None:
             )
         # A map the source row witnesses as processed by a UTC clock, so the
         # map-stage processing witness is exercised even though production
-        # has no such rows today.
-        cur.execute(
-            """
-            INSERT INTO maps (map_id, match_id, map_url, map_order, map_name,
-                              team1_score, team2_score, map_winner, date,
-                              last_scraped_at)
-            VALUES (%s, %s, %s, 2, 'de_test', 13, 7, 'A', '2026-01-01', %s);
-            """,
-            (
-                UTC_PROCESSED_MAP,
-                CDT_MATCH,
-                f"https://example.test/p/{UTC_PROCESSED_MAP}",
-                _utc(2026, 7, 15, 20, 0, 0),
-            ),
-        )
+        # has no such rows today; and the #219 collision map, discovered by
+        # the UTC parent at 18:00:03Z and processed from Central at 23:05Z,
+        # which the desktop stored as 18:05:00, within an hour of the
+        # discovery stamp.
+        for map_id, match_id, scraped in (
+            (UTC_PROCESSED_MAP, CDT_MATCH, _utc(2026, 7, 15, 20, 0, 0)),
+            (COLLISION_MAP, UTC_MATCH, _utc(2026, 7, 10, 23, 5, 0)),
+        ):
+            cur.execute(
+                """
+                INSERT INTO maps (map_id, match_id, map_url, map_order, map_name,
+                                  team1_score, team2_score, map_winner, date,
+                                  last_scraped_at)
+                VALUES (%s, %s, %s, 2, 'de_test', 13, 7, 'A', '2026-01-01', %s);
+                """,
+                (map_id, match_id, f"https://example.test/p/{map_id}", scraped),
+            )
         # A UTC container processed this match at 18:00:05Z, refreshed by
         # Central discovery sweeps later (last_seen_at).
         cur.execute(
@@ -159,6 +161,17 @@ def _seed(database) -> None:
             """,
             (CDT_MAP, f"https://example.test/p/{CDT_MAP}", CDT_MATCH),
         )
+        cur.execute(
+            """
+            INSERT INTO map_ingestion_state (map_id, map_url, match_id, status,
+                first_seen_at, last_seen_at, last_attempted_at,
+                last_processed_at, last_updated_at)
+            VALUES (%s, %s, %s, 'processed', '2026-07-10 18:00:03',
+                    '2026-07-10 18:00:03', '2026-07-10 18:04:55',
+                    '2026-07-10 18:05:00', '2026-07-10 18:05:00');
+            """,
+            (COLLISION_MAP, f"https://example.test/p/{COLLISION_MAP}", UTC_MATCH),
+        )
         # Discovered from Central with its parent, processed later by a UTC
         # container at 20:00:02Z.
         cur.execute(
@@ -220,9 +233,12 @@ def _cleanup(database) -> None:
     with database.get_cursor() as cur:
         cur.execute(
             "DELETE FROM map_ingestion_state WHERE map_id = ANY(%s);",
-            ([UTC_MAP, CDT_MAP, UTC_PROCESSED_MAP],),
+            ([UTC_MAP, CDT_MAP, UTC_PROCESSED_MAP, COLLISION_MAP],),
         )
-        cur.execute("DELETE FROM maps WHERE map_id = %s;", (UTC_PROCESSED_MAP,))
+        cur.execute(
+            "DELETE FROM maps WHERE map_id = ANY(%s);",
+            ([UTC_PROCESSED_MAP, COLLISION_MAP],),
+        )
         cur.execute(
             "DELETE FROM demo_ingestion_state WHERE demo_id = ANY(%s);",
             ([UTC_DEMO, CDT_DEMO],),
@@ -292,6 +308,16 @@ def test_upgrade_converts_each_value_by_its_writers_clock(test_database) -> None
         assert utc_map_run["last_attempted_at"] == _utc(2026, 7, 15, 19, 59, 55)
         assert utc_map_run["last_updated_at"] == _utc(2026, 7, 15, 20, 0, 2)
         assert utc_map_run["first_seen_at"] == _utc(2026, 7, 10, 18, 0, 3)
+
+        # #219: discovery stamps keep the parent's UTC clock, processing
+        # stamps keep the desktop's Central clock, although the naive
+        # values sit five minutes apart.
+        collision = _row(test_database, "map_ingestion_state", "map_id", COLLISION_MAP)
+        assert collision["first_seen_at"] == _utc(2026, 7, 10, 18, 0, 3)
+        assert collision["last_seen_at"] == _utc(2026, 7, 10, 18, 0, 3)
+        assert collision["last_processed_at"] == _utc(2026, 7, 10, 23, 5, 0)
+        assert collision["last_attempted_at"] == _utc(2026, 7, 10, 23, 4, 55)
+        assert collision["last_updated_at"] == _utc(2026, 7, 10, 23, 5, 0)
 
         utc_demo = _row(test_database, "demo_ingestion_state", "demo_id", UTC_DEMO)
         cdt_demo = _row(test_database, "demo_ingestion_state", "demo_id", CDT_DEMO)
