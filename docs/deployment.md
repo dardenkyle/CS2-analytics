@@ -360,12 +360,17 @@ tables: the first adds `match_id` to `demo_ingestion_state` and backfills
 it from `matches.demo_links`; the second converts the six lifecycle
 columns on all three tables to `TIMESTAMPTZ`, choosing per value whether
 a UTC container or the Central desktop wrote it (#213). They are
-data-dependent, so the recovery point in step 2 is not optional for them,
-and `cs2a status` before and after should show the same instants once
-rendered in local time. Apply it before running any ingestion command
-from the same release: the new writers stamp rows with the database's
-`now()`, which the old naive columns would store as UTC without the
-witness the migration relies on.
+data-dependent, so the recovery point in step 2 is not optional for them.
+Before applying, record a baseline with a read-only query such as
+`SELECT match_id, last_processed_at FROM match_ingestion_state ORDER BY
+last_processed_at DESC LIMIT 5`, which shows the naive stored values.
+After applying, `cs2a inspect match <id>` on the same rows should render
+each value as the same wall-clock instant in Central. Do not take the
+baseline with the new CLI: its formatter treats naive values as UTC and
+would show them five hours early. Apply the migrations before running
+any ingestion command from the same release: the new writers stamp rows
+with the database's `now()`, which the old naive columns would store as
+UTC without the witness the migration relies on.
 
 Write-based deterministic smoke tests should not run against the production
 analytics database.
