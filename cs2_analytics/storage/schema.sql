@@ -191,6 +191,7 @@ CREATE TABLE IF NOT EXISTS map_ingestion_state (
 CREATE TABLE IF NOT EXISTS demo_ingestion_state (
     demo_id TEXT PRIMARY KEY,
     demo_url TEXT NOT NULL,
+    match_id INT REFERENCES matches(match_id) ON DELETE CASCADE,
     status TEXT CHECK (
         status IN (
             'discovered', 'processing', 'processed', 'failed', 'skipped',

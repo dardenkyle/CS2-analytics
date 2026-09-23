@@ -12,6 +12,7 @@ import pytest
 
 from cs2_analytics.ingestion_state import base_ingestion_state as base_state_module
 from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
+from cs2_analytics.ingestion_state.demo_ingestion_state import DemoIngestionState
 from cs2_analytics.ingestion_state.map_ingestion_state import MapIngestionState
 from cs2_analytics.ingestion_state.match_ingestion_state import MatchIngestionState
 
@@ -120,6 +121,15 @@ def test_match_mark_as_partial_uses_the_database_clock(cursor) -> None:
     MatchIngestionState().mark_as_partial(1)
 
     _assert_database_clock(cursor.executed)
+
+
+def test_demo_queue_records_the_parent_and_uses_the_database_clock(cursor) -> None:
+    DemoIngestionState().queue("demo-7", "https://example.test/d/7", match_id=1)
+
+    _assert_database_clock(cursor.executed)
+    query, params = cursor.executed[0]
+    assert "match_id = COALESCE(EXCLUDED.match_id, demo_ingestion_state.match_id)" in query
+    assert params == ("demo-7", "https://example.test/d/7", 1, "unknown", 0)
 
 
 def test_map_queue_uses_the_database_clock(cursor) -> None:

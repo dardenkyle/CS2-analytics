@@ -18,7 +18,9 @@ processed by a UTC clock; a Central clock puts it five or six hours off.
 Map and demo rows are discovered inside the parent match's processing
 transaction, so a child's `first_seen_at` within a minute of a
 UTC-processed parent's `last_processed_at` was written by that same UTC
-clock. Each witnessed instant is recorded in a temporary anchor column.
+clock; both child tables join their parent by `match_id` (demo rows
+gained the column in 20260923_0005). Each witnessed instant is recorded
+in a temporary anchor column.
 
 Rule. A value within an hour of one of its row's anchors was written by
 the anchor's UTC clock; every other value was written from Central,
@@ -35,8 +37,8 @@ No dbt object depends on the ingestion-state tables, so no views need
 dropping (unlike 20260831_0003). The `(status, priority, first_seen_at)`
 indexes are rebuilt by PostgreSQL as part of the type change.
 
-Revision ID: 20260923_0005
-Revises: 20260901_0004
+Revision ID: 20260923_0006
+Revises: 20260923_0005
 Create Date: 2026-09-23
 """
 
@@ -44,8 +46,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "20260923_0005"
-down_revision: str | None = "20260901_0004"
+revision: str = "20260923_0006"
+down_revision: str | None = "20260923_0005"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -68,6 +70,8 @@ PROCESSING_WITNESSES = (
     ("match_ingestion_state", "matches", "match_id"),
     ("map_ingestion_state", "maps", "map_id"),
 )
+# Child tables discovered in the parent match's transaction, joined by match_id.
+CHILD_TABLES = ("map_ingestion_state", "demo_ingestion_state")
 LOCAL_WRITER_ZONE = "America/Chicago"
 PROCESSING_ANCHOR = "utc_processing_anchor"
 DISCOVERY_ANCHOR = "utc_discovery_anchor"
@@ -118,36 +122,22 @@ def _mark_processing_witnesses() -> None:
 def _mark_discovery_witnesses() -> None:
     """Anchor child rows discovered inside a UTC-processed parent's transaction.
 
-    Map rows carry their parent match id; demo rows do not, so they are
-    matched on time alone against every anchored match, with the tighter
-    same-transaction tolerance keeping that unambiguous.
+    Both child tables join the parent by match_id, so a row is anchored
+    only against its own parent's processing stamp.
     """
-    op.execute(
-        f"""
-        UPDATE map_ingestion_state AS c
-        SET {DISCOVERY_ANCHOR} = c.first_seen_at
-        FROM match_ingestion_state AS p
-        WHERE p.match_id = c.match_id
-          AND p.{PROCESSING_ANCHOR} IS NOT NULL
-          AND c.first_seen_at BETWEEN
-                p.{PROCESSING_ANCHOR} - {SAME_TRANSACTION_TOLERANCE}
-            AND p.{PROCESSING_ANCHOR} + {SAME_TRANSACTION_TOLERANCE}
-        """
-    )
-    op.execute(
-        f"""
-        UPDATE demo_ingestion_state AS c
-        SET {DISCOVERY_ANCHOR} = c.first_seen_at
-        WHERE EXISTS (
-            SELECT 1
+    for child_table in CHILD_TABLES:
+        op.execute(
+            f"""
+            UPDATE {child_table} AS c
+            SET {DISCOVERY_ANCHOR} = c.first_seen_at
             FROM match_ingestion_state AS p
-            WHERE p.{PROCESSING_ANCHOR} IS NOT NULL
+            WHERE p.match_id = c.match_id
+              AND p.{PROCESSING_ANCHOR} IS NOT NULL
               AND c.first_seen_at BETWEEN
                     p.{PROCESSING_ANCHOR} - {SAME_TRANSACTION_TOLERANCE}
                 AND p.{PROCESSING_ANCHOR} + {SAME_TRANSACTION_TOLERANCE}
+            """
         )
-        """
-    )
 
 
 def _near(column_name: str, anchor: str) -> str:

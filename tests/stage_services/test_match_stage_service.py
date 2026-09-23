@@ -105,7 +105,7 @@ def test_match_stage_service_processes_success_and_records_followups() -> None:
             "demo-1",
             "https://www.hltv.org/download/demo/test",
             "match_parser",
-            None,
+            1,
             None,
         )
     ]

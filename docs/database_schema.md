@@ -142,6 +142,9 @@ They describe:
 - Current role in code: tracks discovered demo lifecycle state
 - Primary key: `demo_id`
 - URL field: `demo_url`
+- Parent context field: `match_id` (FK -> `matches.match_id`), recorded at
+  discovery in the parent match's transaction like the map table's; rows
+  from before the column existed were backfilled from `matches.demo_links`
 - Lifecycle fields: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, `last_updated_at`
 - Notes: demo processing remains deferred even though the lifecycle table naming is aligned
 
@@ -198,6 +201,8 @@ Recommended field meanings:
 
 Field selection guidance:
 
+- All `*_at` lifecycle fields are `TIMESTAMPTZ` stamped by the database's
+  `now()` (#213); no writer passes a client timestamp
 - Use `first_seen_at` as the discovery timestamp and `last_seen_at` for rediscovery refreshes.
 - Prefer `last_updated_at` as the generic row-change timestamp.
 - Keep `last_attempted_at`, `last_processed_at`, and `last_failed_at` distinct because each carries different lifecycle meaning.

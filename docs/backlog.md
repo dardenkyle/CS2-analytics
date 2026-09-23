@@ -873,9 +873,11 @@ item track record.
 - [x] (#213) Ingestion-state timestamps: the six lifecycle columns on the
       three state tables are `TIMESTAMPTZ`, stamped by the database's
       `now()` instead of the writing machine's clock; migration
-      `20260923_0005` converts each historical value by the clock that
+      `20260923_0006` converts each historical value by the clock that
       wrote it (UTC containers witnessed by the parser stamps, Central
-      otherwise); `cs2a failures` and `inspect` render local time through
+      otherwise); `demo_ingestion_state` gains `match_id` (migration
+      `20260923_0005`, backfilled from `matches.demo_links`) so demo rows
+      join their parent like map rows do; `cs2a failures` and `inspect` render local time through
       one shared formatter, which the #209 ops page reuses
 - [ ] (#212) Initialize guard: `python -m cs2_analytics.storage.initialize_db`
       and `manage_db.py` refuse a non-local host; the migration modes gain
