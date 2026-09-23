@@ -355,6 +355,16 @@ For the first cloud deploy, migrations are a manual release step:
 5. Deploy or restart the Render API service.
 6. Run read-only production validation checks.
 
+Migration `20260923_0005` rewrites the three ingestion-state tables: it
+converts the six lifecycle columns to `TIMESTAMPTZ`, choosing per value
+whether a UTC container or the Central desktop wrote it (#213). It is
+data-dependent, so the recovery point in step 2 is not optional for it,
+and `cs2a status` before and after should show the same instants once
+rendered in local time. Apply it before running any ingestion command
+from the same release: the new writers stamp rows with the database's
+`now()`, which the old naive columns would store as UTC without the
+witness the migration relies on.
+
 Write-based deterministic smoke tests should not run against the production
 analytics database.
 

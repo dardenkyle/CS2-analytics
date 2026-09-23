@@ -111,12 +111,11 @@ def test_requeue_resets_status_and_preserves_failure_history(
 
     assert requeued == 2
     assert cursor.execute_query is not None
-    assert "SET status = 'discovered', last_updated_at = %s" in cursor.execute_query
+    assert "SET status = 'discovered', last_updated_at = now()" in cursor.execute_query
     assert "WHERE match_id = ANY(%s) AND status = %s" in cursor.execute_query
     assert "failure_count" not in cursor.execute_query
     assert "last_error_message" not in cursor.execute_query
-    assert cursor.execute_values is not None
-    assert cursor.execute_values[1:] == ([1, 2], "failed")
+    assert cursor.execute_values == ([1, 2], "failed")
 
 
 def test_requeue_with_no_ids_is_a_no_op(monkeypatch: pytest.MonkeyPatch) -> None:

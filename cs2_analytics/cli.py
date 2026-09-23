@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 
 from cs2_analytics.exceptions import DatabaseConnectionError, IngestionStateError
+from cs2_analytics.utils.time_format import format_local
 
 if TYPE_CHECKING:
     from cs2_analytics.ingestion_state.base_ingestion_state import BaseIngestionState
@@ -457,7 +458,7 @@ def failures(
             return
         for message, row_count, latest_failed_at in groups:
             typer.echo(
-                f"  count={row_count}  latest={latest_failed_at or '-'}"
+                f"  count={row_count}  latest={format_local(latest_failed_at)}"
                 f"  {_error_preview(message) or '(no error message)'}"
             )
         typer.echo(
@@ -471,16 +472,25 @@ def failures(
     for row_id, row_status, failure_count, last_failed_at, message in rows:
         typer.echo(
             f"  {row_id}  {row_status}  failures={failure_count or 0}"
-            f"  last_failed={last_failed_at or '-'}  {_error_preview(message)}"
+            f"  last_failed={format_local(last_failed_at)}  {_error_preview(message)}"
         )
     typer.echo(f"{len(rows)} {stage.value} row(s) in status '{status.value}'.")
+
+
+def _display_value(value: object) -> str:
+    """Render one ingestion-state value; timestamps in local time (#213)."""
+    if value is None:
+        return "-"
+    if isinstance(value, datetime):
+        return format_local(value)
+    return str(value)
 
 
 def _echo_state_row(table: str, state: dict[str, object]) -> None:
     """Print one ingestion-state row as aligned name/value lines."""
     typer.echo(f"{table}:")
     for name, value in state.items():
-        typer.echo(f"  {name:<20} {'-' if value is None else value}")
+        typer.echo(f"  {name:<20} {_display_value(value)}")
 
 
 @inspect_app.command("match")

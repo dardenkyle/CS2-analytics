@@ -1,6 +1,9 @@
-"""Base class for managing ingestion state tables."""
+"""Base class for managing ingestion state tables.
 
-import datetime as dt
+Every lifecycle timestamp is stamped by the database with `now()` rather
+than by the writing process, so the stored instant does not depend on the
+client machine's clock or timezone (#213).
+"""
 
 from cs2_analytics.exceptions import IngestionStateError
 from cs2_analytics.storage.db_instance import get_db
@@ -69,13 +72,12 @@ class BaseIngestionState[IdT: (int, str)]:
         and the caller owns commit/rollback (ADR-0013); otherwise the write
         runs in its own transaction as before.
         """
-        now = dt.datetime.now()
         query = f"""
         INSERT INTO {self.table_name} (
             {self.id_field}, {self.url_field}, status, source, priority,
             first_seen_at, last_seen_at, last_updated_at
         )
-        VALUES (%s, %s, 'discovered', %s, %s, %s, %s, %s)
+        VALUES (%s, %s, 'discovered', %s, %s, now(), now(), now())
         ON CONFLICT ({self.id_field}) DO UPDATE
         SET {self.url_field} = EXCLUDED.{self.url_field},
             source = EXCLUDED.source,
@@ -86,7 +88,7 @@ class BaseIngestionState[IdT: (int, str)]:
             last_seen_at = EXCLUDED.last_seen_at,
             last_updated_at = EXCLUDED.last_updated_at;
         """
-        params = (id_value, url, source, priority, now, now, now)
+        params = (id_value, url, source, priority)
         try:
             if cur is not None:
                 cur.execute(query, params)
@@ -113,7 +115,7 @@ class BaseIngestionState[IdT: (int, str)]:
             {self.id_field}, {self.url_field}, status, source, priority,
             first_seen_at, last_seen_at, last_updated_at
         )
-        VALUES (%s, %s, 'discovered', %s, %s, %s, %s, %s)
+        VALUES (%s, %s, 'discovered', %s, %s, now(), now(), now())
         ON CONFLICT ({self.id_field}) DO UPDATE
         SET {self.url_field} = EXCLUDED.{self.url_field},
             source = EXCLUDED.source,
@@ -125,10 +127,7 @@ class BaseIngestionState[IdT: (int, str)]:
             last_updated_at = EXCLUDED.last_updated_at;
         """
 
-        now = dt.datetime.now()
-        values = [
-            (item_id, url, source, priority, now, now, now) for item_id, url in items
-        ]
+        values = [(item_id, url, source, priority) for item_id, url in items]
 
         try:
             with self.db.get_cursor() as cur:
@@ -143,15 +142,14 @@ class BaseIngestionState[IdT: (int, str)]:
 
     def mark_as_processing(self, id_value: int | str) -> None:
         """Marks the item as actively being processed."""
-        now = dt.datetime.now()
         query = f"""
         UPDATE {self.table_name}
-        SET status = 'processing', last_attempted_at = %s, last_updated_at = %s
+        SET status = 'processing', last_attempted_at = now(), last_updated_at = now()
         WHERE {self.id_field} = %s;
         """
         try:
             with self.db.get_cursor() as cur:
-                cur.execute(query, (now, now, id_value))
+                cur.execute(query, (id_value,))
         except Exception as e:
             raise self.error_cls(
                 f"Failed to mark item as processing in {self.table_name}."
@@ -168,13 +166,12 @@ class BaseIngestionState[IdT: (int, str)]:
         and the caller owns commit/rollback (ADR-0013); otherwise the write
         runs in its own transaction as before.
         """
-        now = dt.datetime.now()
         query = f"""
         UPDATE {self.table_name}
-        SET status = 'processed', last_processed_at = %s, last_updated_at = %s
+        SET status = 'processed', last_processed_at = now(), last_updated_at = now()
         WHERE {self.id_field} = %s;
         """
-        params = (now, now, id_value)
+        params = (id_value,)
         try:
             if cur is not None:
                 cur.execute(query, params)
@@ -188,19 +185,18 @@ class BaseIngestionState[IdT: (int, str)]:
 
     def mark_as_failed(self, id_value: int | str, reason: str = "unknown") -> None:
         """Marks the item as failed and stores the reason."""
-        now = dt.datetime.now()
         query = f"""
         UPDATE {self.table_name}
         SET status = 'failed',
-            last_failed_at = %s,
-            last_updated_at = %s,
+            last_failed_at = now(),
+            last_updated_at = now(),
             last_error_message = %s,
             failure_count = COALESCE(failure_count, 0) + 1
         WHERE {self.id_field} = %s;
         """
         try:
             with self.db.get_cursor() as cur:
-                cur.execute(query, (now, now, reason, id_value))
+                cur.execute(query, (reason, id_value))
         except Exception as e:
             raise self.error_cls(
                 f"Failed to mark item as failed in {self.table_name}."
@@ -212,17 +208,16 @@ class BaseIngestionState[IdT: (int, str)]:
         Dead rows are terminal and excluded from the work queue without
         requiring claim queries to filter on failure_count.
         """
-        now = dt.datetime.now()
         query = f"""
         UPDATE {self.table_name}
         SET status = 'dead',
-            last_updated_at = %s,
+            last_updated_at = now(),
             last_error_message = %s
         WHERE {self.id_field} = %s;
         """
         try:
             with self.db.get_cursor() as cur:
-                cur.execute(query, (now, reason, id_value))
+                cur.execute(query, (reason, id_value))
         except Exception as e:
             raise self.error_cls(
                 f"Failed to mark item as dead in {self.table_name}."
@@ -230,17 +225,16 @@ class BaseIngestionState[IdT: (int, str)]:
 
     def mark_as_skipped(self, id_value: int | str, reason: str = "unknown") -> None:
         """Marks the item as intentionally skipped."""
-        now = dt.datetime.now()
         query = f"""
         UPDATE {self.table_name}
         SET status = 'skipped',
-            last_updated_at = %s,
+            last_updated_at = now(),
             last_error_message = %s
         WHERE {self.id_field} = %s;
         """
         try:
             with self.db.get_cursor() as cur:
-                cur.execute(query, (now, reason, id_value))
+                cur.execute(query, (reason, id_value))
         except Exception as e:
             raise self.error_cls(
                 f"Failed to mark item as skipped in {self.table_name}."
@@ -296,15 +290,14 @@ class BaseIngestionState[IdT: (int, str)]:
         claim from an orphan. failure_count and last_error_message are
         preserved as history; the release is visible via last_updated_at.
         """
-        now = dt.datetime.now()
         query = f"""
         UPDATE {self.table_name}
-        SET status = 'discovered', last_updated_at = %s
+        SET status = 'discovered', last_updated_at = now()
         WHERE status = 'processing';
         """
         try:
             with self.db.get_cursor() as cur:
-                cur.execute(query, (now,))
+                cur.execute(query)
                 return int(cur.rowcount)
         except Exception as e:
             raise self.error_cls(
@@ -323,15 +316,14 @@ class BaseIngestionState[IdT: (int, str)]:
         """
         if not ids:
             return 0
-        now = dt.datetime.now()
         query = f"""
         UPDATE {self.table_name}
-        SET status = 'discovered', last_updated_at = %s
+        SET status = 'discovered', last_updated_at = now()
         WHERE {self.id_field} = ANY(%s) AND status = %s;
         """
         try:
             with self.db.get_cursor() as cur:
-                cur.execute(query, (now, list(ids), expected_status))
+                cur.execute(query, (list(ids), expected_status))
                 return int(cur.rowcount)
         except Exception as e:
             raise self.error_cls(

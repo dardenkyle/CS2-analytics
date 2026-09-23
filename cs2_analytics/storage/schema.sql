@@ -147,16 +147,16 @@ CREATE TABLE IF NOT EXISTS match_ingestion_state (
             'dead', 'partial'
         )
     ) NOT NULL DEFAULT 'discovered',
-    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_attempted_at TIMESTAMP,
-    last_processed_at TIMESTAMP,
-    last_failed_at TIMESTAMP,
+    first_seen_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_attempted_at TIMESTAMPTZ,
+    last_processed_at TIMESTAMPTZ,
+    last_failed_at TIMESTAMPTZ,
     failure_count INT NOT NULL DEFAULT 0,
     last_error_message TEXT,
     source TEXT,
     priority INT DEFAULT 0,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Map Ingestion State Table
@@ -175,16 +175,16 @@ CREATE TABLE IF NOT EXISTS map_ingestion_state (
             'dead', 'partial'
         )
     ) NOT NULL DEFAULT 'discovered',
-    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_attempted_at TIMESTAMP,
-    last_processed_at TIMESTAMP,
-    last_failed_at TIMESTAMP,
+    first_seen_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_attempted_at TIMESTAMPTZ,
+    last_processed_at TIMESTAMPTZ,
+    last_failed_at TIMESTAMPTZ,
     failure_count INT NOT NULL DEFAULT 0,
     last_error_message TEXT,
     source TEXT,
     priority INT DEFAULT 0,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Demo Ingestion State Table
@@ -197,16 +197,16 @@ CREATE TABLE IF NOT EXISTS demo_ingestion_state (
             'dead', 'partial'
         )
     ) NOT NULL DEFAULT 'discovered',
-    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_attempted_at TIMESTAMP,
-    last_processed_at TIMESTAMP,
-    last_failed_at TIMESTAMP,
+    first_seen_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_attempted_at TIMESTAMPTZ,
+    last_processed_at TIMESTAMPTZ,
+    last_failed_at TIMESTAMPTZ,
     failure_count INT NOT NULL DEFAULT 0,
     last_error_message TEXT,
     source TEXT,
     priority INT DEFAULT 0,
-    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- This table is used to track the status of demo files.
