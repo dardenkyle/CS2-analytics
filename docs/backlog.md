@@ -850,9 +850,15 @@ item track record.
 - [ ] (#175) Controller circuit breaker: abort the batch after consecutive
       retryable/challenge errors, leaving rows in `discovered` rather
       than marking them failed, with a cool-off before the next run
-- [ ] (#176) Match scraper hardening: replace the fixed post-load sleep with a
-      content-based wait, add challenge-marker detection (parity with the
-      map scraper), and log per-item fetch timing
+- [x] (#176, #224) Match scraper hardening: the fixed post-load sleep is
+      replaced by a wait on the required `div.teamName` selector, and a page
+      that never renders it (the source's challenge interstitial included)
+      raises the retryable session error so the controller rotates the
+      session and retries instead of recording a permanent parse failure
+      (#224 found about one match in a hundred landing in `failed` this
+      way); the selector wait, challenge-marker list, diagnostic warning,
+      and per-item fetch-duration log live once in
+      `cs2_analytics/scrapers/page_wait.py` and both scrapers call it
 - [ ] (#197) Atomic batch claims: replace the select-then-mark claim with
       one `FOR UPDATE SKIP LOCKED` statement, claiming per item inside the
       controller loop, so two processes can never select the same pending
