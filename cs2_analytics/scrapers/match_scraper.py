@@ -12,7 +12,9 @@ from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
-REQUIRED_MATCH_SELECTOR = "div.teamName"
+# The page container, not a field the parser validates: a rendered page
+# missing team names must reach the parser and fail there, not time out here.
+REQUIRED_MATCH_SELECTOR = "div.match-page"
 MATCH_PAGE_LABEL = "Match page"
 
 

@@ -851,7 +851,7 @@ item track record.
       retryable/challenge errors, leaving rows in `discovered` rather
       than marking them failed, with a cool-off before the next run
 - [x] (#176, #224) Match scraper hardening: the fixed post-load sleep is
-      replaced by a wait on the required `div.teamName` selector, and a page
+      replaced by a wait on the required `div.match-page` selector, and a page
       that never renders it (the source's challenge interstitial included)
       raises the retryable session error so the controller rotates the
       session and retries instead of recording a permanent parse failure

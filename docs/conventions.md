@@ -14,7 +14,7 @@ Current implementation note:
 - a test in `tests/scrapers/test_scraper_boundaries.py` fails if any scraper
   module imports storage or ingestion-state modules
 - `MatchScraper` and `MapScraper` wait for a required selector
-  (`div.teamName` and `div.match-info-box`) through the shared
+  (`div.match-page` and `div.match-info-box`) through the shared
   `scrapers/page_wait.py` helper; a page that never renders it, including the
   source's challenge interstitial, raises `SessionScrapeError` (retryable)
   with a diagnostic warning that carries the challenge-marker flags, so

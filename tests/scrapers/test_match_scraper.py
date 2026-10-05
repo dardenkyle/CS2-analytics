@@ -25,6 +25,11 @@ RENDERED_PAGE = (
     "<div class='teamName'>Team Two</div>"
     "</div></body></html>"
 )
+RENDERED_PAGE_NO_TEAMS = (
+    "<html><body><div class='match-page'>"
+    "<div class='timeAndEvent'></div>"
+    "</div></body></html>"
+)
 RENDERED_PAGE_EMPTY_TEAMS = (
     "<html><body><div class='match-page'>"
     "<div class='teamName'></div>"
@@ -100,7 +105,7 @@ def test_challenge_page_raises_retryable_session_error(
     assert len(warning_calls) == 1
     rendered_warning = warning_calls[0][0] % warning_calls[0][1:]
     assert rendered_warning.startswith(
-        "Match page missing required selector=div.teamName"
+        "Match page missing required selector=div.match-page"
     )
     assert "marker_flags=" in rendered_warning
 
@@ -138,6 +143,19 @@ def test_slow_page_that_renders_within_wait_parses_normally(
         line.startswith(f"Match page fetched url={MATCH_URL} elapsed_seconds=")
         for line in rendered_info
     )
+
+
+def test_rendered_page_without_team_names_reaches_parser_and_raises_parse_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    driver = FakeDriver(RENDERED_PAGE_NO_TEAMS)
+    scraper = _build_scraper(monkeypatch, driver)
+
+    soup = scraper.fetch_soup(MATCH_URL)
+
+    assert len(driver.find_calls) == 1
+    with pytest.raises(MatchParseError, match="Missing team names on match page."):
+        MatchParser().parse_match(soup, MATCH_URL)
 
 
 def test_rendered_page_with_empty_team_names_still_raises_parse_error(

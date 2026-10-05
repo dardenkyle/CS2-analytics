@@ -4,6 +4,7 @@ The fakes stand in for SeleniumBase's driver and Selenium's `WebDriverWait`
 so the required-selector wait can be exercised without a browser.
 """
 
+from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException
 
 MAX_POLLS = 5
@@ -12,8 +13,9 @@ MAX_POLLS = 5
 class FakeDriver:
     """Records page loads and answers selector lookups from a fixed page.
 
-    `renders_after_polls` controls how many lookups fail before the required
-    selector is reported present; `None` means it never appears.
+    `renders_after_polls` controls how many lookups fail before the page
+    counts as rendered; `None` means it never renders. Once rendered, a
+    lookup succeeds only if the selector matches the page source.
     """
 
     def __init__(
@@ -41,7 +43,10 @@ class FakeDriver:
             self.renders_after_polls is not None
             and polls_so_far > self.renders_after_polls
         ):
-            return object()
+            soup = BeautifulSoup(self.page_source, "html.parser")
+            element = soup.select_one(selector)
+            if element is not None:
+                return element
         raise TimeoutException("missing required content")
 
     def quit(self) -> None:
