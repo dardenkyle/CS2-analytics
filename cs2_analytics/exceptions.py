@@ -54,7 +54,10 @@ class DatabaseError(StorageError):
 
 
 class DatabaseConnectionError(DatabaseError):
-    """Raised when a database connection cannot be established or acquired."""
+    """Raised when a database connection cannot be acquired or is lost mid-operation.
+
+    Controllers treat it as transient and retry the item (#208).
+    """
 
 
 class DatabaseOperationError(DatabaseError):
