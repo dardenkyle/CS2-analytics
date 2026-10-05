@@ -134,6 +134,11 @@ Stage services own per-item stage workflow, including:
 - no parsing
 - no domain persistence
 - no lifecycle-state transitions
+- the match and map scrapers wait for a required page selector through one
+  shared helper (`scrapers/page_wait.py`) and classify a page that never
+  renders it, including the source's challenge interstitial, as a retryable
+  session error with challenge-marker diagnostics and a per-item fetch
+  duration log; only pages that rendered the selector reach the parser
 
 ### Parsers
 
