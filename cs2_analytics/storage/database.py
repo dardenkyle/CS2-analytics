@@ -41,6 +41,25 @@ def _initialize_db_pool() -> psycopg2.pool.SimpleConnectionPool | None:
     return DB_POOL
 
 
+def _roll_back_if_connected(conn) -> bool:
+    """Rolls back a failed unit of work; returns False if the connection is gone.
+
+    A connection the server has closed cannot roll back: psycopg2 raises a
+    second error from `rollback()` that would replace the one being handled
+    and reach the caller as an unclassified driver error (#208). Reporting
+    the loss instead lets the cursor helpers raise `DatabaseConnectionError`,
+    which callers can treat as transient. The server discards the open
+    transaction when the connection drops, so nothing is left to undo.
+    """
+    if conn.closed:
+        return False
+    try:
+        conn.rollback()
+    except psycopg2.Error:
+        return False
+    return True
+
+
 class Database:
     """Handles database connection pooling and cursor management."""
 
@@ -98,7 +117,10 @@ class Database:
             yield cur
             conn.commit()
         except Exception as e:
-            conn.rollback()
+            if not _roll_back_if_connected(conn):
+                raise DatabaseConnectionError(
+                    "Database connection was lost during a transaction."
+                ) from e
             raise DatabaseOperationError("Failed during database transaction.") from e
         finally:
             if cur is not None:
@@ -120,7 +142,10 @@ class Database:
             yield cur
             conn.commit()
         except Exception as e:
-            conn.rollback()
+            if not _roll_back_if_connected(conn):
+                raise DatabaseConnectionError(
+                    "Database connection was lost during a database operation."
+                ) from e
             raise DatabaseOperationError("Failed during database operation.") from e
         finally:
             if cur is not None:

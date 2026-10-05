@@ -2,7 +2,7 @@
 
 from contextlib import contextmanager
 
-from cs2_analytics.exceptions import DatabaseOperationError
+from cs2_analytics.exceptions import DatabaseConnectionError, DatabaseOperationError
 
 
 class FakeCursor:
@@ -38,6 +38,31 @@ class FakeTransactionDb:
                 raise self.fail_on_exit
         except Exception as e:
             raise DatabaseOperationError("Failed during database transaction.") from e
+
+
+class ConnectionLossDb(FakeTransactionDb):
+    """Fake Database whose first `losses` transactions lose the connection.
+
+    A lost transaction raises DatabaseConnectionError before its block runs,
+    matching what production Database.transaction() reports when the server
+    closes the connection: nothing the block wrote survives. Later
+    transactions behave like FakeTransactionDb.
+    """
+
+    def __init__(self, losses: int) -> None:
+        super().__init__()
+        self.losses = losses
+        self.attempts = 0
+
+    @contextmanager
+    def transaction(self):
+        self.attempts += 1
+        if self.attempts <= self.losses:
+            raise DatabaseConnectionError(
+                "Database connection was lost during a transaction."
+            )
+        with super().transaction() as cur:
+            yield cur
 
 
 NO_TEST_DB_REASON = (

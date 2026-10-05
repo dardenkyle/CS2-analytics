@@ -3,8 +3,12 @@ from unittest import mock
 import pytest
 
 from cs2_analytics.controllers import match_controller as match_module
-from cs2_analytics.exceptions import MatchParseError, SessionScrapeError
-from tests.support import FakeTransactionDb
+from cs2_analytics.exceptions import (
+    DatabaseConnectionError,
+    MatchParseError,
+    SessionScrapeError,
+)
+from tests.support import ConnectionLossDb, FakeTransactionDb
 
 
 class _FakeMatchState:
@@ -104,6 +108,7 @@ def _build_match_controller(
     monkeypatch: pytest.MonkeyPatch,
     scraper_cls: type[_PassiveScraper],
     parser_cls: type[object],
+    db: FakeTransactionDb | None = None,
 ) -> match_module.MatchController:
     monkeypatch.setattr(match_module, "MatchScraper", scraper_cls)
     monkeypatch.setattr(match_module, "MatchParser", parser_cls)
@@ -111,7 +116,7 @@ def _build_match_controller(
     monkeypatch.setattr(match_module, "MapIngestionState", _FakeFollowupState)
     monkeypatch.setattr(match_module, "DemoIngestionState", _FakeFollowupState)
     monkeypatch.setattr(match_module, "store_matches", lambda _matches, cur=None: None)
-    monkeypatch.setattr(match_module, "get_db", lambda: FakeTransactionDb())
+    monkeypatch.setattr(match_module, "get_db", lambda: db or FakeTransactionDb())
     monkeypatch.setattr(match_module.time, "sleep", lambda *_args, **_kwargs: None)
     return match_module.MatchController()
 
@@ -340,3 +345,110 @@ def test_match_controller_stays_quiet_when_nothing_is_orphaned(
 
     assert controller.match_state.calls[0] == "release"
     assert not any("orphaned" in str(c.args[0]) for c in warning_mock.call_args_list)
+
+
+def _capture_match_log(
+    monkeypatch: pytest.MonkeyPatch, level: str
+) -> list[tuple[object, ...]]:
+    calls: list[tuple[object, ...]] = []
+    monkeypatch.setattr(
+        match_module.logger, level, lambda *args, **_kwargs: calls.append(args)
+    )
+    return calls
+
+
+def _track_match_resets(
+    monkeypatch: pytest.MonkeyPatch, controller: match_module.MatchController
+) -> list[object]:
+    reset_calls: list[object] = []
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: reset_calls.append(scraper) or scraper,
+    )
+    return reset_calls
+
+
+MATCH_SUMMARY = "MatchController summary: selected=%d succeeded=%d failed=%d retries=%d"
+MATCH_STORAGE_RETRY = "Retryable storage error for match %s (attempt %d/%d): %s"
+
+
+def test_match_controller_retries_lost_database_connection_then_stores(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = ConnectionLossDb(losses=1)
+    controller = _build_match_controller(
+        monkeypatch, _SuccessfulScraper, _SuccessfulParser, db=db
+    )
+    sleeps: list[float] = []
+    monkeypatch.setattr(match_module.time, "sleep", sleeps.append)
+    warning_calls = _capture_match_log(monkeypatch, "warning")
+    info_calls = _capture_match_log(monkeypatch, "info")
+    reset_calls = _track_match_resets(monkeypatch, controller)
+
+    controller.run(batch_size=1)
+
+    assert controller.match_state.failed == []
+    assert controller.match_state.processed == [1]
+    assert db.attempts == 2
+    assert reset_calls == []
+    assert len(warning_calls) == 1
+    assert warning_calls[0][:4] == (MATCH_STORAGE_RETRY, 1, 1, 3)
+    assert isinstance(warning_calls[0][4], DatabaseConnectionError)
+    assert match_module.RETRY_BACKOFF_SECONDS in sleeps
+    assert (MATCH_SUMMARY, 1, 1, 0, 1) in info_calls
+
+
+def test_match_controller_marks_failed_after_connection_stays_lost(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = ConnectionLossDb(losses=match_module.MAX_ATTEMPTS)
+    controller = _build_match_controller(
+        monkeypatch, _SuccessfulScraper, _SuccessfulParser, db=db
+    )
+    error_calls = _capture_match_log(monkeypatch, "error")
+    exception_calls = _capture_match_log(monkeypatch, "exception")
+    info_calls = _capture_match_log(monkeypatch, "info")
+    reset_calls = _track_match_resets(monkeypatch, controller)
+
+    controller.run(batch_size=1)
+
+    assert controller.match_state.failed == [
+        (1, "Database connection was lost during a transaction.")
+    ]
+    assert controller.match_state.processed == []
+    assert db.attempts == match_module.MAX_ATTEMPTS
+    assert reset_calls == []
+    assert error_calls == [
+        (
+            "Exhausted retries for match %s after %d attempts; marking failed and continuing.",
+            1,
+            3,
+        )
+    ]
+    assert len(exception_calls) == 1
+    assert exception_calls[0][1:4] == (1, 3, 3)
+    assert (MATCH_SUMMARY, 1, 0, 1, 2) in info_calls
+
+
+def test_match_controller_fails_non_retryable_storage_error_on_first_attempt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = FakeTransactionDb(fail_on_exit=RuntimeError("violates check constraint"))
+    controller = _build_match_controller(
+        monkeypatch, _SuccessfulScraper, _SuccessfulParser, db=db
+    )
+    warning_calls = _capture_match_log(monkeypatch, "warning")
+    error_calls = _capture_match_log(monkeypatch, "error")
+    exception_calls = _capture_match_log(monkeypatch, "exception")
+    info_calls = _capture_match_log(monkeypatch, "info")
+
+    controller.run(batch_size=1)
+
+    assert controller.match_state.failed == [(1, "Failed during database transaction.")]
+    assert len(db.cursors) == 1
+    assert warning_calls == []
+    assert error_calls == []
+    assert len(exception_calls) == 1
+    assert exception_calls[0][1:4] == (1, 1, 3)
+    assert (MATCH_SUMMARY, 1, 0, 1, 0) in info_calls

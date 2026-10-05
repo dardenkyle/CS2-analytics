@@ -5,7 +5,9 @@ from contextlib import suppress
 
 from cs2_analytics.controllers.retry_utils import (
     BatchRunState,
+    back_off_after_storage_error,
     is_retryable_scraper_error,
+    is_retryable_storage_error,
     mark_item_failed,
     reset_scraper,
 )
@@ -109,6 +111,19 @@ class MatchController:
             except Exception as e:
                 if attempt < MAX_ATTEMPTS and self._is_recoverable_scraper_error(e):
                     self._recover_from_retryable_error(match_id, attempt, e, run_state)
+                elif attempt < MAX_ATTEMPTS and is_retryable_storage_error(e):
+                    back_off_after_storage_error(
+                        run_state,
+                        match_id,
+                        e,
+                        logger=logger,
+                        log_message=(
+                            "Retryable storage error for match %s (attempt %d/%d): %s"
+                        ),
+                        attempt=attempt,
+                        max_attempts=MAX_ATTEMPTS,
+                        backoff_seconds=RETRY_BACKOFF_SECONDS,
+                    )
                 else:
                     self._mark_terminal_failure(match_id, attempt, e, run_state)
                     return
@@ -174,7 +189,10 @@ class MatchController:
         run_state: BatchRunState[MatchScraper],
     ) -> None:
         """Marks the match failed after a non-retryable or exhausted error."""
-        if attempt == MAX_ATTEMPTS and self._is_recoverable_scraper_error(error):
+        if attempt == MAX_ATTEMPTS and (
+            self._is_recoverable_scraper_error(error)
+            or is_retryable_storage_error(error)
+        ):
             logger.error(
                 "Exhausted retries for match %s after %d attempts; marking failed and continuing.",
                 match_id,
