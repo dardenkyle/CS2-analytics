@@ -337,6 +337,52 @@ def _patch_process_controllers(monkeypatch, calls):
     )
 
 
+class _HaltingController(_RecordingController):
+    """Controller stand-in whose batch is halted by the circuit breaker."""
+
+    def run(self, **kwargs):
+        from cs2_analytics.controllers.retry_utils import BatchOutcome
+
+        super().run(**kwargs)
+        return BatchOutcome.HALTED
+
+
+def test_process_skips_later_stages_and_exits_75_when_a_stage_halts(
+    monkeypatch,
+) -> None:
+    import cs2_analytics.controllers.match_controller as match_module
+
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+    monkeypatch.setattr(
+        match_module, "MatchController", lambda: _HaltingController("match", calls)
+    )
+
+    result = runner.invoke(app, ["process", "--batch", "10"])
+
+    assert result.exit_code == 75
+    assert calls == [("match", {"batch_size": 10})]
+    assert "match stage was halted by the circuit breaker" in result.stderr
+
+
+def test_process_exits_75_when_the_last_stage_halts(monkeypatch) -> None:
+    import cs2_analytics.controllers.map_controller as map_module
+
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+    monkeypatch.setattr(
+        map_module, "MapController", lambda: _HaltingController("map", calls)
+    )
+
+    result = runner.invoke(app, ["process", "--batch", "10"])
+
+    assert result.exit_code == 75
+    assert calls == [
+        ("match", {"batch_size": 10}),
+        ("map", {"batch_size": 10}),
+    ]
+
+
 def test_process_single_stage_runs_only_that_controller(monkeypatch) -> None:
     calls: list[tuple[str, dict]] = []
     _patch_process_controllers(monkeypatch, calls)

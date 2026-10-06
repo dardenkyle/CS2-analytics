@@ -847,9 +847,15 @@ item track record.
       the process environment before any project import and refuses a
       non-local host, so they skip rather than hit whatever `.env` points
       at (#199)
-- [ ] (#175) Controller circuit breaker: abort the batch after consecutive
-      retryable/challenge errors, leaving rows in `discovered` rather
-      than marking them failed, with a cool-off before the next run
+- [x] (#175) Controller circuit breaker: the match and map controllers halt
+      a batch after five consecutive retryable scraper errors with no
+      successful fetch between them (ADR-0017). The in-flight row and the
+      rows the streak marked failed return to `discovered`, rows not yet
+      attempted are never claimed, the summary line reports
+      `outcome=halted`, and `cs2a process` skips the remaining stages and
+      exits 75 so a scheduler can apply a cool-off. The results controller
+      already stopped after an exhausted attempt budget; its summary now
+      reports `stop_reason=retries_exhausted`
 - [x] (#176, #224) Match scraper hardening: the fixed post-load sleep is
       replaced by a wait on the required `div.match-page` selector, and a page
       that never renders it (the source's challenge interstitial included)
@@ -911,6 +917,18 @@ item track record.
       the lifetime floor; the cumulative line the issue sketched is a
       tooltip and table value instead, since a cumulative series over
       monthly bars needs a second axis
+- [ ] (#227) Database pool timeouts: the shared connection pool sets no
+      connect timeout, statement timeout, or keepalive settings, so an
+      unreachable or silently dropped database can block a run on kernel
+      TCP defaults; add bounded, named timeouts that surface as
+      `DatabaseConnectionError` (found while tracing outage behavior for
+      #175; hardening for #180)
+- [ ] (#228) State writes outside the retry path: `mark_as_processing`
+      and the terminal `mark_as_failed` write are not covered by the
+      lost-connection retry from #208, so a connection blip at either
+      point ends the batch with a traceback and no summary; retry them
+      and stop cleanly when the database stays down (coordinate with
+      #197, which moves the claim into the controller loop)
 - [ ] (#207) Targeted reprocessing: `cs2a process --stage <one> --id N`
       processes a single pending match or map instead of the next rows
       in fetch order, closing the gap between `retry --id` and

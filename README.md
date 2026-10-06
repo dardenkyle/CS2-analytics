@@ -323,6 +323,15 @@ run in the canonical order match, map, demo regardless of argument
 order. `demo` is accepted by the parser but rejected with a clear error
 until a demo controller exists; nothing runs and nothing is written.
 
+A circuit breaker halts a stage after five consecutive retryable scraper
+errors with no successful fetch between them, which is what a blocked
+source looks like. The halted batch leaves no cleanup behind: the rows it
+was working on return to `discovered`, the summary line reports
+`outcome=halted`, later stages are skipped, and the command exits with
+status 75 so a scheduler can wait before the next run. A single page that
+cannot be fetched still fails on its own after three attempts without
+halting the batch.
+
 `cs2a failures` is read-only diagnostics for deciding whether to requeue:
 it lists recent `failed` rows (or `dead`/`partial` via `--status`) with
 `failure_count`, `last_failed_at`, and a truncated `last_error_message`,

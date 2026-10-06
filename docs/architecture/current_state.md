@@ -83,6 +83,8 @@ Controllers own:
 
 - batch coordination
 - retry policy and retry exhaustion behavior
+- the circuit breaker that halts a batch when the source blocks every
+  fetch, and the return of that streak's rows to `discovered` (ADR-0017)
 - scraper reset and rotation
 - run-level summaries
 

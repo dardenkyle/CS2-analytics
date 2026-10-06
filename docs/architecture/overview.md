@@ -118,7 +118,9 @@ Controllers should mainly handle:
 
 The retry policy covers retryable scrape errors and lost database
 connections; `docs/conventions.md` lists the error classes and what each
-retry does.
+retry does. A circuit breaker halts a match or map batch once retryable
+scrape errors run consecutively across items, so a blocked source stops
+the run instead of failing every remaining row (ADR-0017).
 
 Controllers should not own per-item fetch -> parse -> persist -> state-transition logic.
 

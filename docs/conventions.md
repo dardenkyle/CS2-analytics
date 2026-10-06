@@ -58,6 +58,13 @@ Implemented services:
   connection, meaning `DatabaseConnectionError` anywhere in the error's
   explicit cause chain (backoff only; the scraper session is kept). Every
   other exception fails the item on the attempt that raised it (#208)
+- Halt a match or map batch with a circuit breaker after
+  `CIRCUIT_BREAKER_THRESHOLD` (five) consecutive `RetryableScrapeError`
+  attempts with no successful fetch between them, counted across items.
+  The halt returns the in-flight row and the rows the streak marked
+  `failed` to `discovered`, and `run()` returns `BatchOutcome.HALTED`.
+  Lost database connections do not count toward the breaker (#175,
+  ADR-0017)
 - Own scraper reset and rotation behavior
 - Own run-level summaries and terminal logging
 - Avoid owning detailed per-item fetch -> parse -> persist workflow

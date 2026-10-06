@@ -492,3 +492,54 @@ Consequences:
   per-date freshness become real needs.
 - Rows discovered before the column existed carry a null match_date and
   are reported as undated pending; any idempotent re-sweep dates them.
+
+## ADR-0017: Halt A Batch With A Circuit Breaker When The Source Blocks Every Fetch
+
+Status:
+Accepted
+
+Date:
+Phase 5
+
+Context:
+When the source starts challenging every request mid-batch, each remaining
+item used its full attempt budget, was marked `failed`, and the run kept
+sending requests into the block. A measured block on a 500-map batch
+failed three rows in under three minutes and would have sent roughly 340
+more requests over about 90 minutes had it not been killed by hand; the
+kill stranded a row in `processing` and the failed rows needed a manual
+requeue (#175). Isolated challenges in the same runs recovered on the
+second attempt, so a single retryable error is normal operation.
+
+Decision:
+The match and map controllers count consecutive `RetryableScrapeError`
+attempts across items, resetting on any attempt whose fetch reached the
+source (a success, a parse failure, or a storage error). At
+`CIRCUIT_BREAKER_THRESHOLD = 5` the batch halts. Five is deliberately
+above one item's attempt budget of three: a single unfetchable page can
+never halt a batch, which matters because selection order is
+deterministic and a released row would be selected first again and halt
+every later run. On a halt the controller returns the in-flight row from
+`processing` to `discovered` and requeues the rows that exhausted their
+attempts inside the streak, using the existing `requeue` transition, so
+`failure_count` and `last_error_message` are kept as history. `run()`
+returns `BatchOutcome.HALTED`, the summary line carries `outcome=halted`,
+and `cs2a process` skips the remaining stages and exits with status 75
+(`EX_TEMPFAIL`). Lost database connections do not count: a halt always
+means the source is blocking.
+
+Consequences:
+- A blocked source costs five fetches and leaves no row in `failed` or
+  `processing`; the next run needs no `cs2a retry`.
+- A scheduler can tell a halt (75, wait and rerun) from a crash (1)
+  without parsing logs. The cool-off itself belongs to the scheduler.
+- Rows returned by a halt show a `failure_count` of one although they
+  were blocked rather than broken. Nothing branches on the count today;
+  a future dead-after-N rule must account for it.
+- The results controller is unchanged in behavior: it already stops when
+  one action exhausts its attempt budget, and now reports
+  `stop_reason=retries_exhausted` in its summary.
+- The match controller's cooldown reads the same cross-item counter, so
+  during a block it can apply one extra cooldown before the halt.
+- A flapping database, where stores fail but state writes succeed, still
+  fails rows one at a time; it has not been observed and is left out.

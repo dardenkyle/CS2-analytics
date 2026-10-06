@@ -221,7 +221,15 @@ def test_results_controller_raises_pipeline_error_after_exhausting_retries(
     assert len(reset_calls) == 2
     assert len(error_calls) == 1
     assert len(exception_calls) == 1
-    assert _summary_args(info_calls) == ("failed", None, 0, 0, 2, 1, 25)
+    assert _summary_args(info_calls) == (
+        "failed",
+        "retries_exhausted",
+        0,
+        0,
+        2,
+        1,
+        25,
+    )
 
 
 def test_results_controller_raises_pipeline_error_for_non_retryable_failure(

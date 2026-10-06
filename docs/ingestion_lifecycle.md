@@ -139,5 +139,9 @@ row changes.
 - stage services mark normal per-item outcomes as `processed`, `failed`, or
   `skipped` using the shared lifecycle helpers
 - controllers mark terminal exception failures when retry policy is exhausted
+- a circuit-breaker halt (ADR-0017) returns the in-flight row from
+  `processing` and the rows its error streak marked `failed` to
+  `discovered`; `failure_count` and `last_error_message` stay on those
+  rows as history, and rows not yet attempted were never claimed
 - rediscovery refreshes `last_seen_at`, keeps source IDs as primary keys, and
   preserves `first_seen_at`
