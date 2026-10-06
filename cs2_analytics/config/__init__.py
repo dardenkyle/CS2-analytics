@@ -6,6 +6,7 @@ throughout the project without needing direct imports.
 """
 
 from .config import (
+    ACTIVE_ENV,
     API_CORS_ORIGINS,
     API_DEBUG,
     API_HOST,
@@ -23,6 +24,7 @@ from .config import (
 )
 
 __all__ = [
+    "ACTIVE_ENV",
     "API_CORS_ORIGINS",
     "API_DEBUG",
     "API_HOST",

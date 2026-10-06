@@ -2,10 +2,10 @@
 
 Every test run, local or CI, targets the disposable local database and
 never the deployment one. This module loads `.env.test` into the process
-environment with override on, so it beats both the application `.env`
-(read later by the config module, which never overrides variables that are
-already set) and any stray shell export. It then refuses to start unless
-the resulting DB_HOST is a local database host. pytest imports the root
+environment with override on, so it beats any stray shell export, and
+selects the `test` environment so the config module reads the same file
+instead of the default `.env.dev`. It then refuses to start unless the
+resulting DB_HOST is a local database host. pytest imports the root
 conftest before collecting any test module, so this runs before the config
 module can be imported anywhere; the guard at the top makes that
 assumption explicit rather than silent.
@@ -36,6 +36,9 @@ def _pin_test_environment() -> None:
     if not TEST_ENV_FILE.is_file():
         raise RuntimeError(f"{TEST_ENV_FILE} is missing; tests refuse to run without it.")
     load_dotenv(TEST_ENV_FILE, override=True)
+    # Select the same file for the config module, which otherwise loads the
+    # default environment's `.env.dev` over what was just pinned (#179).
+    os.environ["CS2A_ENV"] = "test"
     # Imported only now, after the pin: this is the first load of the
     # config module in the process, so it reads the pinned environment.
     # The set is shared with `cs2a db`, which refuses the same hosts (#200).

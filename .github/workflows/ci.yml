@@ -19,13 +19,13 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_DB: cs2_db
+          POSTGRES_DB: cs2_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: change_me
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d cs2_db"
+          --health-cmd "pg_isready -U postgres -d cs2_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -36,7 +36,7 @@ jobs:
       API_HOST: 127.0.0.1
       API_PORT: "8000"
       API_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:8501,http://127.0.0.1:8501
-      DB_NAME: cs2_db
+      DB_NAME: cs2_test
       DB_USER: postgres
       DB_PASS: change_me
       DB_HOST: 127.0.0.1
@@ -111,6 +111,7 @@ jobs:
       DB_HOST: 127.0.0.1
       DB_PORT: "5432"
       DBT_DB_HOST: 127.0.0.1
+      DBT_DB_NAME: cs2_db
 
     steps:
       - name: Check out repository

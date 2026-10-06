@@ -5,10 +5,11 @@
 # local defaults) and is deliberately decoupled from the application's DB_*
 # variables, which may point at a deployed database.
 #
-# Local (default target `dev`): start a local Postgres, then run dbt. The
-# defaults below match docker-compose's `db` service and .env.example:
+# Local (default target `dev`): start the compose stack, which creates and
+# migrates the `cs2_dev` database, then run dbt. The defaults below match
+# docker-compose.yml and .env.example:
 #
-#   docker compose --env-file .env.example up -d db
+#   docker compose up -d
 #   uv run dbt run --project-dir dbt --profiles-dir dbt
 #
 # Override any DBT_DB_* variable to point the default target elsewhere.
@@ -16,7 +17,7 @@
 # Deployed database (explicit opt-in only): the `prod` target reads the
 # application's DB_* variables and is only used when named on the command line:
 #
-#   set -a; source .env; set +a
+#   set -a; source .env.prod; set +a
 #   uv run dbt run --project-dir dbt --profiles-dir dbt --target prod
 #
 # Nothing secret is committed here.
@@ -30,7 +31,7 @@ cs2_analytics:
       port: "{{ env_var('DBT_DB_PORT', '5432') | as_number }}"
       user: "{{ env_var('DBT_DB_USER', 'postgres') }}"
       password: "{{ env_var('DBT_DB_PASS', 'change_me') }}"
-      dbname: "{{ env_var('DBT_DB_NAME', 'cs2_db') }}"
+      dbname: "{{ env_var('DBT_DB_NAME', 'cs2_dev') }}"
       schema: analytics
       threads: 4
     prod:

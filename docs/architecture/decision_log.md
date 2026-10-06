@@ -543,3 +543,56 @@ Consequences:
   during a block it can apply one extra cooldown before the halt.
 - A flapping database, where stores fail but state writes succeed, still
   fails rows one at a time; it has not been observed and is left out.
+
+## ADR-0018: Select The Environment Explicitly; Local Development Is The Default
+
+Status:
+Accepted
+
+Date:
+Phase 5
+
+Context:
+Configuration read a single `.env` file, and on a development machine that
+file held the deployed database's credentials because scraping runs
+locally against it by design. Every database-writing command was therefore
+a production write unless the operator remembered otherwise, and there was
+no local database to develop against. Variables exported in a shell also
+outranked the file, which once pointed a migration at the deployed
+database (#200). The test suite had already solved this for itself by
+pinning `.env.test` (#199).
+
+Decision:
+Three named environments each read their own env file: `dev` reads `.env.dev`
+and is the default, `test` reads `.env.test`, and `prod` reads the
+gitignored `.env.prod`. The unnamed `.env` is no longer read, and a
+leftover one is rejected. The `CS2A_ENV` variable selects one; the
+`cs2a` console script resolves a global `--env` option into that variable
+before any project module is imported, because configuration is read at
+import time. The selected file is loaded over the process environment,
+once per process. `dev` and `test` refuse a `DB_HOST` outside the local
+set, so deployed credentials placed in `.env.dev` stop a command instead
+of being used. A runtime that ships no `.env.dev` file and declares
+`ENVIRONMENT=production` in its own environment (the container image, the
+hosted API, the manual pipeline workflow) is treated as `prod`, so
+deployed services need no change. Docker Compose is the local stack:
+`docker compose up` starts PostgreSQL, creates and migrates the `cs2_dev`
+database, and starts the API. The test suite truncates tables, so it
+uses its own `cs2_test` database in the same container and creates it on
+first use.
+
+Consequences:
+- Deployed credentials are read only when `prod` is selected by name, and
+  a shell export can no longer repoint a command.
+- Operating against the deployed database from a development machine now
+  takes `cs2a --env prod`; a machine that still has an unnamed `.env`
+  gets a configuration error that says how to rename it.
+- `python run_api.py`, `python manage_db.py`, and direct `alembic` calls
+  have no option to parse and rely on `CS2A_ENV`.
+- The selection is applied before import, so invoking the Typer app
+  directly with a different `--env` is refused rather than silently
+  ignored.
+- The dbt `dev` target now defaults to `cs2_dev`; the CI dbt jobs name
+  their service database explicitly.
+- Test and development databases share one PostgreSQL container and
+  credentials; only the database name separates them.

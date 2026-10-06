@@ -1,6 +1,7 @@
 """Database setup commands for schema creation and explicit wipes."""
 
 import argparse
+from contextlib import closing
 from pathlib import Path
 
 import psycopg2
@@ -44,7 +45,10 @@ def _connection_kwargs(dbname: str) -> dict[str, str | int]:
 def create_database_if_missing(maintenance_db: str = "postgres") -> None:
     """Create the configured database when it does not already exist."""
     try:
-        with psycopg2.connect(**_connection_kwargs(maintenance_db)) as conn:
+        # closing(), not the connection's own context manager: that one opens
+        # a transaction even with autocommit on, and CREATE DATABASE cannot
+        # run inside a transaction block.
+        with closing(psycopg2.connect(**_connection_kwargs(maintenance_db))) as conn:
             conn.autocommit = True
             with conn.cursor() as cur:
                 cur.execute(

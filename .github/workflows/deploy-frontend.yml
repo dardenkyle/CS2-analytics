@@ -57,6 +57,7 @@ jobs:
       DB_HOST: 127.0.0.1
       DB_PORT: "5432"
       DBT_DB_HOST: 127.0.0.1
+      DBT_DB_NAME: cs2_db
 
     steps:
       - name: Check out repository

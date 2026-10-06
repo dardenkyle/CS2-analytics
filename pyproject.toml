@@ -39,7 +39,7 @@ dependencies = [
 ]
 
 [project.scripts]
-cs2a = "cs2_analytics.cli:app"
+cs2a = "cs2_analytics.entrypoint:main"
 
 [project.optional-dependencies]
 demo = [

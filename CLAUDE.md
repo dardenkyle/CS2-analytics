@@ -118,6 +118,10 @@ PR marked medium or high risk.
 - Use `python -m cs2_analytics.storage.initialize_db` or
   `alembic -c cs2_analytics/alembic.ini upgrade head` to initialize or upgrade
   the local database schema when needed.
+- `.env.dev` is the local `dev` environment and the default for every
+  command. Deployed credentials live in the gitignored `.env.prod` and are
+  read only with `cs2a --env prod` (or `CS2A_ENV=prod` for `run_api.py`,
+  `manage_db.py`, and direct `alembic` calls). See ADR-0018.
 - Keep local credentials and environment-specific settings out of commits.
 - Avoid committing generated caches, coverage output, logs, parsed data, or
   downloaded demos.
