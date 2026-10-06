@@ -44,7 +44,11 @@ class _RecordingConnection:
         self.cursor_obj = cursor
         self.entered = False
         self.exited = False
+        self.closed = False
         self.autocommit = False
+
+    def close(self) -> None:
+        self.closed = True
 
     def __enter__(self):
         self.entered = True
@@ -292,6 +296,43 @@ def test_create_database_if_missing_creates_database_when_absent(
     assert cursor.executed[0][0] == "SELECT 1 FROM pg_database WHERE datname = %s;"
     assert cursor.executed[0][1] == (initialize_db_module.DB_NAME,)
     assert len(cursor.executed) == 2
+    assert connection.closed is True
+
+
+def _maintenance_connection():
+    """Autocommit connection to the local test server's maintenance database."""
+    connection = initialize_db_module.psycopg2.connect(
+        **initialize_db_module._connection_kwargs("postgres")
+    )
+    connection.autocommit = True
+    return connection
+
+
+def test_create_database_if_missing_creates_a_database_on_a_real_server(
+    test_database, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # CREATE DATABASE is rejected inside a transaction block, which a
+    # recording connection cannot show; only a real server does (#179).
+    probe_name = "cs2_create_database_probe"
+    monkeypatch.setattr(initialize_db_module, "DB_NAME", probe_name)
+    maintenance = _maintenance_connection()
+    try:
+        with maintenance.cursor() as cur:
+            cur.execute(f"DROP DATABASE IF EXISTS {probe_name};")
+
+        initialize_db_module.create_database_if_missing()
+        # A second call finds the database and leaves it alone.
+        initialize_db_module.create_database_if_missing()
+
+        with maintenance.cursor() as cur:
+            cur.execute(
+                "SELECT count(*) FROM pg_database WHERE datname = %s;", (probe_name,)
+            )
+            assert cur.fetchone() == (1,)
+    finally:
+        with maintenance.cursor() as cur:
+            cur.execute(f"DROP DATABASE IF EXISTS {probe_name};")
+        maintenance.close()
 
 
 def test_schema_defines_non_destructive_table_creation() -> None:

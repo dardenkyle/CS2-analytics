@@ -8,6 +8,6 @@
 services:
   db:
     environment:
-      POSTGRES_DB: cs2_db
+      POSTGRES_DB: cs2_test
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: change_me

@@ -1,8 +1,18 @@
+# Local development stack. `docker compose up` starts PostgreSQL, creates
+# and migrates the development database, then starts the API. Every
+# service connects to the `db` container only; nothing here can reach a
+# deployed database.
 services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_DB: "${DB_NAME:-cs2_db}"
+      # Development and test data live in separate databases in this one
+      # container: cs2_dev here, cs2_test for the test suite (.env.test,
+      # docker-compose.test.yml), which truncates tables. PostgreSQL only
+      # creates this initial database on an empty volume, so each side
+      # creates its own when missing: the migrate service for development,
+      # the test bootstrap for tests.
+      POSTGRES_DB: cs2_dev
       POSTGRES_USER: "${DB_USER:-postgres}"
       POSTGRES_PASSWORD: "${DB_PASS:-change_me}"
     ports:
@@ -25,7 +35,7 @@ services:
       API_HOST: "0.0.0.0"
       API_PORT: "${API_PORT:-8000}"
       API_CORS_ORIGINS: "${API_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8501,http://127.0.0.1:8501,http://localhost:8000,http://127.0.0.1:8000}"
-      DB_NAME: "${DB_NAME:-cs2_db}"
+      DB_NAME: "${DB_NAME:-cs2_dev}"
       DB_USER: "${DB_USER:-postgres}"
       DB_PASS: "${DB_PASS:-change_me}"
       DB_HOST: "db"
@@ -36,8 +46,8 @@ services:
       - ./logs:/app/logs
     shm_size: "2gb"
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [
@@ -48,13 +58,15 @@ services:
       timeout: 5s
       retries: 3
 
+  # One-shot: creates DB_NAME when it does not exist, applies migrations,
+  # and exits. The app waits for it, so `docker compose up` always yields a
+  # migrated database.
   migrate:
     image: cs2-analytics:local
     build:
       context: .
-    profiles: ["tools"]
     environment: *app_environment
-    command: ["python", "manage_db.py", "--init"]
+    command: ["python", "manage_db.py", "--create-database"]
     depends_on:
       db:
         condition: service_healthy

@@ -47,6 +47,42 @@ def _patch_alembic_command(monkeypatch, calls):
         monkeypatch.setattr(alembic.command, command_name, _recorder(command_name))
 
 
+def test_env_option_matching_the_loaded_environment_runs_the_command(
+    monkeypatch,
+) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+
+    # conftest selects the test environment for the whole run.
+    result = runner.invoke(app, ["--env", "test", "process", "--stage", "map"])
+
+    assert result.exit_code == 0
+    assert calls == [("map", {"batch_size": 50})]
+
+
+def test_env_option_that_was_not_applied_refuses_to_run(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+
+    # Invoking the app directly skips the entry point, so configuration
+    # has already loaded the test environment rather than prod.
+    result = runner.invoke(app, ["--env", "prod", "process"])
+
+    assert result.exit_code == 2
+    assert calls == []
+    assert "--env prod was not applied" in result.stderr
+
+
+def test_env_option_rejects_an_unknown_environment(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+
+    result = runner.invoke(app, ["--env", "staging", "process"])
+
+    assert result.exit_code == 2
+    assert calls == []
+
+
 def test_help_lists_all_commands() -> None:
     result = runner.invoke(app, ["--help"])
 

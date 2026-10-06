@@ -4,18 +4,24 @@ Holds environment facts only (database, API, source URL, environment and
 debug flags, log level). Scraping run parameters - discovery window,
 match caps, batch sizes - are explicit arguments supplied by the invoker
 (the CLI today, an orchestrator later); see ADR-0015.
+
+Which env file supplies those facts is decided by `runtime_env`:
+`.env.dev` for local development unless another environment is selected
+(ADR-0018).
 """
 
 import logging
 import os
 
-from dotenv import load_dotenv
-
 from cs2_analytics.exceptions import ConfigurationError
+from cs2_analytics.runtime_env import (
+    load_selected_environment,
+    refuse_non_local_host,
+)
 
 logger = logging.getLogger(__name__)
 
-load_dotenv()
+ACTIVE_ENV = load_selected_environment()
 
 TRUTHY_VALUES = {"1", "true", "yes", "y", "on"}
 FALSY_VALUES = {"0", "false", "no", "n", "off"}
@@ -113,9 +119,12 @@ DB_HOST = os.getenv("DB_HOST", default="localhost")
 DB_PORT = _read_int("DB_PORT", default=5432)
 
 # Hosts that can only ever be a local or compose database. Schema commands
-# refuse any other host unless explicitly allowed (#200), and the test
-# bootstrap refuses to run against any other host at all (#199).
+# refuse any other host unless explicitly allowed (#200), the test
+# bootstrap refuses to run against any other host at all (#199), and the
+# dev and test environments refuse one outright (#179).
 LOCAL_DB_HOSTS = frozenset({"localhost", "127.0.0.1", "db"})
+
+refuse_non_local_host(ACTIVE_ENV, DB_HOST, LOCAL_DB_HOSTS)
 
 # API Configuration
 API_HOST = os.getenv("API_HOST", default="127.0.0.1")

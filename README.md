@@ -143,8 +143,38 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 ### 4. Configure Environment Variables
 
-Copy `.env.example` to `.env` for local development and adjust the values for
-your PostgreSQL instance.
+Copy `.env.example` to `.env.dev`. Its defaults match the Docker Compose
+stack in section 6, so no edits are needed for local development.
+
+Every command runs against one of three named environments, each backed by
+its own env file at the repository root:
+
+| Environment | Env file | Selected by |
+| --- | --- | --- |
+| `dev` | `.env.dev` (gitignored) | Default for every command. |
+| `test` | `.env.test` (committed) | `uv run pytest`, or `cs2a --env test`. |
+| `prod` | `.env.prod` (gitignored) | `cs2a --env prod` only. |
+
+`--env` is a global option and goes before the subcommand:
+
+```sh
+cs2a status                 # dev: the local database
+cs2a --env prod status      # the deployed database
+```
+
+The selected file is loaded over the process environment, so a variable
+left exported in the shell cannot repoint a command. `dev` and `test`
+refuse to start when `DB_HOST` is not a local host (`localhost`,
+`127.0.0.1`, or the compose `db` service), which means deployed
+credentials placed in `.env.dev` by mistake stop the command instead of
+being used. Keep them in `.env.prod`. A plain `.env` file is not read; if
+one exists, commands stop and ask for it to be renamed.
+
+`python run_api.py`, `python manage_db.py`, and direct `alembic` calls take
+no `--env` option; they use `dev` unless `CS2A_ENV=prod` (or `test`) is
+set. A container or hosted service that ships no env file and sets
+`ENVIRONMENT=production` in its own environment runs as `prod` without
+either.
 
 Required runtime variables:
 
@@ -155,7 +185,7 @@ Required runtime variables:
 | `API_HOST` | Host address used by `python run_api.py`. | `127.0.0.1` |
 | `API_PORT` | Port used by `python run_api.py`. | `8000` |
 | `API_CORS_ORIGINS` | Comma-separated browser origins allowed by the API. Wildcard CORS is rejected in production. | `http://localhost:8501` |
-| `DB_NAME` | PostgreSQL database name. | `cs2_db` |
+| `DB_NAME` | PostgreSQL database name. | `cs2_dev` |
 | `DB_USER` | PostgreSQL user. | `postgres` |
 | `DB_PASS` | PostgreSQL password. | `change_me` |
 | `DB_HOST` | PostgreSQL host. | `localhost` |
@@ -172,8 +202,9 @@ Production mode fails fast when required runtime variables are missing, when
 
 ### 5. Set Up Database
 
-Ensure PostgreSQL is installed and configure database credentials through your
-local environment or `.env`.
+The Docker Compose stack in section 6 creates and migrates the local
+`cs2_dev` database on its own, so this section is only needed for a
+PostgreSQL instance you run yourself or for a deployed database.
 
 Run the non-destructive migration path:
 
@@ -194,14 +225,14 @@ local or production database:
 cs2a db current                  # show the database's current revision
 cs2a db upgrade                  # apply migrations up to head; confirms first
 cs2a db downgrade <revision>     # revert to a revision; confirms first
-cs2a db upgrade --allow-remote   # required when DB_HOST is not a local host
+cs2a --env prod db upgrade --allow-remote   # migrate the deployed database
 ```
 
 These wrap the same `alembic -c cs2_analytics/alembic.ini ...` commands with
 the same environment-driven connection settings. `upgrade` and `downgrade`
 refuse a host outside the local set (`localhost`, `127.0.0.1`, `db`) unless
 `--allow-remote` is passed, and they do so before the confirmation prompt, so
-a deployed migration needs the deployed settings, the flag, and the prompt
+a deployed migration needs `--env prod`, the flag, and the prompt
 together. `current` is read-only and never needs the flag. Running
 `alembic -c cs2_analytics/alembic.ini upgrade head` directly, or
 `manage_db.py`, bypasses this guard entirely; reserve those for a local
@@ -237,16 +268,31 @@ manage ingestion tables.
 The Phase 3.75 deployment baseline includes a local container runtime for
 PostgreSQL, migrations, the API, and pipeline runs.
 
-Build the application image and start PostgreSQL plus the API:
+Build the application image and start the local development stack:
 
 ```sh
-docker compose up --build app
+docker compose up --build
 ```
 
-Apply database migrations in the compose environment:
+This starts PostgreSQL, runs the one-shot `migrate` service, and then starts
+the API. `migrate` creates the `cs2_dev` database when it does not exist and
+applies every migration, so the stack always comes up with a migrated
+database; on first run it is empty. With `.env.dev` copied from `.env.example`,
+`cs2a` commands on the host use that same database:
 
 ```sh
-docker compose --profile tools run --rm migrate
+cs2a status
+```
+
+The stack only ever talks to its own `db` container. Development data
+lives in `cs2_dev`; the test suite (section 9) truncates tables and uses
+its own `cs2_test` database in the same container, so running the tests
+does not disturb development data.
+
+Re-apply migrations after pulling new ones:
+
+```sh
+docker compose run --rm migrate
 ```
 
 Run the ingestion pipeline in the compose environment:
@@ -269,9 +315,7 @@ Run the deterministic deployment smoke path after PostgreSQL, migrations, and
 the API are available:
 
 ```sh
-docker compose up -d db
-docker compose --profile tools run --rm migrate
-docker compose up -d app
+docker compose up -d
 docker compose --profile tools run --rm smoke
 ```
 
@@ -290,6 +334,13 @@ point. A full incremental run is discovery followed by processing:
 
 ```sh
 cs2a ingest discover && cs2a process
+```
+
+These run against the local `dev` database. Put `--env prod` after `cs2a`
+to run any command against the deployed database instead (section 4):
+
+```sh
+cs2a --env prod ingest discover && cs2a --env prod process
 ```
 
 Individual stages:
@@ -418,9 +469,10 @@ Then open the host and port configured by `API_HOST` and `API_PORT`, such as
 uv run pytest --cov
 ```
 
-Tests never touch the database named in `.env`. `tests/conftest.py` loads
+Tests never touch the database named in `.env.dev`. `tests/conftest.py` loads
 the committed `.env.test` over the process environment (a shell export
-loses too) before any project module is imported, and refuses to start
+loses too) before any project module is imported, selects the `test`
+environment so configuration reads that same file, and refuses to start
 unless `DB_HOST` is a local host (`localhost`, `127.0.0.1`, or the compose
 `db` service). DB-backed tests (the storage integration tests and the
 atomic-transaction acceptance test) take the `test_database` fixture,
@@ -429,7 +481,9 @@ running; CI runs them against its disposable service container.
 
 To run them locally, start the compose database with the test override,
 which pins the container to literal local values so no environment
-variable can repoint it. No migration step is needed.
+variable can repoint it. No setup step is needed: the tests create the
+`cs2_test` database when it does not exist and migrate it on first use.
+The development stack keeps its data in `cs2_dev` in the same container.
 
 ```sh
 docker compose -f docker-compose.yml -f docker-compose.test.yml up -d db
@@ -441,13 +495,12 @@ uv run pytest --cov
 dbt is installed with the dev dependencies (`uv sync`). Its default target is a
 **local** Postgres, so `dbt run` never touches a deployed database by accident.
 dbt uses its own `DBT_DB_*` variables (with local defaults, see `.env.example`)
-and does not read `.env` itself. Start a local Postgres, load the schema,
-install dbt packages, then build (models plus data tests):
+and does not read any env file itself; those defaults point at the `cs2_dev`
+database the compose stack creates and migrates. Start the stack, install
+dbt packages, then build (models plus data tests):
 
 ```sh
-docker compose --env-file .env.example up -d db
-env DB_HOST=localhost DB_USER=postgres DB_PASS=change_me DB_NAME=cs2_db \
-  uv run alembic -c cs2_analytics/alembic.ini upgrade head
+docker compose up -d
 uv run dbt deps --project-dir dbt --profiles-dir dbt
 uv run dbt debug --project-dir dbt --profiles-dir dbt
 uv run dbt build --project-dir dbt --profiles-dir dbt
@@ -481,9 +534,12 @@ To run against a deployed database on purpose, export its `DB_*` values and
 name the `prod` target explicitly:
 
 ```sh
-set -a; source .env; set +a
+set -a; source .env.prod; set +a
 uv run dbt run --project-dir dbt --profiles-dir dbt --target prod
 ```
+
+Do this in a throwaway shell. The exported values do not affect `cs2a`,
+which loads its selected env file over them.
 
 The dbt layer is CI-verified: the `dbt-build` job in
 `.github/workflows/ci.yml` runs `dbt build` (models, snapshots, and data

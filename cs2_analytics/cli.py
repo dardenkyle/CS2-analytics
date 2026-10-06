@@ -1,7 +1,8 @@
 """Typer CLI exposing the ingestion pipeline as the `cs2a` command.
 
-Registered as the `cs2a` console script in pyproject.toml. Commands wrap
-the existing controllers without changing their behavior. Controller
+The `cs2a` console script in pyproject.toml runs `entrypoint.main`, which
+resolves the global `--env` option and then invokes this app. Commands
+wrap the existing controllers without changing their behavior. Controller
 imports live inside the command bodies so `cs2a --help` and `cs2a status`
 do not pay the scraper-stack import cost.
 """
@@ -14,6 +15,7 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 
 from cs2_analytics.exceptions import DatabaseConnectionError, IngestionStateError
+from cs2_analytics.runtime_env import ENV_FILES, ENV_SELECTOR_VAR, RuntimeEnv
 from cs2_analytics.utils.time_format import format_local
 
 if TYPE_CHECKING:
@@ -38,6 +40,38 @@ inspect_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(inspect_app, name="inspect")
+
+
+@app.callback()
+def select_environment(
+    env: Annotated[
+        RuntimeEnv | None,
+        typer.Option(
+            "--env",
+            help=(
+                "Environment to run against: dev reads .env.dev (the"
+                " default), test reads .env.test, prod reads .env.prod. Goes"
+                " before the subcommand."
+            ),
+        ),
+    ] = None,
+) -> None:
+    """CS2 analytics ingestion pipeline."""
+    if env is None:
+        return
+
+    from cs2_analytics.config.config import ACTIVE_ENV
+
+    # The `cs2a` entry point applies --env before configuration loads. An
+    # invocation that bypassed it has already read another environment.
+    if env is not ACTIVE_ENV:
+        typer.echo(
+            f"--env {env.value} was not applied: configuration already loaded"
+            f" the {ACTIVE_ENV.value} environment ({ENV_FILES[ACTIVE_ENV]})."
+            f" Run the installed `cs2a` command, or set {ENV_SELECTOR_VAR}.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
 
 
 class DiscoverMode(StrEnum):

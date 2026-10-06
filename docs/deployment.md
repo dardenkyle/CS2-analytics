@@ -17,10 +17,10 @@ Build the application image:
 docker build -t cs2-analytics:local .
 ```
 
-Start PostgreSQL and the API:
+Start PostgreSQL, apply migrations, and start the API:
 
 ```sh
-docker compose up --build app
+docker compose up --build
 ```
 
 The API binds to `0.0.0.0` in the container and is published on
@@ -33,21 +33,24 @@ curl http://localhost:8000/docs
 
 ## Migrations
 
-Apply Alembic migrations against the compose PostgreSQL service:
+`docker compose up` runs the one-shot `migrate` service before the API
+starts, so the compose database is always migrated. Run it again on its own
+after pulling new migrations:
 
 ```sh
-docker compose --profile tools run --rm migrate
+docker compose run --rm migrate
 ```
 
 This runs:
 
 ```sh
-python manage_db.py --init
+python manage_db.py --create-database
 ```
 
-The command is non-destructive and applies
+The command is non-destructive: it creates the `DB_NAME` database
+(`cs2_dev` by default) when it does not exist and applies
 `alembic -c cs2_analytics/alembic.ini upgrade head` through the project setup
-entrypoint.
+entrypoint. It only ever targets the compose `db` container.
 
 ## Pipeline Run
 
@@ -71,9 +74,7 @@ Run the deterministic deployment smoke path after PostgreSQL, migrations, and
 the API are available:
 
 ```sh
-docker compose up -d db
-docker compose --profile tools run --rm migrate
-docker compose up -d app
+docker compose up -d
 docker compose --profile tools run --rm smoke
 ```
 
@@ -320,7 +321,9 @@ GitHub Actions pipeline secrets:
 | `DB_PORT` | Pipeline database port |
 
 Use Render's external PostgreSQL host for local migration commands and for the
-GitHub Actions manual worker. The short internal hostname is only reachable
+GitHub Actions manual worker. On a development machine those values live in
+the gitignored `.env.prod` and are read only with `cs2a --env prod`
+(ADR-0018); the hosted services receive them as real environment variables. The short internal hostname is only reachable
 from Render services on Render's private network.
 
 Secret values must stay out of the repository, docs, logs, and committed
@@ -432,7 +435,8 @@ by issue #55.
 ## Environment
 
 Compose provides container-safe defaults for local development. Override these
-through your shell environment or a local `.env` file when needed.
+through your shell environment or `docker compose --env-file .env.dev` when
+needed.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
@@ -440,7 +444,7 @@ through your shell environment or a local `.env` file when needed.
 | `DEBUG_MODE` | `false` | Keeps Uvicorn reload disabled in the container. |
 | `API_PORT` | `8000` | Published host port and in-container API port. |
 | `API_CORS_ORIGINS` | localhost development origins | Comma-separated FastAPI CORS allowlist. |
-| `DB_NAME` | `cs2_db` | PostgreSQL database created by the compose image. |
+| `DB_NAME` | `cs2_dev` | Development database, created by the `migrate` service. The test suite uses a separate `cs2_test` database in the same container. |
 | `DB_USER` | `postgres` | PostgreSQL user. |
 | `DB_PASS` | `change_me` | PostgreSQL password for local compose only. |
 | `POSTGRES_HOST_PORT` | `5432` | Host port mapped to the PostgreSQL container. |

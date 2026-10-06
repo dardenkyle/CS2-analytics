@@ -929,6 +929,12 @@ item track record.
       point ends the batch with a traceback and no summary; retry them
       and stop cleanly when the database stays down (coordinate with
       #197, which moves the claim into the controller loop)
+- [ ] (#249) Compose logs mount on Linux: the `app` and `pipeline`
+      containers run as a non-root user that cannot write to the
+      bind-mounted `./logs` directory owned by the host user, so the API
+      container exits at logger setup while the database and `migrate`
+      service work; pick between a named volume, running as the host
+      user, or a console-only fallback (found during #179)
 - [ ] (#207) Targeted reprocessing: `cs2a process --stage <one> --id N`
       processes a single pending match or map instead of the next rows
       in fetch order, closing the gap between `retry --id` and
@@ -956,9 +962,16 @@ item track record.
       overlapping intervals, exactly one current row per player) and
       score consistency (map winner has the higher score, match winner
       holds the map majority)
-- [ ] (#179) Docker Compose local development stack: local Postgres with schema
-      init and a dbt target, with a documented switch between local and
-      production environment files
+- [x] (#179) Docker Compose local development stack: `docker compose up`
+      starts Postgres, creates and migrates the `cs2_dev` database, then
+      starts the API; the dbt `dev` target defaults to `cs2_dev`. Three
+      named environments select an env file (ADR-0018): `dev` reads `.env.dev`
+      and is the default, `test` reads `.env.test`, and `prod` reads
+      `.env.prod` and is only used with `cs2a --env prod` (or
+      `CS2A_ENV=prod` for the other entry points). The selected file is
+      loaded over the process environment, and `dev` and `test` refuse a
+      non-local database host, so production credentials are never read
+      by default
 - [ ] (#180) Always-on processing runner on a dedicated home-server host:
       systemd timer units invoking the CLI, plus a drain mode on
       `cs2a process` that loops batches until no pending work remains

@@ -77,6 +77,15 @@ resetting every `processing` row in their table back to `discovered`
 on the pipeline being single-process; parallel runs would require
 lease-based claiming instead.
 
+## Environments
+
+Commands run against a named environment (ADR-0018): `dev` reads `.env.dev`
+and is the default, `test` reads `.env.test`, and `prod` reads
+`.env.prod` and is selected only with `cs2a --env prod` or
+`CS2A_ENV=prod`. `dev` and `test` refuse a non-local database host. The
+local development database is `cs2_dev` in the Docker Compose stack, which
+creates and migrates it on `docker compose up`.
+
 ## Component Boundaries
 
 Controllers own:
