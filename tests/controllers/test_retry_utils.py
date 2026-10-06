@@ -1,7 +1,13 @@
 import pytest
 
 from cs2_analytics.controllers import retry_utils
-from cs2_analytics.exceptions import MatchIngestionStateError, SessionScrapeError
+from cs2_analytics.exceptions import (
+    DatabaseConnectionError,
+    DatabaseOperationError,
+    MatchIngestionStateError,
+    MatchStorageError,
+    SessionScrapeError,
+)
 
 
 class _Logger:
@@ -153,4 +159,118 @@ def test_reset_scraper_warns_on_close_failure_and_returns_fallback_scraper(
             2,
         ),
         ("Returning scraper after reset retries.",),
+    ]
+
+
+def _wrapped(outer: Exception, inner: Exception) -> Exception:
+    """Returns `outer` raised explicitly from `inner`, as storage callers do."""
+    try:
+        raise outer from inner
+    except Exception as error:
+        return error
+
+
+def _raised_while_handling(outer: Exception, inner: Exception) -> Exception:
+    """Returns `outer` raised during handling of `inner`, with no explicit cause."""
+    try:
+        try:
+            raise inner
+        except Exception:
+            raise outer  # noqa: B904 - the implicit context is the point
+    except Exception as error:
+        return error
+
+
+CONNECTION_LOST = DatabaseConnectionError("Database connection was lost.")
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (CONNECTION_LOST, True),
+        (
+            _wrapped(
+                MatchIngestionStateError("Failed to mark item as processed."),
+                DatabaseConnectionError("Database connection was lost."),
+            ),
+            True,
+        ),
+        (
+            _wrapped(
+                MatchIngestionStateError("Failed to mark item as processed."),
+                _wrapped(
+                    MatchStorageError("Failed to store match records."),
+                    DatabaseConnectionError("Database connection was lost."),
+                ),
+            ),
+            True,
+        ),
+        (DatabaseOperationError("Failed during database transaction."), False),
+        (
+            _wrapped(
+                DatabaseOperationError("Failed during database transaction."),
+                MatchStorageError("Failed to store match records."),
+            ),
+            False,
+        ),
+        (SessionScrapeError("Failed to fetch match page."), False),
+        (
+            _raised_while_handling(
+                ValueError("unrelated failure"),
+                DatabaseConnectionError("Database connection was lost."),
+            ),
+            False,
+        ),
+    ],
+    ids=[
+        "connection-error",
+        "wrapped-once",
+        "wrapped-twice",
+        "operation-error",
+        "operation-error-wrapping-storage-error",
+        "scrape-error",
+        "implicit-context-only",
+    ],
+)
+def test_is_retryable_storage_error_follows_explicit_causes(
+    error: Exception, expected: bool
+) -> None:
+    assert retry_utils.is_retryable_storage_error(error) is expected
+
+
+def test_back_off_after_storage_error_counts_retry_and_scales_the_wait(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr(retry_utils.time, "sleep", sleeps.append)
+    logger = _Logger()
+    original_scraper = _Scraper("original")
+    run_state = retry_utils.BatchRunState(
+        scraper=original_scraper, consecutive_recoverable_errors=1
+    )
+
+    retry_utils.back_off_after_storage_error(
+        run_state,
+        7,
+        CONNECTION_LOST,
+        logger=logger,
+        log_message="Retryable storage error for match %s (attempt %d/%d): %s",
+        attempt=2,
+        max_attempts=3,
+        backoff_seconds=3.0,
+    )
+
+    assert run_state.retries == 1
+    assert run_state.scraper is original_scraper
+    assert original_scraper.close_calls == 0
+    assert run_state.consecutive_recoverable_errors == 1
+    assert sleeps == [6.0]
+    assert logger.warnings == [
+        (
+            "Retryable storage error for match %s (attempt %d/%d): %s",
+            7,
+            2,
+            3,
+            CONNECTION_LOST,
+        )
     ]

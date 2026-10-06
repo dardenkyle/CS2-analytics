@@ -53,6 +53,11 @@ Implemented services:
 
 - Coordinate batches of work
 - Own retry policy and retry exhaustion behavior
+- Retry two error classes within an item's attempt budget (`MAX_ATTEMPTS`):
+  `RetryableScrapeError` (backoff, then a scraper reset) and a lost database
+  connection, meaning `DatabaseConnectionError` anywhere in the error's
+  explicit cause chain (backoff only; the scraper session is kept). Every
+  other exception fails the item on the attempt that raised it (#208)
 - Own scraper reset and rotation behavior
 - Own run-level summaries and terminal logging
 - Avoid owning detailed per-item fetch -> parse -> persist workflow
@@ -71,6 +76,10 @@ The `cs2a` CLI entry point is intentionally thin and is not the primary architec
 - Match/map/player writes belong in storage modules (`match_storage.py`,
   `map_storage.py`, `player_storage.py`)
 - Shared DB connection/cursor concerns belong in `storage/database.py`
+- `Database.transaction()` and `get_cursor()` raise `DatabaseConnectionError`
+  when the connection was lost (closed, or unable to roll back) and
+  `DatabaseOperationError` for a failure on a live connection, so callers can
+  tell a transient transport failure from a data or statement error (#208)
 - Structured data stays in relational tables
 - Raise typed storage/database exceptions instead of logging terminal errors
 

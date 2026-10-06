@@ -917,6 +917,13 @@ item track record.
       `inspect`; a row that is not `discovered` selects nothing and
       says so, so `retry` stays the only path that resets state
       (surfaced by the #202 reprocess of map 221392)
+- [x] (#208) Retry a lost database connection: `Database.transaction()`
+      and `get_cursor()` raise `DatabaseConnectionError` when the
+      connection was closed or cannot roll back, instead of letting the
+      failed rollback replace the original error with an unclassified
+      driver error; the match and map controllers retry that error within
+      the item's attempt budget with backoff and without a scraper reset,
+      where it previously marked the item failed on attempt 1
 - [x] (#177) Coverage hygiene: omit Alembic migrations and the thin pipeline
       entrypoint from coverage, add parser fallback-branch fixtures, and
       raise the coverage floor to 85 - `[tool.coverage.run] omit` now

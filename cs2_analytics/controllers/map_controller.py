@@ -5,7 +5,9 @@ from contextlib import suppress
 
 from cs2_analytics.controllers.retry_utils import (
     BatchRunState,
+    back_off_after_storage_error,
     is_retryable_scraper_error,
+    is_retryable_storage_error,
     mark_item_failed,
     reset_scraper,
 )
@@ -109,6 +111,19 @@ class MapController:
             except Exception as e:
                 if attempt < MAX_ATTEMPTS and self._is_recoverable_scraper_error(e):
                     self._recover_from_retryable_error(map_id, attempt, e, run_state)
+                elif attempt < MAX_ATTEMPTS and is_retryable_storage_error(e):
+                    back_off_after_storage_error(
+                        run_state,
+                        map_id,
+                        e,
+                        logger=logger,
+                        log_message=(
+                            "Retryable storage error for map %s (attempt %d/%d): %s"
+                        ),
+                        attempt=attempt,
+                        max_attempts=MAX_ATTEMPTS,
+                        backoff_seconds=RETRY_BACKOFF_SECONDS,
+                    )
                 else:
                     self._mark_terminal_failure(map_id, attempt, e, run_state)
                     return
@@ -170,7 +185,10 @@ class MapController:
         run_state: BatchRunState[MapScraper],
     ) -> None:
         """Marks the map failed after a non-retryable or exhausted error."""
-        if attempt == MAX_ATTEMPTS and self._is_recoverable_scraper_error(error):
+        if attempt == MAX_ATTEMPTS and (
+            self._is_recoverable_scraper_error(error)
+            or is_retryable_storage_error(error)
+        ):
             logger.error(
                 "Exhausted retries for map %s after %d attempts; marking failed and continuing.",
                 map_id,

@@ -116,6 +116,10 @@ Controllers should mainly handle:
 - run-level summary logging
 - stage-level failure policy
 
+The retry policy covers retryable scrape errors and lost database
+connections; `docs/conventions.md` lists the error classes and what each
+retry does.
+
 Controllers should not own per-item fetch -> parse -> persist -> state-transition logic.
 
 ### Stage Services

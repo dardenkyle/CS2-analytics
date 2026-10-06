@@ -3,9 +3,13 @@ from unittest import mock
 import pytest
 
 from cs2_analytics.controllers import map_controller as map_module
-from cs2_analytics.exceptions import MapParseError, SessionScrapeError
+from cs2_analytics.exceptions import (
+    DatabaseConnectionError,
+    MapParseError,
+    SessionScrapeError,
+)
 from cs2_analytics.stage_services import StageItemResult
-from tests.support import FakeTransactionDb
+from tests.support import ConnectionLossDb, FakeTransactionDb
 
 
 class _FakeMapState:
@@ -126,11 +130,12 @@ def _build_map_controller(
     monkeypatch: pytest.MonkeyPatch,
     scraper_cls: type[object],
     parser_cls: type[object],
+    db: FakeTransactionDb | None = None,
 ) -> map_module.MapController:
     monkeypatch.setattr(map_module, "MapScraper", scraper_cls)
     monkeypatch.setattr(map_module, "MapParser", parser_cls)
     monkeypatch.setattr(map_module, "MapIngestionState", _FakeMapState)
-    monkeypatch.setattr(map_module, "get_db", lambda: FakeTransactionDb())
+    monkeypatch.setattr(map_module, "get_db", lambda: db or FakeTransactionDb())
     monkeypatch.setattr(
         map_module,
         "store_maps",
@@ -365,3 +370,113 @@ def test_map_controller_releases_orphaned_processing_before_fetch(
     assert len(release_warnings) == 1
     assert release_warnings[0].args[1] == 4
     assert release_warnings[0].args[2] == "map_ingestion_state"
+
+
+def _capture_map_log(
+    monkeypatch: pytest.MonkeyPatch, level: str
+) -> list[tuple[object, ...]]:
+    calls: list[tuple[object, ...]] = []
+    monkeypatch.setattr(
+        map_module.logger, level, lambda *args, **_kwargs: calls.append(args)
+    )
+    return calls
+
+
+def _build_single_map_controller(
+    monkeypatch: pytest.MonkeyPatch, db: FakeTransactionDb
+) -> tuple[map_module.MapController, list[object]]:
+    """Builds a controller with one pending map and tracked scraper resets."""
+    controller = _build_map_controller(
+        monkeypatch, _SuccessfulScraper, _SuccessfulParser, db=db
+    )
+    reset_calls: list[object] = []
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: reset_calls.append(scraper) or scraper,
+    )
+    monkeypatch.setattr(
+        controller.state,
+        "fetch_with_match_context",
+        lambda _limit=25: [
+            (1, "https://www.hltv.org/stats/matches/mapstatsid/1/test", 123, 1)
+        ],
+    )
+    return controller, reset_calls
+
+
+MAP_SUMMARY = "MapController summary: selected=%d succeeded=%d failed=%d retries=%d"
+MAP_STORAGE_RETRY = "Retryable storage error for map %s (attempt %d/%d): %s"
+
+
+def test_map_controller_retries_lost_database_connection_then_stores(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = ConnectionLossDb(losses=1)
+    controller, reset_calls = _build_single_map_controller(monkeypatch, db)
+    sleeps: list[float] = []
+    monkeypatch.setattr(map_module.time, "sleep", sleeps.append)
+    warning_calls = _capture_map_log(monkeypatch, "warning")
+    info_calls = _capture_map_log(monkeypatch, "info")
+
+    controller.run(batch_size=1)
+
+    assert controller.state.failed == []
+    assert controller.state.processed == [1]
+    assert db.attempts == 2
+    assert reset_calls == []
+    assert len(warning_calls) == 1
+    assert warning_calls[0][:4] == (MAP_STORAGE_RETRY, 1, 1, 3)
+    assert isinstance(warning_calls[0][4], DatabaseConnectionError)
+    assert map_module.RETRY_BACKOFF_SECONDS in sleeps
+    assert (MAP_SUMMARY, 1, 1, 0, 1) in info_calls
+
+
+def test_map_controller_marks_failed_after_connection_stays_lost(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = ConnectionLossDb(losses=map_module.MAX_ATTEMPTS)
+    controller, reset_calls = _build_single_map_controller(monkeypatch, db)
+    error_calls = _capture_map_log(monkeypatch, "error")
+    exception_calls = _capture_map_log(monkeypatch, "exception")
+    info_calls = _capture_map_log(monkeypatch, "info")
+
+    controller.run(batch_size=1)
+
+    assert controller.state.failed == [
+        (1, "Database connection was lost during a transaction.")
+    ]
+    assert controller.state.processed == []
+    assert db.attempts == map_module.MAX_ATTEMPTS
+    assert reset_calls == []
+    assert error_calls == [
+        (
+            "Exhausted retries for map %s after %d attempts; marking failed and continuing.",
+            1,
+            3,
+        )
+    ]
+    assert len(exception_calls) == 1
+    assert exception_calls[0][1:4] == (1, 3, 3)
+    assert (MAP_SUMMARY, 1, 0, 1, 2) in info_calls
+
+
+def test_map_controller_fails_non_retryable_storage_error_on_first_attempt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = FakeTransactionDb(fail_on_exit=RuntimeError("violates check constraint"))
+    controller, _reset_calls = _build_single_map_controller(monkeypatch, db)
+    warning_calls = _capture_map_log(monkeypatch, "warning")
+    error_calls = _capture_map_log(monkeypatch, "error")
+    exception_calls = _capture_map_log(monkeypatch, "exception")
+    info_calls = _capture_map_log(monkeypatch, "info")
+
+    controller.run(batch_size=1)
+
+    assert controller.state.failed == [(1, "Failed during database transaction.")]
+    assert len(db.cursors) == 1
+    assert warning_calls == []
+    assert error_calls == []
+    assert len(exception_calls) == 1
+    assert exception_calls[0][1:4] == (1, 1, 3)
+    assert (MAP_SUMMARY, 1, 0, 1, 0) in info_calls

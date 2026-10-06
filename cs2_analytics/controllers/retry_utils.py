@@ -5,7 +5,7 @@ from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 
-from cs2_analytics.exceptions import RetryableScrapeError
+from cs2_analytics.exceptions import DatabaseConnectionError, RetryableScrapeError
 
 
 @dataclass
@@ -23,6 +23,22 @@ class BatchRunState[ScraperT]:
 def is_retryable_scraper_error(error: Exception) -> bool:
     """Returns True when a scrape failure should trigger controller retry logic."""
     return isinstance(error, RetryableScrapeError)
+
+
+def is_retryable_storage_error(error: Exception) -> bool:
+    """Returns True when a lost database connection caused the failure.
+
+    The storage layer raises `DatabaseConnectionError` for a connection it
+    could not acquire or that dropped mid-operation. Storage and
+    ingestion-state callers may wrap it, so the explicit cause chain is
+    checked as well. Every other storage failure stays non-retryable.
+    """
+    current: BaseException | None = error
+    while current is not None:
+        if isinstance(current, DatabaseConnectionError):
+            return True
+        current = current.__cause__
+    return False
 
 
 def _close_before_reset(scraper, logger, close_warning_message: str) -> None:
@@ -105,6 +121,27 @@ def reset_scraper[ScraperT](
         if fallback_delay_seconds is None
         else fallback_delay_seconds,
     )
+
+
+def back_off_after_storage_error(
+    run_state: BatchRunState,
+    item_id: int | str,
+    error: Exception,
+    *,
+    logger,
+    log_message: str,
+    attempt: int,
+    max_attempts: int,
+    backoff_seconds: float,
+) -> None:
+    """Counts a retry and waits before the next attempt at the same item.
+
+    The scraper is left alone: the session was not at fault, so it is not
+    reset and the error does not count toward scraper cooldowns.
+    """
+    run_state.retries += 1
+    logger.warning(log_message, item_id, attempt, max_attempts, error)
+    time.sleep(backoff_seconds * attempt)
 
 
 def mark_item_failed(
