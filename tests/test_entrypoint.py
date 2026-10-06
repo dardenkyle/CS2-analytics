@@ -71,6 +71,26 @@ def test_main_does_not_export_an_unknown_environment(
     assert entrypoint.os.environ[ENV_SELECTOR_VAR] == "test"
 
 
+def test_main_reports_a_configuration_error_raised_while_the_app_runs(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def _app() -> None:
+        raise ConfigurationError("The dev environment resolved DB_HOST.")
+
+    stub_cli = type(sys)("cs2_analytics.cli")
+    stub_cli.app = _app
+    monkeypatch.setitem(sys.modules, "cs2_analytics.cli", stub_cli)
+    monkeypatch.setattr(sys, "argv", ["cs2a", "status"])
+
+    # A command that loads configuration lazily fails inside the app, not
+    # at import; it must get the same one-line report.
+    with pytest.raises(SystemExit) as exit_info:
+        entrypoint.main()
+
+    assert exit_info.value.code == entrypoint.CONFIGURATION_ERROR_EXIT_CODE
+    assert "Configuration error: The dev environment" in capsys.readouterr().err
+
+
 def test_main_reports_a_configuration_error_without_a_traceback(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

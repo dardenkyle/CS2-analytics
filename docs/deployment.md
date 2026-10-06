@@ -23,6 +23,12 @@ Start PostgreSQL, apply migrations, and start the API:
 docker compose up --build
 ```
 
+Known limitation on Linux hosts (#249): the `app` and `pipeline` containers
+run as a non-root user that cannot write to the bind-mounted `./logs`
+directory, so they exit at logger setup. PostgreSQL and the `migrate`
+service are unaffected. Until that issue is resolved, run the API on the
+host with `python run_api.py`.
+
 The API binds to `0.0.0.0` in the container and is published on
 `http://localhost:8000` by default. Check the health response or FastAPI docs:
 

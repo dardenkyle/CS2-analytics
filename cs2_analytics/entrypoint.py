@@ -37,10 +37,12 @@ def main() -> None:
     if requested in {env.value for env in RuntimeEnv}:
         os.environ[ENV_SELECTOR_VAR] = requested
 
+    # Configuration loads when the CLI is imported today, but a command may
+    # also load it lazily, so the app runs inside the same handler.
     try:
         from cs2_analytics.cli import app
+
+        app()
     except ConfigurationError as e:
         typer.echo(f"Configuration error: {e}", err=True)
         raise SystemExit(CONFIGURATION_ERROR_EXIT_CODE) from e
-
-    app()

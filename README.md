@@ -277,8 +277,16 @@ docker compose up --build
 This starts PostgreSQL, runs the one-shot `migrate` service, and then starts
 the API. `migrate` creates the `cs2_dev` database when it does not exist and
 applies every migration, so the stack always comes up with a migrated
-database; on first run it is empty. With `.env.dev` copied from `.env.example`,
-`cs2a` commands on the host use that same database:
+database; on first run it is empty.
+
+Known limitation on Linux hosts (#249): the `app` container exits at
+startup because its non-root user cannot write to the bind-mounted `./logs`
+directory, so the API and the smoke path below do not run from compose
+there yet. The database and `migrate` service are unaffected, and
+`python run_api.py` on the host serves the API against the same database.
+
+With `.env.dev` copied from `.env.example`, `cs2a` commands on the host use
+that same database:
 
 ```sh
 cs2a status

@@ -112,9 +112,11 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", default="development").strip().lower()
 DEBUG_MODE = _read_bool("DEBUG_MODE", default=True)
 
 # Database Configuration
-DB_NAME = os.getenv("DB_NAME", default="cs2_db")
+# The fallbacks match the Docker Compose stack and .env.example, so the dev
+# environment reaches the local stack even before .env.dev exists.
+DB_NAME = os.getenv("DB_NAME", default="cs2_dev")
 DB_USER = os.getenv("DB_USER", default="postgres")
-DB_PASS = os.getenv("DB_PASS", default="password")
+DB_PASS = os.getenv("DB_PASS", default="change_me")
 DB_HOST = os.getenv("DB_HOST", default="localhost")
 DB_PORT = _read_int("DB_PORT", default=5432)
 

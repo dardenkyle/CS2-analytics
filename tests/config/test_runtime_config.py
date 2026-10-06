@@ -1,4 +1,5 @@
 import importlib
+from pathlib import Path
 
 import pytest
 
@@ -50,6 +51,27 @@ def test_db_port_is_parsed_as_integer() -> None:
         reloaded_config = importlib.reload(config)
 
         assert reloaded_config.DB_PORT == 5433
+
+    importlib.reload(config)
+
+
+def test_database_fallbacks_match_the_compose_stack() -> None:
+    compose = (Path(__file__).parents[2] / "docker-compose.yml").read_text()
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        for env_var in ("DB_NAME", "DB_USER", "DB_PASS", "DB_HOST", "DB_PORT"):
+            monkeypatch.delenv(env_var, raising=False)
+
+        reloaded_config = importlib.reload(config)
+
+        # With no env file, the dev environment must still reach the stack
+        # that `docker compose up` starts, not some other local database.
+        assert f'DB_NAME: "${{DB_NAME:-{reloaded_config.DB_NAME}}}"' in compose
+        assert f'DB_USER: "${{DB_USER:-{reloaded_config.DB_USER}}}"' in compose
+        assert f'DB_PASS: "${{DB_PASS:-{reloaded_config.DB_PASS}}}"' in compose
+        assert reloaded_config.DB_NAME == "cs2_dev"
+        assert reloaded_config.DB_HOST == "localhost"
+        assert reloaded_config.DB_PORT == 5432
 
     importlib.reload(config)
 
