@@ -3,6 +3,10 @@ from unittest import mock
 import pytest
 
 from cs2_analytics.controllers import map_controller as map_module
+from cs2_analytics.controllers.retry_utils import (
+    CIRCUIT_BREAKER_THRESHOLD,
+    BatchOutcome,
+)
 from cs2_analytics.exceptions import (
     DatabaseConnectionError,
     MapParseError,
@@ -10,6 +14,11 @@ from cs2_analytics.exceptions import (
 )
 from cs2_analytics.stage_services import StageItemResult
 from tests.support import ConnectionLossDb, FakeTransactionDb
+
+MAP_SUMMARY = (
+    "MapController summary: outcome=%s selected=%d succeeded=%d "
+    "failed=%d retries=%d"
+)
 
 
 class _FakeMapState:
@@ -20,11 +29,16 @@ class _FakeMapState:
         self.failed: list[tuple[int, str]] = []
         self.processed: list[int] = []
         self.processing: list[int] = []
+        self.requeued: list[tuple[list[int], str]] = []
         self.calls: list[str] = []
 
     def release_orphaned_processing(self) -> int:
         self.calls.append("release")
         return self.orphaned_processing
+
+    def requeue(self, ids: list[int], expected_status: str) -> int:
+        self.requeued.append((list(ids), expected_status))
+        return len(ids)
 
     def fetch_with_match_context(
         self, _limit: int = 25
@@ -186,9 +200,8 @@ def test_map_controller_continues_after_item_failure(
     assert len(stored_maps) == 1
     assert len(stored_players) == 1
     assert any(
-        call_args[0]
-        == "MapController summary: selected=%d succeeded=%d failed=%d retries=%d"
-        and call_args[1:] == (2, 1, 1, 0)
+        call_args[0] == MAP_SUMMARY
+        and call_args[1:] == ("completed", 2, 1, 1, 0)
         for call_args, _ in info_calls
     )
 
@@ -241,9 +254,8 @@ def test_map_controller_retries_retryable_error_before_succeeding(
     assert len(stored_players) == 1
     assert len(reset_calls) == 1
     assert any(
-        call_args[0]
-        == "MapController summary: selected=%d succeeded=%d failed=%d retries=%d"
-        and call_args[1:] == (1, 1, 0, 1)
+        call_args[0] == MAP_SUMMARY
+        and call_args[1:] == ("completed", 1, 1, 0, 1)
         for call_args, _ in info_calls
     )
 
@@ -344,9 +356,8 @@ def test_map_controller_marks_failed_once_after_exhausting_retryable_errors(
     ]
     assert len(exception_calls) == 1
     assert any(
-        call_args[0]
-        == "MapController summary: selected=%d succeeded=%d failed=%d retries=%d"
-        and call_args[1:] == (1, 0, 1, 2)
+        call_args[0] == MAP_SUMMARY
+        and call_args[1:] == ("completed", 1, 0, 1, 2)
         for call_args, _ in info_calls
     )
 
@@ -405,7 +416,6 @@ def _build_single_map_controller(
     return controller, reset_calls
 
 
-MAP_SUMMARY = "MapController summary: selected=%d succeeded=%d failed=%d retries=%d"
 MAP_STORAGE_RETRY = "Retryable storage error for map %s (attempt %d/%d): %s"
 
 
@@ -429,7 +439,7 @@ def test_map_controller_retries_lost_database_connection_then_stores(
     assert warning_calls[0][:4] == (MAP_STORAGE_RETRY, 1, 1, 3)
     assert isinstance(warning_calls[0][4], DatabaseConnectionError)
     assert map_module.RETRY_BACKOFF_SECONDS in sleeps
-    assert (MAP_SUMMARY, 1, 1, 0, 1) in info_calls
+    assert (MAP_SUMMARY, "completed", 1, 1, 0, 1) in info_calls
 
 
 def test_map_controller_marks_failed_after_connection_stays_lost(
@@ -458,7 +468,7 @@ def test_map_controller_marks_failed_after_connection_stays_lost(
     ]
     assert len(exception_calls) == 1
     assert exception_calls[0][1:4] == (1, 3, 3)
-    assert (MAP_SUMMARY, 1, 0, 1, 2) in info_calls
+    assert (MAP_SUMMARY, "completed", 1, 0, 1, 2) in info_calls
 
 
 def test_map_controller_fails_non_retryable_storage_error_on_first_attempt(
@@ -479,4 +489,160 @@ def test_map_controller_fails_non_retryable_storage_error_on_first_attempt(
     assert error_calls == []
     assert len(exception_calls) == 1
     assert exception_calls[0][1:4] == (1, 1, 3)
-    assert (MAP_SUMMARY, 1, 0, 1, 0) in info_calls
+    assert (MAP_SUMMARY, "completed", 1, 0, 1, 0) in info_calls
+
+
+class _ScriptedScraper(_SuccessfulScraper):
+    """Raises the retryable session error whenever `fails(url, nth_fetch)` says so."""
+
+    def __init__(self) -> None:
+        self.fetched: list[str] = []
+        self.fails = lambda _url, _nth_fetch: False
+
+    def fetch_soup(self, url: str) -> object:
+        self.fetched.append(url)
+        if self.fails(url, self.fetched.count(url)):
+            raise SessionScrapeError(f"Failed to fetch map stats page: {url}")
+        return object()
+
+
+def _map_url(map_id: int) -> str:
+    return f"https://example.test/maps/{map_id}"
+
+
+def _build_scripted_map_controller(
+    monkeypatch: pytest.MonkeyPatch,
+    map_ids: list[int],
+    fails,
+    db: FakeTransactionDb | None = None,
+) -> map_module.MapController:
+    """Builds a controller over `map_ids` whose fetches fail as scripted."""
+    controller = _build_map_controller(
+        monkeypatch, _ScriptedScraper, _SuccessfulParser, db=db
+    )
+    controller.scraper.fails = fails
+    monkeypatch.setattr(controller, "_reset_scraper", lambda scraper: scraper)
+    monkeypatch.setattr(
+        controller.state,
+        "fetch_with_match_context",
+        lambda _limit=25: [
+            (map_id, _map_url(map_id), 100 + map_id, 1) for map_id in map_ids
+        ],
+    )
+    return controller
+
+
+def test_map_controller_halts_batch_when_every_fetch_is_blocked(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    controller = _build_scripted_map_controller(
+        monkeypatch, [1, 2, 3, 4], lambda _url, _nth_fetch: True
+    )
+    error_calls = _capture_map_log(monkeypatch, "error")
+    warning_calls = _capture_map_log(monkeypatch, "warning")
+    info_calls = _capture_map_log(monkeypatch, "info")
+
+    outcome = controller.run(batch_size=4)
+
+    assert outcome is BatchOutcome.HALTED
+    # The breaker stops fetching at the threshold: three attempts at map 1,
+    # two at map 2, and nothing for maps 3 and 4.
+    assert controller.scraper.fetched == [_map_url(1)] * 3 + [_map_url(2)] * 2
+    assert controller.state.processing == [1, 2]
+    assert controller.state.processed == []
+    # Map 1 exhausted its attempts inside the streak and map 2 was in
+    # flight; both go back to the queue.
+    assert [item_id for item_id, _reason in controller.state.failed] == [1]
+    assert controller.state.requeued == [([2], "processing"), ([1], "failed")]
+    halt_calls = [call for call in error_calls if "circuit breaker" in call[0]]
+    assert len(halt_calls) == 1
+    assert halt_calls[0][1:4] == (
+        "MapController",
+        CIRCUIT_BREAKER_THRESHOLD,
+        CIRCUIT_BREAKER_THRESHOLD,
+    )
+    assert isinstance(halt_calls[0][-1], SessionScrapeError)
+    release_calls = [call for call in warning_calls if "halt returned" in call[0]]
+    assert [call[1:] for call in release_calls] == [("MapController", 1, 1, 4, 4)]
+    assert (MAP_SUMMARY, "halted", 4, 0, 0, 3) in info_calls
+    assert ("MapController %s.", "halted") in info_calls
+
+
+def test_map_controller_does_not_halt_on_isolated_retryable_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    map_ids = list(range(1, CIRCUIT_BREAKER_THRESHOLD + 2))
+    controller = _build_scripted_map_controller(
+        monkeypatch, map_ids, lambda _url, nth_fetch: nth_fetch == 1
+    )
+    info_calls = _capture_map_log(monkeypatch, "info")
+
+    outcome = controller.run(batch_size=len(map_ids))
+
+    # Every map needs one retry, so more retryable errors occur than the
+    # threshold, but a successful fetch always separates them.
+    assert outcome is BatchOutcome.COMPLETED
+    assert controller.state.processed == map_ids
+    assert controller.state.failed == []
+    assert controller.state.requeued == []
+    assert (
+        MAP_SUMMARY,
+        "completed",
+        len(map_ids),
+        len(map_ids),
+        0,
+        len(map_ids),
+    ) in info_calls
+
+
+def test_map_controller_single_unfetchable_map_does_not_halt_batch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    controller = _build_scripted_map_controller(
+        monkeypatch, [1, 2, 3], lambda url, _nth_fetch: url == _map_url(1)
+    )
+
+    outcome = controller.run(batch_size=3)
+
+    assert outcome is BatchOutcome.COMPLETED
+    assert [item_id for item_id, _reason in controller.state.failed] == [1]
+    assert controller.state.processed == [2, 3]
+    assert controller.state.requeued == []
+
+
+def test_map_controller_halt_leaves_rows_failed_before_the_streak(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    controller = _build_scripted_map_controller(
+        monkeypatch, [1, 2, 3, 4, 5], lambda url, _nth_fetch: url != _map_url(2)
+    )
+    info_calls = _capture_map_log(monkeypatch, "info")
+
+    outcome = controller.run(batch_size=5)
+
+    # Map 1 failed before map 2 proved the source reachable, so it is a
+    # real failure and stays failed; only the streak's rows are returned.
+    assert outcome is BatchOutcome.HALTED
+    assert [item_id for item_id, _reason in controller.state.failed] == [1, 3]
+    assert controller.state.processed == [2]
+    assert controller.state.processing == [1, 2, 3, 4]
+    assert controller.state.requeued == [([4], "processing"), ([3], "failed")]
+    assert (MAP_SUMMARY, "halted", 5, 1, 1, 5) in info_calls
+
+
+def test_map_controller_does_not_count_storage_errors_toward_the_breaker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = ConnectionLossDb(losses=2 * map_module.MAX_ATTEMPTS)
+    controller = _build_scripted_map_controller(
+        monkeypatch, [1, 2, 3], lambda _url, _nth_fetch: False, db=db
+    )
+
+    outcome = controller.run(batch_size=3)
+
+    # Six consecutive lost-connection errors exceed the threshold, but the
+    # fetches reached the source, so the batch keeps going.
+    assert outcome is BatchOutcome.COMPLETED
+    assert [item_id for item_id, _reason in controller.state.failed] == [1, 2]
+    assert controller.state.processed == [3]
+    assert controller.state.requeued == []

@@ -4,8 +4,12 @@ import time
 from contextlib import suppress
 
 from cs2_analytics.controllers.retry_utils import (
+    BatchOutcome,
     BatchRunState,
     back_off_after_storage_error,
+    breaker_trips_on,
+    clear_blocked_streak,
+    halt_batch,
     is_retryable_scraper_error,
     is_retryable_storage_error,
     mark_item_failed,
@@ -43,7 +47,12 @@ class MapController:
             db=get_db(),
         )
 
-    def run(self, batch_size: int = 25) -> None:
+    def run(self, batch_size: int = 25) -> BatchOutcome:
+        """Runs the map stage for a batch of pending maps.
+
+        Returns `BatchOutcome.HALTED` when the circuit breaker stopped the
+        batch early (#175) so the invoker can skip later stages and cool off.
+        """
         logger.info("Running MapController with batch size: %d", batch_size)
 
         self._release_orphaned_processing()
@@ -58,18 +67,31 @@ class MapController:
                 self._process_map_with_retries(
                     map_id, map_url, match_id, map_order, run_state
                 )
+                if run_state.outcome is BatchOutcome.HALTED:
+                    halt_batch(
+                        self.state,
+                        run_state,
+                        map_id,
+                        logger=logger,
+                        stage_label="MapController",
+                        selected=len(selected),
+                    )
+                    break
         finally:
             with suppress(Exception):
                 run_state.scraper.close()
 
         logger.info(
-            "MapController summary: selected=%d succeeded=%d failed=%d retries=%d",
+            "MapController summary: outcome=%s selected=%d succeeded=%d "
+            "failed=%d retries=%d",
+            run_state.outcome.value,
             len(selected),
             run_state.succeeded,
             run_state.failed,
             run_state.retries,
         )
-        logger.info("MapController complete.")
+        logger.info("MapController %s.", run_state.outcome.value)
+        return run_state.outcome
 
     def _release_orphaned_processing(self) -> None:
         """Reconciles rows an interrupted run left in 'processing' (#141)."""
@@ -92,6 +114,7 @@ class MapController:
         )
         run_state.scraper = self._reset_scraper(run_state.scraper)
         run_state.processed_since_reset = 0
+        run_state.rotations += 1
 
     def _process_map_with_retries(
         self,
@@ -109,6 +132,8 @@ class MapController:
                 )
                 return
             except Exception as e:
+                if breaker_trips_on(run_state, e):
+                    return
                 if attempt < MAX_ATTEMPTS and self._is_recoverable_scraper_error(e):
                     self._recover_from_retryable_error(map_id, attempt, e, run_state)
                 elif attempt < MAX_ATTEMPTS and is_retryable_storage_error(e):
@@ -155,6 +180,7 @@ class MapController:
                 result.message,
             )
 
+        clear_blocked_streak(run_state)
         run_state.processed_since_reset += 1
         time.sleep(INTER_MAP_DELAY_SECONDS)
 
@@ -204,6 +230,8 @@ class MapController:
             max_attempts=MAX_ATTEMPTS,
         )
         run_state.failed += 1
+        if self._is_recoverable_scraper_error(error):
+            run_state.streak_failed_ids.append(map_id)
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
         return is_retryable_scraper_error(error)

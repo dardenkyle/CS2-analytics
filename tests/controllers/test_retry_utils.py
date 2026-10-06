@@ -1,6 +1,6 @@
 import pytest
 
-from cs2_analytics.controllers import retry_utils
+from cs2_analytics.controllers import map_controller, match_controller, retry_utils
 from cs2_analytics.exceptions import (
     DatabaseConnectionError,
     DatabaseOperationError,
@@ -274,3 +274,102 @@ def test_back_off_after_storage_error_counts_retry_and_scales_the_wait(
             CONNECTION_LOST,
         )
     ]
+
+
+class _RequeueState:
+    """Ingestion-state stand-in whose requeue only resets rows it was told exist."""
+
+    def __init__(self, resettable: set[int]) -> None:
+        self.resettable = resettable
+        self.requeued: list[tuple[list[int], str]] = []
+
+    def requeue(self, ids: list[int], expected_status: str) -> int:
+        self.requeued.append((list(ids), expected_status))
+        return len(self.resettable.intersection(ids))
+
+
+class _HaltLogger(_Logger):
+    def __init__(self) -> None:
+        super().__init__()
+        self.errors: list[tuple[object, ...]] = []
+
+    def error(self, message: str, *args: object) -> None:
+        self.errors.append((message, *args))
+
+
+def test_breaker_threshold_spans_more_than_one_item_attempt_budget() -> None:
+    # A threshold within one item's budget would let a single unfetchable
+    # page halt every batch that selects it first.
+    assert retry_utils.CIRCUIT_BREAKER_THRESHOLD > match_controller.MAX_ATTEMPTS
+    assert retry_utils.CIRCUIT_BREAKER_THRESHOLD > map_controller.MAX_ATTEMPTS
+
+
+def test_breaker_trips_only_once_the_streak_reaches_the_threshold() -> None:
+    run_state = retry_utils.BatchRunState(scraper=_Scraper("active"))
+    error = SessionScrapeError("challenged")
+
+    trips = [
+        retry_utils.breaker_trips_on(run_state, error)
+        for _ in range(retry_utils.CIRCUIT_BREAKER_THRESHOLD)
+    ]
+
+    assert trips == [False] * (retry_utils.CIRCUIT_BREAKER_THRESHOLD - 1) + [True]
+    assert run_state.outcome is retry_utils.BatchOutcome.HALTED
+    assert run_state.halt_error is error
+
+
+def test_breaker_streak_ends_on_an_error_that_reached_the_source() -> None:
+    run_state = retry_utils.BatchRunState(scraper=_Scraper("active"))
+    run_state.consecutive_recoverable_errors = (
+        retry_utils.CIRCUIT_BREAKER_THRESHOLD - 1
+    )
+    run_state.streak_failed_ids.append(7)
+
+    tripped = retry_utils.breaker_trips_on(
+        run_state, DatabaseConnectionError("connection lost")
+    )
+
+    assert tripped is False
+    assert run_state.consecutive_recoverable_errors == 0
+    assert run_state.streak_failed_ids == []
+    assert run_state.outcome is retry_utils.BatchOutcome.COMPLETED
+
+
+def test_halt_batch_requeues_streak_rows_and_reports_what_remains() -> None:
+    logger = _HaltLogger()
+    # Row 11 changed status before the halt, so only row 12 is reset.
+    state = _RequeueState(resettable={12, 20})
+    error = SessionScrapeError("challenged")
+    run_state = retry_utils.BatchRunState(
+        scraper=_Scraper("active"),
+        succeeded=6,
+        failed=3,
+        consecutive_recoverable_errors=retry_utils.CIRCUIT_BREAKER_THRESHOLD,
+        rotations=2,
+        processed_since_reset=4,
+        streak_failed_ids=[11, 12],
+        halt_error=error,
+    )
+
+    retry_utils.halt_batch(
+        state,
+        run_state,
+        20,
+        logger=logger,
+        stage_label="MapController",
+        selected=25,
+    )
+
+    assert state.requeued == [([20], "processing"), ([11, 12], "failed")]
+    assert run_state.failed == 2
+    assert [call[1:] for call in logger.errors] == [
+        (
+            "MapController",
+            retry_utils.CIRCUIT_BREAKER_THRESHOLD,
+            retry_utils.CIRCUIT_BREAKER_THRESHOLD,
+            2,
+            4,
+            error,
+        )
+    ]
+    assert [call[1:] for call in logger.warnings] == [("MapController", 1, 1, 17, 25)]

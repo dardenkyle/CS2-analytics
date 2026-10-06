@@ -52,6 +52,11 @@ DISCOVER_MODE_MAX_MATCHES = {
     DiscoverMode.BACKFILL: 1000,
 }
 
+# Exit status when a circuit breaker halts `cs2a process` (#175). 75 is
+# EX_TEMPFAIL in sysexits.h: a temporary failure the caller should retry
+# later, which lets a scheduler tell "cool off" apart from a crash (1).
+EXIT_BATCH_HALTED = 75
+
 # Discovery window floor. Run parameters live with the invoker, not in
 # config (ADR-0015); the CLI is the only pipeline entry point (#181). The
 # end of the window is always computed at run time. #121 turns the floor
@@ -245,6 +250,9 @@ def process(
     match backlog because each match discovers several maps). Stage
     selection is rejected before any controller is imported, so an
     unimplemented stage never reaches the database.
+
+    A stage halted by its circuit breaker ends the command with exit
+    status 75 and skips the stages after it (#175).
     """
     selected = frozenset(stage) if stage else IMPLEMENTED_PROCESS_STAGES
     if ProcessStage.DEMO in selected:
@@ -255,6 +263,7 @@ def process(
 
     from cs2_analytics.controllers.map_controller import MapController
     from cs2_analytics.controllers.match_controller import MatchController
+    from cs2_analytics.controllers.retry_utils import BatchOutcome
 
     controllers: dict[ProcessStage, type[MatchController] | type[MapController]] = {
         ProcessStage.MATCH: MatchController,
@@ -262,7 +271,15 @@ def process(
     }
     for process_stage in ProcessStage:
         if process_stage in selected:
-            controllers[process_stage]().run(batch_size=batch)
+            outcome = controllers[process_stage]().run(batch_size=batch)
+            if outcome is BatchOutcome.HALTED:
+                typer.echo(
+                    f"The {process_stage.value} stage was halted by the circuit"
+                    " breaker; later stages were skipped. Wait before the next"
+                    " run.",
+                    err=True,
+                )
+                raise typer.Exit(code=EXIT_BATCH_HALTED)
 
 
 class IngestionStage(StrEnum):

@@ -4,8 +4,12 @@ import time
 from contextlib import suppress
 
 from cs2_analytics.controllers.retry_utils import (
+    BatchOutcome,
     BatchRunState,
     back_off_after_storage_error,
+    breaker_trips_on,
+    clear_blocked_streak,
+    halt_batch,
     is_retryable_scraper_error,
     is_retryable_storage_error,
     mark_item_failed,
@@ -51,8 +55,12 @@ class MatchController:
             db=get_db(),
         )
 
-    def run(self, batch_size: int = 25) -> None:
-        """Runs the match stage for a batch of pending match URLs."""
+    def run(self, batch_size: int = 25) -> BatchOutcome:
+        """Runs the match stage for a batch of pending match URLs.
+
+        Returns `BatchOutcome.HALTED` when the circuit breaker stopped the
+        batch early (#175) so the invoker can skip later stages and cool off.
+        """
         logger.info("Running MatchController with batch size: %d", batch_size)
 
         self._release_orphaned_processing()
@@ -65,18 +73,31 @@ class MatchController:
                 self._rotate_scraper_if_due(run_state)
                 self.match_state.mark_as_processing(match_id)
                 self._process_match_with_retries(match_id, match_url, run_state)
+                if run_state.outcome is BatchOutcome.HALTED:
+                    halt_batch(
+                        self.match_state,
+                        run_state,
+                        match_id,
+                        logger=logger,
+                        stage_label="MatchController",
+                        selected=len(selected),
+                    )
+                    break
         finally:
             with suppress(Exception):
                 run_state.scraper.close()
 
         logger.info(
-            "MatchController summary: selected=%d succeeded=%d failed=%d retries=%d",
+            "MatchController summary: outcome=%s selected=%d succeeded=%d "
+            "failed=%d retries=%d",
+            run_state.outcome.value,
             len(selected),
             run_state.succeeded,
             run_state.failed,
             run_state.retries,
         )
-        logger.info("MatchController complete.")
+        logger.info("MatchController %s.", run_state.outcome.value)
+        return run_state.outcome
 
     def _release_orphaned_processing(self) -> None:
         """Reconciles rows an interrupted run left in 'processing' (#141)."""
@@ -99,6 +120,7 @@ class MatchController:
         )
         run_state.scraper = self._reset_scraper(run_state.scraper)
         run_state.processed_since_reset = 0
+        run_state.rotations += 1
 
     def _process_match_with_retries(
         self, match_id: int, match_url: str, run_state: BatchRunState[MatchScraper]
@@ -109,6 +131,8 @@ class MatchController:
                 self._record_stage_outcome(match_id, match_url, run_state)
                 return
             except Exception as e:
+                if breaker_trips_on(run_state, e):
+                    return
                 if attempt < MAX_ATTEMPTS and self._is_recoverable_scraper_error(e):
                     self._recover_from_retryable_error(match_id, attempt, e, run_state)
                 elif attempt < MAX_ATTEMPTS and is_retryable_storage_error(e):
@@ -146,7 +170,7 @@ class MatchController:
                 result.message,
             )
 
-        run_state.consecutive_recoverable_errors = 0
+        clear_blocked_streak(run_state)
         run_state.processed_since_reset += 1
         time.sleep(INTER_MATCH_DELAY_SECONDS)
 
@@ -159,7 +183,6 @@ class MatchController:
     ) -> None:
         """Backs off, cools down if errors cluster, and resets the scraper."""
         run_state.retries += 1
-        run_state.consecutive_recoverable_errors += 1
         logger.warning(
             "Retryable scraper error for match %s (attempt %d/%d): %s",
             match_id,
@@ -208,7 +231,8 @@ class MatchController:
             max_attempts=MAX_ATTEMPTS,
         )
         run_state.failed += 1
-        run_state.consecutive_recoverable_errors = 0
+        if self._is_recoverable_scraper_error(error):
+            run_state.streak_failed_ids.append(match_id)
 
     def _is_recoverable_scraper_error(self, error: Exception) -> bool:
         """Returns True for transient scraper failures worth retrying."""

@@ -24,6 +24,9 @@ STOP_UP_TO_DATE = "up_to_date"
 STOP_WINDOW_COVERED = "window_covered"
 STOP_BUDGET_EXHAUSTED = "budget_exhausted"
 STOP_EMPTY_PAGE = "empty_page"
+# Retryable scraper errors used up one action's whole attempt budget, the
+# results-stage counterpart of a match or map circuit-breaker halt (#175).
+STOP_RETRIES_EXHAUSTED = "retries_exhausted"
 
 # Backfill walks backward one date slice at a time; a week keeps slices
 # small enough that a budget-stopped run loses at most a few days of
@@ -229,6 +232,7 @@ class ResultsController:
 
         run_state.terminal_failures += 1
         if is_retryable:
+            run_state.stop_reason = STOP_RETRIES_EXHAUSTED
             logger.error(
                 "ResultsController exhausted retries after %d attempts; failing stage run.",
                 MAX_ATTEMPTS,
