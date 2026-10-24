@@ -904,8 +904,7 @@ item track record.
       `match_date` from the page's date header, which the source renders
       in the browser's timezone; pin the browser zone or use a per-match
       attribute, then reconcile the 174 disagreeing rows against the
-      corrected `matches.date` (after #214; coordinate with #194's driver
-      changes)
+      corrected `matches.date` (after #214)
 - [x] (#209) Local ops page: `cs2a ops` serves a loopback-only page from
       a saved snapshot with an update button that re-queries the
       database; shipped in two PRs - first the snapshot builder, the
@@ -976,6 +975,14 @@ item track record.
       systemd timer units invoking the CLI, plus a drain mode on
       `cs2a process` that loops batches until no pending work remains
       (breaker-aware)
+- [x] (#194) Map stage blocked on the home server: every map stats fetch
+      returned the challenge interstitial while match pages passed. The
+      cause was the host's system clock zone (UTC) disagreeing with the
+      region of its egress address; setting it to Central fixed every
+      fetch headless, with no display-mode or driver change. Scrape-host
+      requirements are documented in `docs/deployment.md`; the 80 rows
+      the September runs failed were requeued and processed, leaving
+      only the KAST placeholder row (#210)
 - [x] (#181) Retire `main.py` and the entire `cs2_analytics/pipeline/` package
       in favor of the `cs2a` CLI: repoint the docker-compose pipeline
       service command and the manual-pipeline-worker GitHub workflow to

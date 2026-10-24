@@ -74,6 +74,50 @@ results discovery -> match processing -> map processing
 
 Demo download and parsing remain deferred.
 
+## Scrape Host Requirements
+
+The match and map stages fetch pages with a real browser, so the host that
+runs `cs2a process` has requirements that the API and dbt hosts do not.
+These were established on the home server in October 2026 (#194), when the
+map stage failed every item there while the same code passed on the desktop.
+
+- **Residential egress.** The source blocks datacenter address ranges, so
+  scraping runs on a residential connection and never from the cloud
+  services that host the API.
+- **System clock zone matching the egress address's region.** The stats
+  section serves a bot challenge to each fresh browser session, and a
+  browser that reports a zone far from where its address geolocates fails
+  it every time. The symptom is specific: match pages process normally
+  while every map stats fetch returns the challenge interstitial
+  ("blocked or challenged" in `last_error_message`). Set the host zone
+  before the first run, for example
+  `sudo timedatectl set-timezone America/Chicago`. A host zone of UTC was
+  the sole cause of the failure above; GPU, headless mode, installed
+  fonts, Chrome version, and the per-host IPv6 address were each ruled
+  out one variable at a time.
+- **Current Chrome.** SeleniumBase downloads a matching driver on first
+  use. Keep the browser on the stable channel's current release.
+- **No display, GPU, or virtual framebuffer.** Both the desktop and a
+  server with no desktop environment pass the challenge headless with a
+  software WebGL renderer. Xvfb and headed mode are not required.
+
+Run the pipeline on such a host from a checkout on current `main`, with
+`.env.prod` present and `uv sync` run once:
+
+```sh
+uv run cs2a --env prod process --stage map --batch 50
+```
+
+Only one host scrapes the stats section at a time. The desktop and the
+server sit on the same residential connection; both prefer IPv6 and
+present different addresses in the same /64, so treat the egress as
+shared and do not overlap a desktop run with a server run.
+
+`cs2a status` does not print the `Target database:` line (only `cs2a db`
+does). Confirm a new host is pointed at production by comparing its
+`cs2a --env prod status` counts with a known-good host's before the first
+write.
+
 ## Deployment Smoke Test
 
 Run the deterministic deployment smoke path after PostgreSQL, migrations, and
