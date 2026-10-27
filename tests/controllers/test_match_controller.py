@@ -7,6 +7,7 @@ from cs2_analytics.controllers.retry_utils import (
     CIRCUIT_BREAKER_THRESHOLD,
     ROTATE_EVERY,
     BatchOutcome,
+    RunSummary,
 )
 from cs2_analytics.exceptions import (
     DatabaseConnectionError,
@@ -15,10 +16,17 @@ from cs2_analytics.exceptions import (
 )
 from tests.support import ConnectionLossDb, FakeTransactionDb
 
-MATCH_SUMMARY = (
-    "MatchController summary: outcome=%s selected=%d succeeded=%d "
-    "failed=%d retries=%d"
-)
+
+def _counts(summary: RunSummary) -> tuple[str, int, int, int, int]:
+    """Returns (outcome, selected, succeeded, failed, retries) from a run summary."""
+    return (
+        summary.outcome.value,
+        summary.selected,
+        summary.succeeded,
+        summary.failed,
+        summary.retries,
+    )
+
 
 
 class _FakeMatchState:
@@ -199,7 +207,7 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
         lambda scraper: reset_calls.append(scraper) or scraper,
     )
 
-    controller.run(batch_size=1)
+    summary = controller.run(batch_size=1)
 
     assert len(controller.match_state.failed) == 1
     failed_id, reason = controller.match_state.failed[0]
@@ -217,11 +225,7 @@ def test_match_controller_marks_failed_once_after_exhausting_retryable_scrape_er
             {},
         )
     ]
-    assert any(
-        call_args[0] == MATCH_SUMMARY
-        and call_args[1:] == ("completed", 1, 0, 1, 2)
-        for call_args, _ in info_calls
-    )
+    assert _counts(summary) == ("completed", 1, 0, 1, 2)
 
 
 def test_match_controller_continues_after_item_failure(
@@ -258,17 +262,13 @@ def test_match_controller_continues_after_item_failure(
         lambda matches, cur=None: stored_matches.append(matches),
     )
 
-    controller.run(batch_size=2)
+    summary = controller.run(batch_size=2)
 
     assert controller.match_state.failed == [(1, "Missing team names on match page.")]
     assert controller.match_state.processed == [2]
     assert controller.match_state.processing == [1, 2]
     assert len(stored_matches) == 1
-    assert any(
-        call_args[0] == MATCH_SUMMARY
-        and call_args[1:] == ("completed", 2, 1, 1, 0)
-        for call_args, _ in info_calls
-    )
+    assert _counts(summary) == ("completed", 2, 1, 1, 0)
 
 
 def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
@@ -304,7 +304,7 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
         lambda matches, cur=None: stored_matches.append(matches),
     )
 
-    controller.run(batch_size=1)
+    summary = controller.run(batch_size=1)
 
     assert controller.match_state.failed == []
     assert controller.match_state.processed == [1]
@@ -316,11 +316,7 @@ def test_match_controller_applies_cooldown_after_consecutive_retryable_errors(
         and call_args[1:] == (2,)
         for call_args, _ in info_calls
     )
-    assert any(
-        call_args[0] == MATCH_SUMMARY
-        and call_args[1:] == ("completed", 1, 1, 0, 2)
-        for call_args, _ in info_calls
-    )
+    assert _counts(summary) == ("completed", 1, 1, 0, 2)
 
 
 def test_match_controller_releases_orphaned_processing_before_fetch(
@@ -397,7 +393,7 @@ def test_match_controller_retries_lost_database_connection_then_stores(
     info_calls = _capture_match_log(monkeypatch, "info")
     reset_calls = _track_match_resets(monkeypatch, controller)
 
-    controller.run(batch_size=1)
+    summary = controller.run(batch_size=1)
 
     assert controller.match_state.failed == []
     assert controller.match_state.processed == [1]
@@ -407,7 +403,7 @@ def test_match_controller_retries_lost_database_connection_then_stores(
     assert warning_calls[0][:4] == (MATCH_STORAGE_RETRY, 1, 1, 3)
     assert isinstance(warning_calls[0][4], DatabaseConnectionError)
     assert match_module.RETRY_BACKOFF_SECONDS in sleeps
-    assert (MATCH_SUMMARY, "completed", 1, 1, 0, 1) in info_calls
+    assert _counts(summary) == ("completed", 1, 1, 0, 1)
 
 
 def test_match_controller_marks_failed_after_connection_stays_lost(
@@ -422,7 +418,7 @@ def test_match_controller_marks_failed_after_connection_stays_lost(
     info_calls = _capture_match_log(monkeypatch, "info")
     reset_calls = _track_match_resets(monkeypatch, controller)
 
-    controller.run(batch_size=1)
+    summary = controller.run(batch_size=1)
 
     assert controller.match_state.failed == [
         (1, "Database connection was lost during a transaction.")
@@ -439,7 +435,7 @@ def test_match_controller_marks_failed_after_connection_stays_lost(
     ]
     assert len(exception_calls) == 1
     assert exception_calls[0][1:4] == (1, 3, 3)
-    assert (MATCH_SUMMARY, "completed", 1, 0, 1, 2) in info_calls
+    assert _counts(summary) == ("completed", 1, 0, 1, 2)
 
 
 def test_match_controller_fails_non_retryable_storage_error_on_first_attempt(
@@ -454,7 +450,7 @@ def test_match_controller_fails_non_retryable_storage_error_on_first_attempt(
     exception_calls = _capture_match_log(monkeypatch, "exception")
     info_calls = _capture_match_log(monkeypatch, "info")
 
-    controller.run(batch_size=1)
+    summary = controller.run(batch_size=1)
 
     assert controller.match_state.failed == [(1, "Failed during database transaction.")]
     assert len(db.cursors) == 1
@@ -462,7 +458,7 @@ def test_match_controller_fails_non_retryable_storage_error_on_first_attempt(
     assert error_calls == []
     assert len(exception_calls) == 1
     assert exception_calls[0][1:4] == (1, 1, 3)
-    assert (MATCH_SUMMARY, "completed", 1, 0, 1, 0) in info_calls
+    assert _counts(summary) == ("completed", 1, 0, 1, 0)
 
 
 class _ScriptedScraper(_PassiveScraper):
@@ -512,9 +508,9 @@ def test_match_controller_halts_batch_when_every_fetch_is_blocked(
     warning_calls = _capture_match_log(monkeypatch, "warning")
     info_calls = _capture_match_log(monkeypatch, "info")
 
-    outcome = controller.run(batch_size=4)
+    summary = controller.run(batch_size=4)
 
-    assert outcome is BatchOutcome.HALTED
+    assert summary.outcome is BatchOutcome.HALTED
     # The breaker stops fetching at the threshold: three attempts at match
     # 1, two at match 2, and nothing for matches 3 and 4.
     assert controller.scraper.fetched == [_match_url(1)] * 3 + [_match_url(2)] * 2
@@ -534,8 +530,7 @@ def test_match_controller_halts_batch_when_every_fetch_is_blocked(
     )
     release_calls = [call for call in warning_calls if "halt returned" in call[0]]
     assert [call[1:] for call in release_calls] == [("MatchController", 1, 1, 4, 4)]
-    assert (MATCH_SUMMARY, "halted", 4, 0, 0, 3) in info_calls
-    assert ("MatchController %s.", "halted") in info_calls
+    assert _counts(summary) == ("halted", 4, 0, 0, 3)
 
 
 def test_match_controller_does_not_halt_on_isolated_retryable_errors(
@@ -546,9 +541,9 @@ def test_match_controller_does_not_halt_on_isolated_retryable_errors(
         monkeypatch, match_ids, lambda _url, nth_fetch: nth_fetch == 1
     )
 
-    outcome = controller.run(batch_size=len(match_ids))
+    summary = controller.run(batch_size=len(match_ids))
 
-    assert outcome is BatchOutcome.COMPLETED
+    assert summary.outcome is BatchOutcome.COMPLETED
     assert controller.match_state.processed == match_ids
     assert controller.match_state.failed == []
     assert controller.match_state.requeued == []
@@ -561,9 +556,9 @@ def test_match_controller_single_unfetchable_match_does_not_halt_batch(
         monkeypatch, [1, 2, 3], lambda url, _nth_fetch: url == _match_url(1)
     )
 
-    outcome = controller.run(batch_size=3)
+    summary = controller.run(batch_size=3)
 
-    assert outcome is BatchOutcome.COMPLETED
+    assert summary.outcome is BatchOutcome.COMPLETED
     assert [item_id for item_id, _reason in controller.match_state.failed] == [1]
     assert controller.match_state.processed == [2, 3]
     assert controller.match_state.requeued == []
@@ -596,8 +591,38 @@ def test_match_controller_rotates_only_after_rotate_every_items(
         lambda scraper: resets.append(scraper) or _SuccessfulScraper(),
     )
 
-    outcome = controller.run(batch_size=batch_size)
+    summary = controller.run(batch_size=batch_size)
 
-    assert outcome is BatchOutcome.COMPLETED
+    assert summary.outcome is BatchOutcome.COMPLETED
     assert len(controller.match_state.processed) == batch_size
     assert len(resets) == expected_rotations
+
+
+def test_match_controller_logs_aborted_summary_when_an_error_escapes_the_batch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The summary is built in `finally`, so an aborted batch reports as aborted (#238)."""
+    controller = _build_match_controller(monkeypatch, _SuccessfulScraper, _SuccessfulParser)
+    info_calls = _capture_match_log(monkeypatch, "info")
+
+    def _claim_fails(_match_id: int) -> None:
+        raise RuntimeError("claim failed")
+
+    monkeypatch.setattr(controller.match_state, "mark_as_processing", _claim_fails)
+
+    with pytest.raises(RuntimeError, match="claim failed"):
+        controller.run(batch_size=1)
+
+    summary_lines = [call for call in info_calls if "summary" in str(call[0])]
+    assert summary_lines == [
+        (
+            "%s summary: outcome=%s selected=%d succeeded=%d failed=%d retries=%d",
+            "MatchController",
+            "aborted",
+            1,
+            0,
+            0,
+            0,
+        )
+    ]
+    assert ("%s %s.", "MatchController", "aborted") in info_calls

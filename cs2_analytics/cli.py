@@ -91,6 +91,13 @@ DISCOVER_MODE_MAX_MATCHES = {
 # later, which lets a scheduler tell "cool off" apart from a crash (1).
 EXIT_BATCH_HALTED = 75
 
+# Exit status when every item a stage selected failed (#238): the batch ran
+# to completion, but a whole batch failing is a systemic problem (a parser
+# or storage break, a blocked source the breaker did not catch) that a
+# scheduler must surface rather than count as a clean run. Partial failure
+# is the normal shape of a run with a few bad pages and exits 0.
+EXIT_BATCH_FAILED = 1
+
 # Discovery window floor. Run parameters live with the invoker, not in
 # config (ADR-0015); the CLI is the only pipeline entry point (#181). The
 # end of the window is always computed at run time. #121 turns the floor
@@ -286,7 +293,10 @@ def process(
     unimplemented stage never reaches the database.
 
     A stage halted by its circuit breaker ends the command with exit
-    status 75 and skips the stages after it (#175).
+    status 75 and skips the stages after it (#175). A stage in which
+    every selected item failed still lets later stages run, and the
+    command then exits with status 1 (#238); a partially failed stage
+    exits 0.
     """
     selected = frozenset(stage) if stage else IMPLEMENTED_PROCESS_STAGES
     if ProcessStage.DEMO in selected:
@@ -303,10 +313,11 @@ def process(
         ProcessStage.MATCH: MatchController,
         ProcessStage.MAP: MapController,
     }
+    failed_stages: list[str] = []
     for process_stage in ProcessStage:
         if process_stage in selected:
-            outcome = controllers[process_stage]().run(batch_size=batch)
-            if outcome is BatchOutcome.HALTED:
+            summary = controllers[process_stage]().run(batch_size=batch)
+            if summary.outcome is BatchOutcome.HALTED:
                 typer.echo(
                     f"The {process_stage.value} stage was halted by the circuit"
                     " breaker; later stages were skipped. Wait before the next"
@@ -314,6 +325,16 @@ def process(
                     err=True,
                 )
                 raise typer.Exit(code=EXIT_BATCH_HALTED)
+            if summary.all_failed:
+                failed_stages.append(process_stage.value)
+    if failed_stages:
+        typer.echo(
+            "Every selected item failed in the "
+            + ", ".join(failed_stages)
+            + " stage(s); see `cs2a failures`.",
+            err=True,
+        )
+        raise typer.Exit(code=EXIT_BATCH_FAILED)
 
 
 class IngestionStage(StrEnum):

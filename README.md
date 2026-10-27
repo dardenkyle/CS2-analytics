@@ -391,6 +391,17 @@ status 75 so a scheduler can wait before the next run. A single page that
 cannot be fetched still fails on its own after three attempts without
 halting the batch.
 
+Every controller returns a run summary (stage, outcome, selected,
+succeeded, failed, retries, rotations, stop reason), and `cs2a process`
+maps it to an exit status so a timer or scheduler can tell the runs
+apart:
+
+| Exit | Meaning |
+| ---- | ------- |
+| 0 | Every selected stage ran to the end; partial failures are normal and show in `cs2a failures` |
+| 1 | A stage ran to the end but every item it selected failed (later stages still ran), or the command crashed |
+| 75 | A stage was halted by the circuit breaker; later stages were skipped, wait before the next run |
+
 `cs2a failures` is read-only diagnostics for deciding whether to requeue:
 it lists recent `failed` rows (or `dead`/`partial` via `--status`) with
 `failure_count`, `last_failed_at`, and a truncated `last_error_message`,

@@ -983,6 +983,13 @@ item track record.
       requirements are documented in `docs/deployment.md`; the 80 rows
       the September runs failed were requeued and processed, leaving
       only the KAST placeholder row (#210)
+- [x] (#238) Every controller returns a frozen `RunSummary` built in
+      `finally`, and `cs2a process` exits 1 when a stage ran to the end
+      with every selected item failed (later stages still run) alongside
+      the existing 75 for a breaker halt; controller tests assert on the
+      returned value instead of the summary log format. #256 persists
+      the summary as a `pipeline_runs` row with `cs2a runs`, a status
+      line, and an ops-page panel
 - [x] (#253) Scheduled scraper rotation raised from every 8 processed
       items to every 50, defined once in `retry_utils.py`: a default
       batch runs on one session, so the bot challenge that every fresh

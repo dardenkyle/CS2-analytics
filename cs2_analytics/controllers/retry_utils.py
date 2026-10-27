@@ -27,6 +27,7 @@ class BatchOutcome(StrEnum):
 
     COMPLETED = "completed"
     HALTED = "halted"
+    ABORTED = "aborted"
 
 
 @dataclass
@@ -37,7 +38,9 @@ class BatchRunState[ScraperT]:
     the last fetch that reached the source, across items; it drives the
     circuit breaker. `streak_failed_ids` holds the rows that exhausted
     their attempts inside that streak, so a halt can return them to the
-    queue.
+    queue. `abort_error` is the exception that escaped the batch loop, if
+    any, so the summary built in `finally` reports the run as aborted
+    rather than completed (#238).
     """
 
     scraper: ScraperT
@@ -49,13 +52,95 @@ class BatchRunState[ScraperT]:
     rotations: int = 0
     streak_failed_ids: list[int | str] = field(default_factory=list)
     halt_error: Exception | None = None
+    abort_error: BaseException | None = None
 
     @property
     def outcome(self) -> BatchOutcome:
-        """Reports whether the circuit breaker halted the batch."""
+        """Reports whether the batch aborted, was halted, or ran to the end."""
+        if self.abort_error is not None:
+            return BatchOutcome.ABORTED
         if self.halt_error is not None:
             return BatchOutcome.HALTED
         return BatchOutcome.COMPLETED
+
+
+# Stop reason a match or map summary carries when the circuit breaker
+# ended the batch; the results stage has its own reasons (#121).
+STOP_CIRCUIT_BREAKER = "circuit_breaker"
+# Stop reason when an exception escaped the batch loop; the exception itself
+# propagates to the invoker.
+STOP_EXCEPTION = "exception"
+
+
+@dataclass(frozen=True)
+class RunSummary:
+    """Outcome of one controller run, returned to the invoker (#238).
+
+    Every controller returns the same shape so the CLI can map a run to an
+    exit status and tests can assert on the value instead of a log line.
+    For the results stage, `selected` is the number of matches seen,
+    `succeeded` the number newly recorded, and `failed` the terminal
+    failures. `stop_reason` names why the run ended early, or is None for
+    a run that worked through everything it selected.
+    """
+
+    stage: str
+    outcome: BatchOutcome
+    selected: int
+    succeeded: int
+    failed: int
+    retries: int
+    rotations: int = 0
+    stop_reason: str | None = None
+
+    @property
+    def all_failed(self) -> bool:
+        """True when at least one item was selected and every one failed.
+
+        This is the failure threshold `cs2a process` exits non-zero on: a
+        whole batch failing is a systemic problem, while partial failure
+        is the normal shape of a run with a few bad pages.
+        """
+        return self.selected > 0 and self.failed >= self.selected
+
+
+def _batch_stop_reason(outcome: BatchOutcome) -> str | None:
+    if outcome is BatchOutcome.HALTED:
+        return STOP_CIRCUIT_BREAKER
+    if outcome is BatchOutcome.ABORTED:
+        return STOP_EXCEPTION
+    return None
+
+
+def summarize_batch(
+    run_state: BatchRunState, *, stage: str, selected: int, logger
+) -> RunSummary:
+    """Builds the run summary from a batch's run state and logs it.
+
+    Called from the controller's `finally` so an exception that escapes
+    the batch loop still leaves a summary line behind.
+    """
+    summary = RunSummary(
+        stage=stage,
+        outcome=run_state.outcome,
+        selected=selected,
+        succeeded=run_state.succeeded,
+        failed=run_state.failed,
+        retries=run_state.retries,
+        rotations=run_state.rotations,
+        stop_reason=_batch_stop_reason(run_state.outcome),
+    )
+    logger.info(
+        "%s summary: outcome=%s selected=%d succeeded=%d failed=%d retries=%d",
+        summary.stage,
+        summary.outcome.value,
+        summary.selected,
+        summary.succeeded,
+        summary.failed,
+        summary.retries,
+    )
+    logger.info("%s %s.", summary.stage, summary.outcome.value)
+    return summary
 
 
 def is_retryable_scraper_error(error: Exception) -> bool:

@@ -10,6 +10,7 @@ import datetime as dt
 import pytest
 
 from cs2_analytics.controllers import results_controller as results_module
+from cs2_analytics.controllers.retry_utils import BatchOutcome, RunSummary
 from cs2_analytics.exceptions import PipelineError, SessionScrapeError
 from cs2_analytics.scrapers.results_scraper import ResultsScraper
 
@@ -156,6 +157,19 @@ def _summary_args(info_calls):
             return call_args[1:]
     raise AssertionError("Summary log line not found")
 
+def _returned(summary: RunSummary) -> tuple[str | None, int, int, int, int]:
+    """Returns (stop_reason, seen, newly_discovered, retries, terminal_failures)."""
+    assert summary.stage == "ResultsController"
+    assert summary.outcome is BatchOutcome.COMPLETED
+    return (
+        summary.stop_reason,
+        summary.selected,
+        summary.succeeded,
+        summary.retries,
+        summary.failed,
+    )
+
+
 
 def test_results_controller_retries_retryable_scrape_error(
     monkeypatch: pytest.MonkeyPatch,
@@ -169,7 +183,7 @@ def test_results_controller_retries_retryable_scrape_error(
         lambda scraper: reset_calls.append(scraper) or scraper,
     )
 
-    controller.run(
+    summary = controller.run(
         max_matches=25,
         start_date=dt.date(2025, 10, 1),
         end_date=dt.date(2026, 8, 31),
@@ -181,15 +195,7 @@ def test_results_controller_retries_retryable_scrape_error(
         [(111, "https://www.hltv.org/matches/111/a-vs-b", _D1)],
         [(222, "https://www.hltv.org/matches/222/c-vs-d", _D1)],
     ]
-    assert _summary_args(info_calls) == (
-        "succeeded",
-        results_module.STOP_WINDOW_COVERED,
-        2,
-        2,
-        1,
-        0,
-        25,
-    )
+    assert _returned(summary) == (results_module.STOP_WINDOW_COVERED, 2, 2, 1, 0)
 
 
 def test_results_controller_raises_pipeline_error_after_exhausting_retries(
@@ -275,7 +281,7 @@ def test_incremental_stops_early_when_a_page_yields_nothing_new(
     stage = _FakeStageService(new_counts=[0, 99])
     controller = _build_controller(monkeypatch, _TwoPageScraper, stage)
 
-    controller.run(
+    summary = controller.run(
         max_matches=25,
         start_date=dt.date(2025, 10, 1),
         end_date=dt.date(2026, 8, 31),
@@ -284,15 +290,7 @@ def test_incremental_stops_early_when_a_page_yields_nothing_new(
     # The first batch is all-known (0 new), so the second page is never
     # consumed - only one batch reaches the stage service.
     assert len(stage.batches) == 1
-    assert _summary_args(info_calls) == (
-        "succeeded",
-        results_module.STOP_UP_TO_DATE,
-        1,
-        0,
-        0,
-        0,
-        25,
-    )
+    assert _returned(summary) == (results_module.STOP_UP_TO_DATE, 1, 0, 0, 0)
 
 
 def test_backfill_exits_immediately_when_window_already_covered(
@@ -303,7 +301,7 @@ def test_backfill_exits_immediately_when_window_already_covered(
     controller = _build_controller(monkeypatch, lambda: scraper)
     controller.match_state = _FakeMatchState(min_match_date=dt.date(2025, 9, 30))
 
-    controller.run(
+    summary = controller.run(
         max_matches=25,
         start_date=dt.date(2025, 10, 1),
         end_date=dt.date(2026, 8, 31),
@@ -311,15 +309,7 @@ def test_backfill_exits_immediately_when_window_already_covered(
     )
 
     assert scraper.slice_calls == []
-    assert _summary_args(info_calls) == (
-        "succeeded",
-        results_module.STOP_WINDOW_COVERED,
-        0,
-        0,
-        0,
-        0,
-        25,
-    )
+    assert _returned(summary) == (results_module.STOP_WINDOW_COVERED, 0, 0, 0, 0)
 
 
 def test_backfill_resumes_at_frontier_and_walks_to_the_floor(
@@ -330,7 +320,7 @@ def test_backfill_resumes_at_frontier_and_walks_to_the_floor(
     controller = _build_controller(monkeypatch, lambda: scraper)
     controller.match_state = _FakeMatchState(min_match_date=dt.date(2026, 8, 20))
 
-    controller.run(
+    summary = controller.run(
         max_matches=25,
         start_date=dt.date(2026, 8, 1),
         end_date=dt.date(2026, 8, 31),
@@ -345,15 +335,7 @@ def test_backfill_resumes_at_frontier_and_walks_to_the_floor(
         (24, dt.date(2026, 8, 7), dt.date(2026, 8, 13), True),
         (23, dt.date(2026, 8, 1), dt.date(2026, 8, 6), True),
     ]
-    assert _summary_args(info_calls) == (
-        "succeeded",
-        results_module.STOP_WINDOW_COVERED,
-        3,
-        3,
-        0,
-        0,
-        25,
-    )
+    assert _returned(summary) == (results_module.STOP_WINDOW_COVERED, 3, 3, 0, 0)
 
 
 def test_backfill_starts_at_window_end_when_nothing_is_dated(
@@ -386,7 +368,7 @@ def test_backfill_stops_when_the_budget_is_spent(
     controller = _build_controller(monkeypatch, lambda: scraper)
     controller.match_state = _FakeMatchState(min_match_date=dt.date(2026, 8, 20))
 
-    controller.run(
+    summary = controller.run(
         max_matches=2,
         start_date=dt.date(2026, 8, 1),
         end_date=dt.date(2026, 8, 31),
@@ -394,12 +376,4 @@ def test_backfill_stops_when_the_budget_is_spent(
     )
 
     assert len(scraper.slice_calls) == 1
-    assert _summary_args(info_calls) == (
-        "succeeded",
-        results_module.STOP_BUDGET_EXHAUSTED,
-        2,
-        2,
-        0,
-        0,
-        2,
-    )
+    assert _returned(summary) == (results_module.STOP_BUDGET_EXHAUSTED, 2, 2, 0, 0)

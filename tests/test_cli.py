@@ -22,8 +22,19 @@ class _RecordingController:
         self._name = name
         self._calls = calls
 
-    def run(self, **kwargs) -> None:
+    def run(self, **kwargs):
+        from cs2_analytics.controllers.retry_utils import BatchOutcome, RunSummary
+
         self._calls.append((self._name, kwargs))
+        selected = kwargs.get("batch_size", 0)
+        return RunSummary(
+            stage=self._name,
+            outcome=BatchOutcome.COMPLETED,
+            selected=selected,
+            succeeded=selected,
+            failed=0,
+            retries=0,
+        )
 
 
 def _patch_controller(monkeypatch, module_path, class_name, name, calls):
@@ -377,10 +388,32 @@ class _HaltingController(_RecordingController):
     """Controller stand-in whose batch is halted by the circuit breaker."""
 
     def run(self, **kwargs):
+        from dataclasses import replace
+
         from cs2_analytics.controllers.retry_utils import BatchOutcome
 
-        super().run(**kwargs)
-        return BatchOutcome.HALTED
+        summary = super().run(**kwargs)
+        return replace(summary, outcome=BatchOutcome.HALTED, succeeded=0)
+
+
+class _AllFailedController(_RecordingController):
+    """Controller stand-in whose batch ran to the end with every item failed."""
+
+    def run(self, **kwargs):
+        from dataclasses import replace
+
+        summary = super().run(**kwargs)
+        return replace(summary, succeeded=0, failed=summary.selected)
+
+
+class _PartlyFailedController(_RecordingController):
+    """Controller stand-in whose batch finished with one failed item."""
+
+    def run(self, **kwargs):
+        from dataclasses import replace
+
+        summary = super().run(**kwargs)
+        return replace(summary, succeeded=summary.selected - 1, failed=1)
 
 
 def test_process_skips_later_stages_and_exits_75_when_a_stage_halts(
@@ -399,6 +432,45 @@ def test_process_skips_later_stages_and_exits_75_when_a_stage_halts(
     assert result.exit_code == 75
     assert calls == [("match", {"batch_size": 10})]
     assert "match stage was halted by the circuit breaker" in result.stderr
+
+
+def test_process_runs_later_stages_and_exits_1_when_every_item_failed(
+    monkeypatch,
+) -> None:
+    import cs2_analytics.controllers.match_controller as match_module
+
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+    monkeypatch.setattr(
+        match_module, "MatchController", lambda: _AllFailedController("match", calls)
+    )
+
+    result = runner.invoke(app, ["process", "--batch", "10"])
+
+    assert result.exit_code == 1
+    assert calls == [
+        ("match", {"batch_size": 10}),
+        ("map", {"batch_size": 10}),
+    ]
+    assert "Every selected item failed in the match stage(s)" in result.stderr
+
+
+def test_process_exits_0_when_a_stage_only_partly_failed(monkeypatch) -> None:
+    import cs2_analytics.controllers.map_controller as map_module
+
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+    monkeypatch.setattr(
+        map_module, "MapController", lambda: _PartlyFailedController("map", calls)
+    )
+
+    result = runner.invoke(app, ["process", "--batch", "10"])
+
+    assert result.exit_code == 0
+    assert calls == [
+        ("match", {"batch_size": 10}),
+        ("map", {"batch_size": 10}),
+    ]
 
 
 def test_process_exits_75_when_the_last_stage_halts(monkeypatch) -> None:
