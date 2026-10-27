@@ -75,6 +75,10 @@ A2 implementation notes:
   docs.
 - The loading state switches to cold-start messaging after five seconds to
   cover the Render free-tier wake-up delay.
+- The cold-start messaging and the "backfill is ongoing" caption were
+  retired in #245 once the API moved to a paid Render instance and the
+  CS2-era backfill completed; the five-second hint now describes a slow
+  query instead.
 
 ### Planned work
 

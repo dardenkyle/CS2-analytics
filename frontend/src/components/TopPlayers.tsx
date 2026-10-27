@@ -3,7 +3,7 @@ import { API_BASE_URL } from '../config'
 
 const MIN_MAPS = 1
 const LIMIT = 10
-const COLD_START_HINT_DELAY_MS = 5000
+const SLOW_RESPONSE_HINT_DELAY_MS = 5000
 
 interface TopPlayer {
   player_name: string
@@ -54,12 +54,12 @@ function useTopPlayers() {
 }
 
 function LoadingState() {
-  const [showColdStartHint, setShowColdStartHint] = useState(false)
+  const [showSlowResponseHint, setShowSlowResponseHint] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(
-      () => setShowColdStartHint(true),
-      COLD_START_HINT_DELAY_MS,
+      () => setShowSlowResponseHint(true),
+      SLOW_RESPONSE_HINT_DELAY_MS,
     )
     return () => clearTimeout(timer)
   }, [])
@@ -68,8 +68,8 @@ function LoadingState() {
     <div className="players-status" role="status">
       <span className="pulse-dot" aria-hidden="true" />
       <p>
-        {showColdStartHint
-          ? 'Waking the API — the free-tier instance sleeps when idle and can take up to 30 seconds to respond.'
+        {showSlowResponseHint
+          ? 'Still loading - the API is aggregating player ratings across the production database.'
           : 'Loading top players…'}
       </p>
     </div>
@@ -149,8 +149,9 @@ export function TopPlayersSection() {
           <>
             <PlayersTable players={state.players} />
             <p className="data-note">
-              Rankings reflect matches ingested so far; historical backfill is
-              ongoing, so map counts are still small.
+              Rankings average each player's rating over every map in the
+              production database, which covers the full CS2 era and is
+              updated daily.
             </p>
           </>
         ))}

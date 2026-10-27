@@ -9,8 +9,6 @@
 a public dashboard showing top players served live from the production
 database. The API behind it is also public:
 [cs2-analytics.onrender.com/docs](https://cs2-analytics.onrender.com/docs).
-(The API runs on a free tier and can take up to ~30 seconds to wake after
-idle periods.)
 
 ## Project Overview
 
