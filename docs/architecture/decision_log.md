@@ -596,3 +596,61 @@ Consequences:
   their service database explicitly.
 - Test and development databases share one PostgreSQL container and
   credentials; only the database name separates them.
+
+## ADR-0019: Incremental Discovery Walks Forward From A Derived Cursor
+
+Status:
+Accepted
+
+Date:
+Phase 5
+
+Context:
+Incremental discovery scanned the results listing newest-first by page
+offset and stopped at the first page that recorded nothing new. Two paths
+made that stop wrong (#231): a run that hit its budget recorded only part
+of a page, and the next run saw the known part first and reported
+`up_to_date` with the rest never read; a retry restarted from offset 0 and
+stopped before reaching the page that failed. With newest-first paging
+and no stored cursor there is no rule on the data that distinguishes "all
+known because swept" from "all known because the hole is further down",
+so the early stop could not be repaired in place. Matches never
+discovered never reach the match and map stages, and every later run
+reported success.
+
+Decision:
+Incremental discovery is the forward mirror of backfill. Its cursor is
+`max(match_date)`, derived exactly as the backfill frontier is. A run
+starts `overlap_days` (default one) before the cursor and walks forward
+one day-window at a time through today, using the listing's date filter,
+and stops with `up_to_date`. It has no budget: the calendar bounds the
+walk, so `--max-matches` and `--since` apply to backfill only and are
+rejected in incremental mode. The cursor day is never assumed complete
+(today is still being played; an interrupted run stops mid-day), which is
+what the overlap is for; recording a known match is idempotent, so a
+re-swept day costs only page loads. Raising `--overlap-days` is the
+bounded repair path: a contiguous range ending today, never an island.
+The start is clamped to the backfill frontier, since a walk that began
+below it and died part-way would move the frontier down past days no
+mode revisits; older dates belong to backfill.
+
+Consequences:
+- The recorded range is one contiguous block whose old end backfill
+  extends and whose new end incremental extends; neither mode can leave a
+  hole inside it, and a run that fails mid-day self-heals on the next run.
+- A normal daily run is two listing requests (yesterday and today), the
+  same as before; catching up after missed days costs one request per
+  day.
+- `cs2a ingest discover` exits 0 when caught up and 1 on failure; the
+  `budget_exhausted` and `empty_page` stop reasons no longer occur in
+  incremental summaries.
+- The source applies its date filter in its own zone while section
+  headers render in the browser's zone (#215), so a filtered page carries
+  sections dated one day either side of the window. The scraper's
+  client-side range check allows one day of slack whenever the filter is
+  in use, in both modes; without it the first hours of every day were
+  dropped by every window. Recording the UTC date itself stays with #214
+  and #215. A page that does not render still reads as an empty day until
+  #230 lands, which the day-walk makes more important, not less.
+- With nothing recorded yet, incremental starts at today; history is
+  backfill's job.

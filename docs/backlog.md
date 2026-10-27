@@ -983,6 +983,13 @@ item track record.
       requirements are documented in `docs/deployment.md`; the 80 rows
       the September runs failed were requeued and processed, leaving
       only the KAST placeholder row (#210)
+- [x] (#231) Incremental discovery is a forward day-walk from
+      `max(match_date)` minus `--overlap-days` through today, the mirror
+      of backfill's frontier walk (ADR-0019); it has no budget and
+      rejects `--max-matches` and `--since`. Replaces the newest-first
+      scan whose all-known early stop left silent holes after a budget
+      stop or a mid-scan retry. Raising `--overlap-days` is the bounded
+      repair path; the thin-day coverage flag moved to its own issue
 - [x] (#238) Every controller returns a frozen `RunSummary` built in
       `finally`, and `cs2a process` exits 1 when a stage ran to the end
       with every selected item failed (later stages still run) alongside

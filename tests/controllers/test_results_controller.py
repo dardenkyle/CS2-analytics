@@ -18,7 +18,7 @@ _D1 = dt.date(2026, 8, 30)
 
 SUMMARY_FORMAT = (
     "ResultsController summary: status=%s stop_reason=%s seen=%d "
-    "newly_discovered=%d retries=%d terminal_failures=%d max_matches=%d"
+    "newly_discovered=%d retries=%d terminal_failures=%d max_matches=%s"
 )
 
 
@@ -37,11 +37,19 @@ class _FakeStageService:
 
 
 class _FakeMatchState:
-    def __init__(self, min_match_date: dt.date | None) -> None:
+    def __init__(
+        self,
+        min_match_date: dt.date | None = None,
+        max_match_date: dt.date | None = None,
+    ) -> None:
         self.min_match_date = min_match_date
+        self.max_match_date = max_match_date
 
     def fetch_min_match_date(self) -> dt.date | None:
         return self.min_match_date
+
+    def fetch_max_match_date(self) -> dt.date | None:
+        return self.max_match_date
 
 
 class _RetryThenSucceedScraper:
@@ -114,7 +122,7 @@ class _SlicingScraper:
         self.slice_calls.append(
             (max_matches, start_date, end_date, use_source_date_filter)
         )
-        yielded = min(self.per_slice, max_matches)
+        yielded = self.per_slice if max_matches is None else min(self.per_slice, max_matches)
         batch = []
         for _ in range(yielded):
             self.next_id += 1
@@ -125,7 +133,7 @@ class _SlicingScraper:
             yield batch
         self.stop_reason = (
             ResultsScraper.STOP_BUDGET
-            if yielded >= max_matches
+            if max_matches is not None and yielded >= max_matches
             else ResultsScraper.STOP_WINDOW_FLOOR
         )
 
@@ -138,6 +146,7 @@ def _build_controller(monkeypatch, scraper_cls, stage_service=None):
     monkeypatch.setattr(results_module.time, "sleep", lambda *_args, **_kwargs: None)
     controller = results_module.ResultsController()
     controller.stage_service = stage_service or _FakeStageService()
+    controller.match_state = _FakeMatchState()
     return controller
 
 
@@ -195,7 +204,7 @@ def test_results_controller_retries_retryable_scrape_error(
         [(111, "https://www.hltv.org/matches/111/a-vs-b", _D1)],
         [(222, "https://www.hltv.org/matches/222/c-vs-d", _D1)],
     ]
-    assert _returned(summary) == (results_module.STOP_WINDOW_COVERED, 2, 2, 1, 0)
+    assert _returned(summary) == (results_module.STOP_UP_TO_DATE, 2, 2, 1, 0)
 
 
 def test_results_controller_raises_pipeline_error_after_exhausting_retries(
@@ -268,29 +277,169 @@ def test_results_controller_raises_pipeline_error_for_non_retryable_failure(
     assert _summary_args(info_calls) == ("failed", None, 0, 0, 0, 1, 25)
 
 
-def test_incremental_stops_early_when_a_page_yields_nothing_new(
+def test_incremental_walks_one_day_at_a_time_from_before_the_cursor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    info_calls = _capture_logger(monkeypatch, "info")
-
-    class _TwoPageScraper(_RetryThenSucceedScraper):
-        def __init__(self) -> None:
-            super().__init__()
-            self.run_calls = 1  # skip the failure on first call
-
-    stage = _FakeStageService(new_counts=[0, 99])
-    controller = _build_controller(monkeypatch, _TwoPageScraper, stage)
+    """Forward day-walk: overlap day, cursor day, then today, each one window (#231)."""
+    scraper = _SlicingScraper(per_slice=2)
+    controller = _build_controller(monkeypatch, lambda: scraper)
+    controller.match_state = _FakeMatchState(max_match_date=dt.date(2026, 10, 25))
 
     summary = controller.run(
-        max_matches=25,
+        max_matches=None,
         start_date=dt.date(2025, 10, 1),
-        end_date=dt.date(2026, 8, 31),
+        end_date=dt.date(2026, 10, 26),
     )
 
-    # The first batch is all-known (0 new), so the second page is never
-    # consumed - only one batch reaches the stage service.
-    assert len(stage.batches) == 1
-    assert _returned(summary) == (results_module.STOP_UP_TO_DATE, 1, 0, 0, 0)
+    assert scraper.slice_calls == [
+        (None, dt.date(2026, 10, 24), dt.date(2026, 10, 24), True),
+        (None, dt.date(2026, 10, 25), dt.date(2026, 10, 25), True),
+        (None, dt.date(2026, 10, 26), dt.date(2026, 10, 26), True),
+    ]
+    assert _returned(summary) == (results_module.STOP_UP_TO_DATE, 6, 6, 0, 0)
+
+
+def test_incremental_starts_at_the_end_date_when_nothing_is_dated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scraper = _SlicingScraper(per_slice=1)
+    controller = _build_controller(monkeypatch, lambda: scraper)
+    controller.match_state = _FakeMatchState(max_match_date=None)
+
+    summary = controller.run(
+        max_matches=None,
+        start_date=dt.date(2025, 10, 1),
+        end_date=dt.date(2026, 10, 26),
+    )
+
+    assert scraper.slice_calls == [
+        (None, dt.date(2026, 10, 26), dt.date(2026, 10, 26), True),
+    ]
+    assert _returned(summary) == (results_module.STOP_UP_TO_DATE, 1, 1, 0, 0)
+
+
+def test_incremental_overlap_days_re_sweeps_a_longer_range(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Raising the overlap is the bounded repair path; known rows are idempotent."""
+    scraper = _SlicingScraper(per_slice=1)
+    stage = _FakeStageService(new_counts=[0, 0, 1, 0])
+    controller = _build_controller(monkeypatch, lambda: scraper, stage_service=stage)
+    controller.match_state = _FakeMatchState(max_match_date=dt.date(2026, 10, 26))
+
+    summary = controller.run(
+        max_matches=None,
+        start_date=dt.date(2025, 10, 1),
+        end_date=dt.date(2026, 10, 26),
+        overlap_days=3,
+    )
+
+    assert [call[1] for call in scraper.slice_calls] == [
+        dt.date(2026, 10, 23),
+        dt.date(2026, 10, 24),
+        dt.date(2026, 10, 25),
+        dt.date(2026, 10, 26),
+    ]
+    assert _returned(summary) == (results_module.STOP_UP_TO_DATE, 4, 1, 0, 0)
+
+
+def test_incremental_overlap_never_starts_below_the_backfill_frontier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An oversized overlap on a short history must not create an island (#231).
+
+    If the walk started below the frontier and died part-way, min(match_date)
+    would move down past days no mode revisits.
+    """
+    scraper = _SlicingScraper(per_slice=1)
+    controller = _build_controller(monkeypatch, lambda: scraper)
+    controller.match_state = _FakeMatchState(
+        min_match_date=dt.date(2026, 10, 20),
+        max_match_date=dt.date(2026, 10, 26),
+    )
+
+    controller.run(
+        max_matches=None,
+        start_date=dt.date(2025, 10, 1),
+        end_date=dt.date(2026, 10, 26),
+        overlap_days=10,
+    )
+
+    assert [call[1] for call in scraper.slice_calls] == [
+        dt.date(2026, 10, 20) + dt.timedelta(days=i) for i in range(7)
+    ]
+
+
+def test_incremental_clamps_a_future_cursor_to_the_end_date(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cursor past today (zone skew, #215) must not walk into the future."""
+    scraper = _SlicingScraper(per_slice=1)
+    controller = _build_controller(monkeypatch, lambda: scraper)
+    controller.match_state = _FakeMatchState(max_match_date=dt.date(2026, 10, 28))
+
+    controller.run(
+        max_matches=None,
+        start_date=dt.date(2025, 10, 1),
+        end_date=dt.date(2026, 10, 26),
+    )
+
+    assert [call[1] for call in scraper.slice_calls] == [dt.date(2026, 10, 26)]
+
+
+def test_incremental_retry_re_reads_the_same_day(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A mid-walk failure retries the day it failed on, not the walk from the top."""
+    calls: list[tuple[int, dt.date]] = []
+
+    class _FailOnceOnSecondDay:
+        def __init__(self) -> None:
+            self.stop_reason = ResultsScraper.STOP_EMPTY_PAGE
+            self.close_calls = 0
+
+        def iter_match_batches(
+            self, max_matches, start_date, end_date, use_source_date_filter=False
+        ):
+            calls.append((len(calls), start_date))
+            if start_date == dt.date(2026, 10, 26) and len(
+                [c for c in calls if c[1] == start_date]
+            ) == 1:
+                raise SessionScrapeError("Session dropped while fetching results page.")
+            yield [(len(calls), f"https://www.hltv.org/matches/{len(calls)}/x", start_date)]
+
+        def close(self) -> None:
+            self.close_calls += 1
+
+    scraper = _FailOnceOnSecondDay()
+    controller = _build_controller(monkeypatch, lambda: scraper)
+    controller.match_state = _FakeMatchState(max_match_date=dt.date(2026, 10, 26))
+    monkeypatch.setattr(controller, "_reset_scraper", lambda s: s)
+
+    summary = controller.run(
+        max_matches=None,
+        start_date=dt.date(2025, 10, 1),
+        end_date=dt.date(2026, 10, 26),
+    )
+
+    assert [day for _, day in calls] == [
+        dt.date(2026, 10, 25),
+        dt.date(2026, 10, 26),
+        dt.date(2026, 10, 26),
+    ]
+    assert _returned(summary) == (results_module.STOP_UP_TO_DATE, 2, 2, 1, 0)
+
+
+def test_backfill_rejects_a_missing_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    controller = _build_controller(monkeypatch, _SlicingScraper)
+
+    with pytest.raises(ValueError, match="requires a run budget"):
+        controller.run(
+            max_matches=None,
+            start_date=dt.date(2025, 10, 1),
+            end_date=dt.date(2026, 10, 26),
+            mode="backfill",
+        )
 
 
 def test_backfill_exits_immediately_when_window_already_covered(

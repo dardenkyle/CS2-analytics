@@ -7,12 +7,21 @@ inside command bodies.
 """
 
 import datetime as dt
+import re
 
 from typer.testing import CliRunner
 
 from cs2_analytics.cli import app
 
 runner = CliRunner()
+
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+_BOX = re.compile(r"[\u2500-\u257f]")
+
+
+def _plain(text: str) -> str:
+    """Strips the colour codes and box drawing rich adds to a Typer error."""
+    return " ".join(_BOX.sub(" ", _ANSI.sub("", text)).split())
 
 
 class _RecordingController:
@@ -119,7 +128,7 @@ def _assert_discover_call(calls, max_matches, before, after) -> None:
     assert kwargs["mode"] in ("incremental", "backfill")
 
 
-def test_discover_defaults_to_incremental_cap(monkeypatch) -> None:
+def test_discover_defaults_to_an_uncapped_incremental_walk(monkeypatch) -> None:
     calls: list[tuple[str, dict]] = []
     _patch_controller(
         monkeypatch,
@@ -134,7 +143,73 @@ def test_discover_defaults_to_incremental_cap(monkeypatch) -> None:
     after = dt.date.today()
 
     assert result.exit_code == 0
-    _assert_discover_call(calls, 50, before, after)
+    _assert_discover_call(calls, None, before, after)
+    assert calls[0][1]["overlap_days"] == 1
+
+
+def test_discover_passes_overlap_days_to_the_incremental_walk(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_controller(
+        monkeypatch,
+        "cs2_analytics.controllers.results_controller",
+        "ResultsController",
+        "results",
+        calls,
+    )
+
+    result = runner.invoke(app, ["ingest", "discover", "--overlap-days", "10"])
+
+    assert result.exit_code == 0
+    assert calls[0][1]["overlap_days"] == 10
+    assert calls[0][1]["max_matches"] is None
+
+
+def test_discover_rejects_backfill_only_options_in_incremental_mode(
+    monkeypatch,
+) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_controller(
+        monkeypatch,
+        "cs2_analytics.controllers.results_controller",
+        "ResultsController",
+        "results",
+        calls,
+    )
+
+    capped = runner.invoke(app, ["ingest", "discover", "--max-matches", "7"])
+    floored = runner.invoke(app, ["ingest", "discover", "--since", "2023-09-27"])
+
+    assert capped.exit_code == 2
+    assert "--max-matches applies to --mode backfill" in _plain(capped.stderr)
+    assert floored.exit_code == 2
+    assert "--since applies to --mode backfill" in _plain(floored.stderr)
+    assert calls == []
+
+
+def test_discover_rejects_overlap_days_in_backfill_mode(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_controller(
+        monkeypatch,
+        "cs2_analytics.controllers.results_controller",
+        "ResultsController",
+        "results",
+        calls,
+    )
+
+    result = runner.invoke(
+        app, ["ingest", "discover", "--mode", "backfill", "--overlap-days", "3"]
+    )
+
+    assert result.exit_code == 2
+    assert "--overlap-days applies to --mode incremental" in _plain(result.stderr)
+    assert calls == []
+
+
+def test_cli_overlap_default_mirrors_the_controller() -> None:
+    from cs2_analytics import cli
+    from cs2_analytics.controllers import results_controller
+
+    assert cli.DEFAULT_OVERLAP_DAYS == results_controller.DEFAULT_OVERLAP_DAYS
 
 
 def test_discover_backfill_raises_the_cap(monkeypatch) -> None:
