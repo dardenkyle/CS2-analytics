@@ -896,10 +896,18 @@ item track record.
       the same `--allow-remote` override as `cs2a db`, and `--wipe` refuses
       a non-local host with no override at all (follow-up from #200, which
       left this second migration entry point unguarded)
-- [ ] (#214) Match date zone: the match parser derives `matches.date` in
-      the writing machine's timezone and drops the time of day; pin the
-      conversion to UTC like the map parser, keep the time, and correct
-      the 13 rows whose date disagrees with their first map's UTC time
+- [x] (#214) Match date zone: the match parser derived `matches.date` in
+      the writing machine's timezone and dropped the time of day, so rows
+      written from Central and from UTC containers disagreed by a day.
+      `_extract_match_date` now converts with `tz=dt.UTC` and keeps the
+      full timestamp like the map parser, proven by a test that parses
+      the same page under three host zones. Migration `20261027_0007`
+      sets `matches.date` to `MIN(maps.date)` per match where a map
+      exists and touches only rows whose value differs (round-trip test
+      against the test database checks the rewritten rows and, via
+      `xmin`, that equal rows are not rewritten); matches with no stored
+      map keep their midnight date. Production procedure and preview
+      query in `docs/deployment.md`
 - [ ] (#215) Discovery date zone: the results scraper records
       `match_date` from the page's date header, which the source renders
       in the browser's timezone; pin the browser zone or use a per-match

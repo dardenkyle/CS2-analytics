@@ -4,6 +4,7 @@ Each test renders a minimal match page with one field varied so the
 branch under test is the only thing that differs from the happy path.
 """
 
+import time
 from typing import Any, cast
 
 import pytest
@@ -23,6 +24,7 @@ def _match_soup(
     map_name: str = "Inferno",
     results_href: str = "/stats/matches/mapstatsid/2/test-map",
     extra: str = "",
+    date_unix: str = "1704067200000",
 ) -> BeautifulSoup:
     html = f"""
     <html>
@@ -40,7 +42,7 @@ def _match_soup(
         <div class="event text-ellipsis">Test Event</div>
         <div class="padding preformatted-text">{match_type}</div>
         <div class="mapname">{map_name}</div>
-        <div class="date" data-unix="1704067200000"></div>
+        <div class="date" data-unix="{date_unix}"></div>
         <a class="results-stats" href="{results_href}"></a>
         {extra}
       </body>
@@ -171,3 +173,35 @@ def test_parse_match_rejects_blank_map_name_for_forfeit_status() -> None:
         MatchParseError, match="Failed to extract forfeit status from match page."
     ):
         parser.parse_match(_match_soup(map_name=""), MATCH_URL)
+
+
+@pytest.fixture
+def host_timezone(monkeypatch: pytest.MonkeyPatch):
+    """Switches the process timezone for a test and restores it afterwards."""
+
+    def set_zone(zone: str) -> None:
+        monkeypatch.setenv("TZ", zone)
+        time.tzset()
+
+    yield set_zone
+    monkeypatch.undo()
+    time.tzset()
+
+
+def test_match_date_is_the_same_utc_instant_in_any_host_timezone(host_timezone) -> None:
+    parser = MatchParser()
+    soup = _match_soup(date_unix="1783737000000")
+    dates = []
+
+    for zone in ("UTC", "America/Chicago", "Asia/Tokyo"):
+        host_timezone(zone)
+        match, _, _ = parser.parse_match(soup, MATCH_URL)
+        dates.append(match.date)
+
+    assert dates == ["2026-07-11 02:30:00"] * 3
+
+
+def test_match_date_keeps_the_time_of_day() -> None:
+    match, _, _ = MatchParser().parse_match(_match_soup(), MATCH_URL)
+
+    assert match.date == "2024-01-01 00:00:00"
