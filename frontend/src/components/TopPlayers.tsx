@@ -69,7 +69,7 @@ function LoadingState() {
       <span className="pulse-dot" aria-hidden="true" />
       <p>
         {showSlowResponseHint
-          ? 'Still loading - the API is aggregating player ratings across the production database.'
+          ? 'Still loading - the API is taking longer than usual.'
           : 'Loading top players…'}
       </p>
     </div>
@@ -150,8 +150,9 @@ export function TopPlayersSection() {
             <PlayersTable players={state.players} />
             <p className="data-note">
               Rankings average each player's rating over every map in the
-              production database, which covers the full CS2 era and is
-              updated daily.
+              published dataset, which covers the full CS2 era and is
+              refreshed with the daily build. Any player with at least one
+              map is included, so a single strong map can rank highly.
             </p>
           </>
         ))}

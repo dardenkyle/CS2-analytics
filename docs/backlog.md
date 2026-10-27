@@ -15,11 +15,13 @@ scheduled daily prod build), an operational CLI (`cs2a`
 status/failures/inspect/coverage/retry/process), and a date-sliced
 backfill system with a derived frontier cursor (ADR-0016).
 
-The discovery window 2025-09-01..today is fully swept; a ~11.3k-match
-processing backlog drains in the background via `cs2a process`. The full
-CS2-era backfill (`--since 2023-09-27`) starts after the current drain
-completes - contiguous slices only, never a detached range, because the
-frontier derives from `min(match_date)`.
+The discovery window 2025-09-01..today was fully swept by 2026-09-01,
+and the full CS2-era backfill (`--since 2023-09-27`) completed on
+2026-10-27: 31,611 matches and 65,637 maps processed with none failed,
+and demos discovered but unprocessed by design. Ingestion now runs
+steady-state on the daily timer. Any later move of the window floor
+must stay contiguous - never a detached range - because the frontier
+derives from `min(match_date)`.
 
 Current priorities:
 
