@@ -151,3 +151,17 @@ def test_store_players_binds_null_for_missing_adr(
     _query, values = cursor.executed[0]
     assert values[0]["adr"] is None
     assert player.to_dict()["adr"] is None
+
+
+def test_store_players_binds_null_for_missing_kast(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = _RecordingCursor()
+    monkeypatch.setattr(player_storage_module, "get_db", lambda: _FakeDb(cursor))
+    player = replace(_player(), kast=None)
+
+    player_storage_module.store_players([player])
+
+    _query, values = cursor.executed[0]
+    assert values[0]["kast"] is None
+    assert player.to_dict()["kast"] is None

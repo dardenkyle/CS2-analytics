@@ -24,7 +24,7 @@ class Player:
     opening_deaths: int
     multi_kills: int
     clutches_won: int
-    kast: float
+    kast: float | None
     kd_diff: int
     adr: float | None
     fk_diff: int

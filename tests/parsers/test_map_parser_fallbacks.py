@@ -446,3 +446,46 @@ def test_adr_missing_cell_still_raises() -> None:
 
     with pytest.raises(MapParseError, match="Failed to parse ADR value: ''"):
         _parse_players(_map_soup(tables=_stats_table(rows=row)))
+
+
+@pytest.mark.parametrize("placeholder", ["-", "–", "—"])
+def test_kast_dash_placeholder_parses_as_missing_and_keeps_the_row(
+    placeholder: str,
+) -> None:
+    rows = _player_row() + _player_row(
+        player_id=5678, name="NoKast", kast=placeholder, kills="0 (0)", deaths="13 (0)"
+    )
+
+    players = _parse_players(_map_soup(tables=_stats_table(rows=rows)))
+
+    assert [player.player_name for player in players] == ["TestPlayer", "NoKast"]
+    assert players[0].kast == 0.7
+    assert players[1].kast is None
+    assert (players[1].kills, players[1].deaths) == (0, 13)
+    assert (players[1].adr, players[1].rating) == (95.2, 1.24)
+
+
+def test_kast_and_adr_placeholders_on_the_same_row_both_parse_as_missing() -> None:
+    row = _player_row(kast="-", adr="-")
+
+    players = _parse_players(_map_soup(tables=_stats_table(rows=row)))
+
+    assert players[0].kast is None
+    assert players[0].adr is None
+    assert players[0].rating == 1.24
+
+
+def test_kast_non_numeric_text_other_than_the_placeholder_still_raises() -> None:
+    row = _player_row(kast="N/A")
+
+    with pytest.raises(MapParseError, match="Failed to parse KAST value: 'N/A'"):
+        _parse_players(_map_soup(tables=_stats_table(rows=row)))
+
+
+def test_kast_missing_cell_still_raises() -> None:
+    row = _player_row().replace(
+        '<td class="st-kast">70.0%</td>', '<td class="st-kast"></td>'
+    )
+
+    with pytest.raises(MapParseError, match="Failed to parse KAST value: ''"):
+        _parse_players(_map_soup(tables=_stats_table(rows=row)))

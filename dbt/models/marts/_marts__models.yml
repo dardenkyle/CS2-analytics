@@ -127,7 +127,8 @@ models:
       - name: kast
         description: >
           KAST on this map, stored as a fraction between 0 and 1 (the
-          parser divides the source percentage by 100).
+          parser divides the source percentage by 100). Null means the
+          source showed no value for this player (a dash placeholder).
         data_tests:
           - dbt_utils.accepted_range:
               arguments:

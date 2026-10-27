@@ -19,7 +19,8 @@ MISSING_METRIC_PLACEHOLDERS = frozenset({"-", "\u2013", "\u2014"})
 class _PlayerStats(TypedDict):
     """Per-row metrics parsed from a stats table.
 
-    Every key is always present; only the adr value may be None (#202).
+    Every key is always present; only the kast and adr values may be None,
+    for the source's dash placeholder (#202, #210).
     """
 
     kills: int
@@ -33,7 +34,7 @@ class _PlayerStats(TypedDict):
     multi_kills: int
     clutches_won: int
     round_swing: float
-    kast: float
+    kast: float | None
     adr: float | None
     rating: float
 
@@ -346,14 +347,22 @@ class MapParser:
         )
         return self._parse_pair(deaths_text, metric="deaths")
 
-    def _extract_kast(self, cols, kast_idx: int) -> float:
-        """Extracts KAST as a decimal ratio."""
+    def _extract_kast(self, cols, kast_idx: int) -> float | None:
+        """Extracts KAST as a decimal ratio, or None for the dash placeholder.
+
+        The source renders a dash in the KAST cell when it has no figure
+        for a player (observed on map 238491, #210), the same way it does
+        for ADR (#202). That is a missing value, not a parse failure; any
+        other non-numeric text still raises.
+        """
         kast_text = self._extract_metric_text(
             cols,
             kast_idx,
             ["st-kast"],
             prefer_hidden=False,
         )
+        if kast_text.strip() in MISSING_METRIC_PLACEHOLDERS:
+            return None
         try:
             return round(float(kast_text.replace("%", "")) / 100, 3)
         except ValueError as e:
@@ -429,7 +438,7 @@ class MapParser:
             opening_deaths=opening_deaths,
             multi_kills=int(stats["multi_kills"]),
             clutches_won=int(stats["clutches_won"]),
-            kast=float(stats["kast"]),
+            kast=stats["kast"],
             kd_diff=kills - deaths,
             adr=stats["adr"],
             fk_diff=opening_kills - opening_deaths,

@@ -987,6 +987,16 @@ item track record.
       requirements are documented in `docs/deployment.md`; the 80 rows
       the September runs failed were requeued and processed, leaving
       only the KAST placeholder row (#210)
+- [x] (#210) KAST dash placeholder: the map parser rejected a whole map
+      when the source rendered a dash in a player's KAST cell (map 238491,
+      one of ten rows). `_extract_kast` now returns `None` for the shared
+      `MISSING_METRIC_PLACEHOLDERS` set, `kast` is `float | None` on the
+      parsed row and the `Player` model, and the row stores with `kast`
+      NULL in the already-nullable column; any other non-numeric text
+      still raises. Rating and the kill, assist, and death cells were
+      numeric on the same rows, so they stay strict (`docs/conventions.md`).
+      dbt column descriptions for `kast` say what a null means. Map 238491
+      was requeued and processed on 2026-10-27 with ten player rows
 - [x] (#230) The results scraper waits for the listing container
       (`div.results`) through the shared page-wait helper, so a
       challenge interstitial or blank render raises the retryable session
