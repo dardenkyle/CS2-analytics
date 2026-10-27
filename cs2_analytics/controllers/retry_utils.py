@@ -27,6 +27,7 @@ class BatchOutcome(StrEnum):
 
     COMPLETED = "completed"
     HALTED = "halted"
+    ABORTED = "aborted"
 
 
 @dataclass
@@ -37,7 +38,9 @@ class BatchRunState[ScraperT]:
     the last fetch that reached the source, across items; it drives the
     circuit breaker. `streak_failed_ids` holds the rows that exhausted
     their attempts inside that streak, so a halt can return them to the
-    queue.
+    queue. `abort_error` is the exception that escaped the batch loop, if
+    any, so the summary built in `finally` reports the run as aborted
+    rather than completed (#238).
     """
 
     scraper: ScraperT
@@ -49,10 +52,13 @@ class BatchRunState[ScraperT]:
     rotations: int = 0
     streak_failed_ids: list[int | str] = field(default_factory=list)
     halt_error: Exception | None = None
+    abort_error: BaseException | None = None
 
     @property
     def outcome(self) -> BatchOutcome:
-        """Reports whether the circuit breaker halted the batch."""
+        """Reports whether the batch aborted, was halted, or ran to the end."""
+        if self.abort_error is not None:
+            return BatchOutcome.ABORTED
         if self.halt_error is not None:
             return BatchOutcome.HALTED
         return BatchOutcome.COMPLETED
@@ -61,6 +67,9 @@ class BatchRunState[ScraperT]:
 # Stop reason a match or map summary carries when the circuit breaker
 # ended the batch; the results stage has its own reasons (#121).
 STOP_CIRCUIT_BREAKER = "circuit_breaker"
+# Stop reason when an exception escaped the batch loop; the exception itself
+# propagates to the invoker.
+STOP_EXCEPTION = "exception"
 
 
 @dataclass(frozen=True)
@@ -95,6 +104,14 @@ class RunSummary:
         return self.selected > 0 and self.failed >= self.selected
 
 
+def _batch_stop_reason(outcome: BatchOutcome) -> str | None:
+    if outcome is BatchOutcome.HALTED:
+        return STOP_CIRCUIT_BREAKER
+    if outcome is BatchOutcome.ABORTED:
+        return STOP_EXCEPTION
+    return None
+
+
 def summarize_batch(
     run_state: BatchRunState, *, stage: str, selected: int, logger
 ) -> RunSummary:
@@ -111,11 +128,7 @@ def summarize_batch(
         failed=run_state.failed,
         retries=run_state.retries,
         rotations=run_state.rotations,
-        stop_reason=(
-            STOP_CIRCUIT_BREAKER
-            if run_state.outcome is BatchOutcome.HALTED
-            else None
-        ),
+        stop_reason=_batch_stop_reason(run_state.outcome),
     )
     logger.info(
         "%s summary: outcome=%s selected=%d succeeded=%d failed=%d retries=%d",

@@ -685,7 +685,7 @@ def test_map_controller_rotates_only_after_rotate_every_items(
 def test_map_controller_logs_summary_when_an_error_escapes_the_batch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The summary is built in `finally`, so an aborted batch still reports (#238)."""
+    """The summary is built in `finally`, so an aborted batch reports as aborted (#238)."""
     controller = _build_map_controller(monkeypatch, _SuccessfulScraper, _SuccessfulParser)
     info_calls: list[tuple[object, ...]] = []
     monkeypatch.setattr(
@@ -705,10 +705,11 @@ def test_map_controller_logs_summary_when_an_error_escapes_the_batch(
         (
             "%s summary: outcome=%s selected=%d succeeded=%d failed=%d retries=%d",
             "MapController",
-            "completed",
+            "aborted",
             2,
             0,
             0,
             0,
         )
     ]
+    assert ("%s %s.", "MapController", "aborted") in info_calls

@@ -596,3 +596,33 @@ def test_match_controller_rotates_only_after_rotate_every_items(
     assert summary.outcome is BatchOutcome.COMPLETED
     assert len(controller.match_state.processed) == batch_size
     assert len(resets) == expected_rotations
+
+
+def test_match_controller_logs_aborted_summary_when_an_error_escapes_the_batch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The summary is built in `finally`, so an aborted batch reports as aborted (#238)."""
+    controller = _build_match_controller(monkeypatch, _SuccessfulScraper, _SuccessfulParser)
+    info_calls = _capture_match_log(monkeypatch, "info")
+
+    def _claim_fails(_match_id: int) -> None:
+        raise RuntimeError("claim failed")
+
+    monkeypatch.setattr(controller.match_state, "mark_as_processing", _claim_fails)
+
+    with pytest.raises(RuntimeError, match="claim failed"):
+        controller.run(batch_size=1)
+
+    summary_lines = [call for call in info_calls if "summary" in str(call[0])]
+    assert summary_lines == [
+        (
+            "%s summary: outcome=%s selected=%d succeeded=%d failed=%d retries=%d",
+            "MatchController",
+            "aborted",
+            1,
+            0,
+            0,
+            0,
+        )
+    ]
+    assert ("%s %s.", "MatchController", "aborted") in info_calls

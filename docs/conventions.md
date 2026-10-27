@@ -68,8 +68,9 @@ Implemented services:
 - Return a `RunSummary` from `run()` (stage, outcome, selected,
   succeeded, failed, retries, rotations, stop reason), built and logged
   in `finally` so an escaping exception still leaves the summary line
-  behind; the CLI maps it to an exit status and tests assert on the
-  value rather than the log format (#238)
+  behind, reported as `BatchOutcome.ABORTED` with the exception
+  propagating; the CLI maps the summary to an exit status and tests
+  assert on the value rather than the log format (#238)
 - Own scraper reset and rotation behavior
 - Own run-level summaries and terminal logging
 - Avoid owning detailed per-item fetch -> parse -> persist workflow

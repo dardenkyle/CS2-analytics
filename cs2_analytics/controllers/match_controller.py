@@ -86,6 +86,9 @@ class MatchController:
                         selected=len(selected),
                     )
                     break
+        except BaseException as e:
+            run_state.abort_error = e
+            raise
         finally:
             with suppress(Exception):
                 run_state.scraper.close()
