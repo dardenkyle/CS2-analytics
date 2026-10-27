@@ -58,6 +58,78 @@ class BatchRunState[ScraperT]:
         return BatchOutcome.COMPLETED
 
 
+# Stop reason a match or map summary carries when the circuit breaker
+# ended the batch; the results stage has its own reasons (#121).
+STOP_CIRCUIT_BREAKER = "circuit_breaker"
+
+
+@dataclass(frozen=True)
+class RunSummary:
+    """Outcome of one controller run, returned to the invoker (#238).
+
+    Every controller returns the same shape so the CLI can map a run to an
+    exit status and tests can assert on the value instead of a log line.
+    For the results stage, `selected` is the number of matches seen,
+    `succeeded` the number newly recorded, and `failed` the terminal
+    failures. `stop_reason` names why the run ended early, or is None for
+    a run that worked through everything it selected.
+    """
+
+    stage: str
+    outcome: BatchOutcome
+    selected: int
+    succeeded: int
+    failed: int
+    retries: int
+    rotations: int = 0
+    stop_reason: str | None = None
+
+    @property
+    def all_failed(self) -> bool:
+        """True when at least one item was selected and every one failed.
+
+        This is the failure threshold `cs2a process` exits non-zero on: a
+        whole batch failing is a systemic problem, while partial failure
+        is the normal shape of a run with a few bad pages.
+        """
+        return self.selected > 0 and self.failed >= self.selected
+
+
+def summarize_batch(
+    run_state: BatchRunState, *, stage: str, selected: int, logger
+) -> RunSummary:
+    """Builds the run summary from a batch's run state and logs it.
+
+    Called from the controller's `finally` so an exception that escapes
+    the batch loop still leaves a summary line behind.
+    """
+    summary = RunSummary(
+        stage=stage,
+        outcome=run_state.outcome,
+        selected=selected,
+        succeeded=run_state.succeeded,
+        failed=run_state.failed,
+        retries=run_state.retries,
+        rotations=run_state.rotations,
+        stop_reason=(
+            STOP_CIRCUIT_BREAKER
+            if run_state.outcome is BatchOutcome.HALTED
+            else None
+        ),
+    )
+    logger.info(
+        "%s summary: outcome=%s selected=%d succeeded=%d failed=%d retries=%d",
+        summary.stage,
+        summary.outcome.value,
+        summary.selected,
+        summary.succeeded,
+        summary.failed,
+        summary.retries,
+    )
+    logger.info("%s %s.", summary.stage, summary.outcome.value)
+    return summary
+
+
 def is_retryable_scraper_error(error: Exception) -> bool:
     """Returns True when a scrape failure should trigger controller retry logic."""
     return isinstance(error, RetryableScrapeError)

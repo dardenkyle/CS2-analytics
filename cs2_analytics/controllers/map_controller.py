@@ -7,6 +7,7 @@ from cs2_analytics.controllers.retry_utils import (
     ROTATE_EVERY,
     BatchOutcome,
     BatchRunState,
+    RunSummary,
     back_off_after_storage_error,
     breaker_trips_on,
     clear_blocked_streak,
@@ -15,6 +16,7 @@ from cs2_analytics.controllers.retry_utils import (
     is_retryable_storage_error,
     mark_item_failed,
     reset_scraper,
+    summarize_batch,
 )
 from cs2_analytics.ingestion_state import MapIngestionState
 from cs2_analytics.parsers.map_parser import MapParser
@@ -47,11 +49,12 @@ class MapController:
             db=get_db(),
         )
 
-    def run(self, batch_size: int = 25) -> BatchOutcome:
+    def run(self, batch_size: int = 25) -> RunSummary:
         """Runs the map stage for a batch of pending maps.
 
-        Returns `BatchOutcome.HALTED` when the circuit breaker stopped the
-        batch early (#175) so the invoker can skip later stages and cool off.
+        Returns the run summary (#238); its outcome is `BatchOutcome.HALTED`
+        when the circuit breaker stopped the batch early (#175) so the
+        invoker can skip later stages and cool off.
         """
         logger.info("Running MapController with batch size: %d", batch_size)
 
@@ -80,18 +83,11 @@ class MapController:
         finally:
             with suppress(Exception):
                 run_state.scraper.close()
+            summary = summarize_batch(
+                run_state, stage="MapController", selected=len(selected), logger=logger
+            )
 
-        logger.info(
-            "MapController summary: outcome=%s selected=%d succeeded=%d "
-            "failed=%d retries=%d",
-            run_state.outcome.value,
-            len(selected),
-            run_state.succeeded,
-            run_state.failed,
-            run_state.retries,
-        )
-        logger.info("MapController %s.", run_state.outcome.value)
-        return run_state.outcome
+        return summary
 
     def _release_orphaned_processing(self) -> None:
         """Reconciles rows an interrupted run left in 'processing' (#141)."""

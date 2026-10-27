@@ -62,9 +62,14 @@ Implemented services:
   `CIRCUIT_BREAKER_THRESHOLD` (five) consecutive `RetryableScrapeError`
   attempts with no successful fetch between them, counted across items.
   The halt returns the in-flight row and the rows the streak marked
-  `failed` to `discovered`, and `run()` returns `BatchOutcome.HALTED`.
-  Lost database connections do not count toward the breaker (#175,
-  ADR-0017)
+  `failed` to `discovered`, and the returned summary's outcome is
+  `BatchOutcome.HALTED`. Lost database connections do not count toward
+  the breaker (#175, ADR-0017)
+- Return a `RunSummary` from `run()` (stage, outcome, selected,
+  succeeded, failed, retries, rotations, stop reason), built and logged
+  in `finally` so an escaping exception still leaves the summary line
+  behind; the CLI maps it to an exit status and tests assert on the
+  value rather than the log format (#238)
 - Own scraper reset and rotation behavior
 - Own run-level summaries and terminal logging
 - Avoid owning detailed per-item fetch -> parse -> persist workflow

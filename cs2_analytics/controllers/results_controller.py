@@ -5,6 +5,8 @@ import time
 from dataclasses import dataclass
 
 from cs2_analytics.controllers.retry_utils import (
+    BatchOutcome,
+    RunSummary,
     is_retryable_scraper_error,
     reset_scraper,
 )
@@ -67,7 +69,7 @@ class ResultsController:
         start_date: dt.date,
         end_date: dt.date,
         mode: str = "incremental",
-    ) -> None:
+    ) -> RunSummary:
         """Scrapes result pages and records match URLs for downstream stages.
 
         Run parameters are explicit (ADR-0015): the invoker owns the
@@ -77,6 +79,11 @@ class ResultsController:
         at the derived frontier (oldest recorded match_date) and walks
         backward in date slices toward the window floor, exiting
         immediately with `window_covered` when the floor is reached.
+
+        Returns the run summary (#238) with seen, newly discovered, and
+        terminal-failure counts and the stop reason. A run that exhausts
+        its retries or hits a non-retryable error raises `PipelineError`
+        after logging its summary.
         """
         logger.info(
             "Running ResultsController mode=%s max_matches=%d window=%s..%s",
@@ -112,6 +119,15 @@ class ResultsController:
                 run_state.terminal_failures,
                 max_matches,
             )
+        return RunSummary(
+            stage="ResultsController",
+            outcome=BatchOutcome.COMPLETED,
+            selected=run_state.seen,
+            succeeded=run_state.newly_discovered,
+            failed=run_state.terminal_failures,
+            retries=run_state.retries,
+            stop_reason=run_state.stop_reason,
+        )
 
     def _run_incremental(
         self,
