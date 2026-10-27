@@ -1,9 +1,10 @@
 # User unit for the always-on runner (#180). Install notes:
 # docs/deployment.md, "Always-On Runner".
+# A user unit cannot order itself after the system manager's network
+# targets, so there is no After=network-online.target here; the script
+# waits for production to be reachable instead.
 [Unit]
 Description=CS2-analytics daily discovery and processing
-After=network-online.target
-Wants=network-online.target
 
 [Service]
 Type=oneshot

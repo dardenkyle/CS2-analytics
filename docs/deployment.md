@@ -133,11 +133,16 @@ write.
 The server runs discovery and processing once a day through a systemd
 user timer (#180). The units live in `deploy/systemd/`:
 
-- `cs2a-daily.sh` runs `cs2a --env prod ingest discover`, then
-  `cs2a --env prod process --drain`. Processing runs even when discovery
+- `cs2a-daily.sh` first waits, up to five minutes, until production is
+  reachable (a user unit cannot order itself after the system's network
+  targets, and a firing missed during a reboot starts as soon as the
+  user manager is up), then runs `cs2a --env prod ingest discover` and
+  `cs2a --env prod process --drain`. Only the readiness probe is
+  retried; the pipeline runs once. Processing runs even when discovery
   failed, and the script exits with the worst status of the two so the
   unit fails on either: 75 is a circuit-breaker halt, 1 is a failed
-  discovery run or a stage in which every item failed.
+  discovery run, an unreachable database, or a stage in which every
+  item failed.
 - `cs2a-daily.service` is a oneshot unit for that script, with the clock
   zone set explicitly and a six-hour start timeout for catch-up drains.
 - `cs2a-daily.timer` fires it at 3:00 AM Central, after the evening's
