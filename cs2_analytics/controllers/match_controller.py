@@ -4,6 +4,7 @@ import time
 from contextlib import suppress
 
 from cs2_analytics.controllers.retry_utils import (
+    ROTATE_EVERY,
     BatchOutcome,
     BatchRunState,
     back_off_after_storage_error,
@@ -29,7 +30,6 @@ from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger("match_controller")
 
-ROTATE_EVERY = 8
 INTER_MATCH_DELAY_SECONDS = 1.1
 RETRY_BACKOFF_SECONDS = 3.0
 MAX_ATTEMPTS = 3

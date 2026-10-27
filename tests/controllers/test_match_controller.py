@@ -5,6 +5,7 @@ import pytest
 from cs2_analytics.controllers import match_controller as match_module
 from cs2_analytics.controllers.retry_utils import (
     CIRCUIT_BREAKER_THRESHOLD,
+    ROTATE_EVERY,
     BatchOutcome,
 )
 from cs2_analytics.exceptions import (
@@ -566,3 +567,37 @@ def test_match_controller_single_unfetchable_match_does_not_halt_batch(
     assert [item_id for item_id, _reason in controller.match_state.failed] == [1]
     assert controller.match_state.processed == [2, 3]
     assert controller.match_state.requeued == []
+
+
+class _ManyMatchesState(_FakeMatchState):
+    """Returns exactly the requested number of pending matches."""
+
+    def fetch(self, limit: int = 25) -> list[tuple[int, str]]:
+        self.calls.append("fetch")
+        return [(i, f"https://www.hltv.org/matches/{i}/test") for i in range(1, limit + 1)]
+
+
+@pytest.mark.parametrize(
+    ("batch_size", "expected_rotations"),
+    [(ROTATE_EVERY, 0), (ROTATE_EVERY + 1, 1)],
+)
+def test_match_controller_rotates_only_after_rotate_every_items(
+    monkeypatch: pytest.MonkeyPatch, batch_size: int, expected_rotations: int
+) -> None:
+    """A default batch runs on one session; the next item triggers one rotation (#253)."""
+    assert ROTATE_EVERY == 50
+    controller = _build_match_controller(monkeypatch, _SuccessfulScraper, _SuccessfulParser)
+    monkeypatch.setattr(controller, "match_state", _ManyMatchesState())
+    controller.stage_service.match_state = controller.match_state
+    resets: list[object] = []
+    monkeypatch.setattr(
+        controller,
+        "_reset_scraper",
+        lambda scraper: resets.append(scraper) or _SuccessfulScraper(),
+    )
+
+    outcome = controller.run(batch_size=batch_size)
+
+    assert outcome is BatchOutcome.COMPLETED
+    assert len(controller.match_state.processed) == batch_size
+    assert len(resets) == expected_rotations

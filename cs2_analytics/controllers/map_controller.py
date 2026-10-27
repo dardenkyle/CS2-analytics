@@ -4,6 +4,7 @@ import time
 from contextlib import suppress
 
 from cs2_analytics.controllers.retry_utils import (
+    ROTATE_EVERY,
     BatchOutcome,
     BatchRunState,
     back_off_after_storage_error,
@@ -26,7 +27,6 @@ from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger("map_controller")
 
-ROTATE_EVERY = 8
 INTER_MAP_DELAY_SECONDS = 0.75
 RETRY_BACKOFF_SECONDS = 3.0
 MAX_ATTEMPTS = 3

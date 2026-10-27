@@ -14,6 +14,13 @@ from cs2_analytics.exceptions import DatabaseConnectionError, RetryableScrapeErr
 # batch, while a source-wide block trips partway through the second item.
 CIRCUIT_BREAKER_THRESHOLD = 5
 
+# Processed items between scheduled scraper session rotations (#253). Every
+# fresh session must pass the source's bot challenge, the most failure-prone
+# step of a fetch (#194), so a healthy session is kept for a whole default
+# batch; a retryable scraper error resets the session on its own regardless
+# of this count. The original value of 8 predated both mechanisms.
+ROTATE_EVERY = 50
+
 
 class BatchOutcome(StrEnum):
     """How a match or map batch run ended."""

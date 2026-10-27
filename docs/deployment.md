@@ -104,6 +104,12 @@ map stage failed every item there while the same code passed on the desktop.
 - **No display, GPU, or virtual framebuffer.** Both the desktop and a
   server with no desktop environment pass the challenge headless with a
   software WebGL renderer. Xvfb and headed mode are not required.
+- **One browser session per batch.** The controllers rotate the session
+  every 50 processed items (#253), so a default batch of 50 runs on a
+  single session. Each fresh session must pass the challenge, which is
+  the most failure-prone step of a fetch, so rotating more often only
+  adds retries; a retryable scraper error already resets the session on
+  its own.
 
 Run the pipeline on such a host from a checkout on current `main`, with
 `.env.prod` present and `uv sync` run once:

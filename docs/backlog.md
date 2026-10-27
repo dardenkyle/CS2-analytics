@@ -983,6 +983,12 @@ item track record.
       requirements are documented in `docs/deployment.md`; the 80 rows
       the September runs failed were requeued and processed, leaving
       only the KAST placeholder row (#210)
+- [x] (#253) Scheduled scraper rotation raised from every 8 processed
+      items to every 50, defined once in `retry_utils.py`: a default
+      batch runs on one session, so the bot challenge that every fresh
+      session must pass is no longer re-entered several times per batch.
+      Error-driven reset is unchanged. Follow-up #254 tracks the
+      session's memory and rotates on a size threshold instead
 - [x] (#181) Retire `main.py` and the entire `cs2_analytics/pipeline/` package
       in favor of the `cs2a` CLI: repoint the docker-compose pipeline
       service command and the manual-pipeline-worker GitHub workflow to
