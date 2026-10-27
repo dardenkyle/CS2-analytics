@@ -902,12 +902,15 @@ item track record.
       `_extract_match_date` now converts with `tz=dt.UTC` and keeps the
       full timestamp like the map parser, proven by a test that parses
       the same page under three host zones. Migration `20261027_0007`
-      sets `matches.date` to `MIN(maps.date)` per match where a map
-      exists and touches only rows whose value differs (round-trip test
-      against the test database checks the rewritten rows and, via
-      `xmin`, that equal rows are not rewritten); matches with no stored
-      map keep their midnight date. Production procedure and preview
-      query in `docs/deployment.md`
+      sets `matches.date` to `MIN(maps.date)` per match, which is the
+      match instant because the source stamps every map with the match
+      start; it ignores maps stored at midnight (the text fallback),
+      touches only rows whose value differs, and stamps
+      `last_updated_at` on them so the incremental mart picks them up
+      (round-trip test against the test database checks the rewritten
+      rows and, via `xmin`, that equal rows are not rewritten); matches
+      with no usable map keep their midnight date. Production procedure
+      and preview query in `docs/deployment.md`
 - [ ] (#215) Discovery date zone: the results scraper records
       `match_date` from the page's date header, which the source renders
       in the browser's timezone; pin the browser zone or use a per-match

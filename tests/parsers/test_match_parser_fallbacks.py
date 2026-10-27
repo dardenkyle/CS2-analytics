@@ -178,6 +178,8 @@ def test_parse_match_rejects_blank_map_name_for_forfeit_status() -> None:
 @pytest.fixture
 def host_timezone(monkeypatch: pytest.MonkeyPatch):
     """Switches the process timezone for a test and restores it afterwards."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("time.tzset is POSIX-only; the host zone cannot be switched here")
 
     def set_zone(zone: str) -> None:
         monkeypatch.setenv("TZ", zone)

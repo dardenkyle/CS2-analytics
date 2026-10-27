@@ -11,13 +11,12 @@ upgrades again so the shared database is left at head.
 """
 
 import datetime as dt
-from pathlib import Path
 
 import pytest
 from alembic import command
-from alembic.config import Config
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+from tests.support import alembic_config
+
 PREVIOUS_REVISION = "20260901_0004"
 
 STATE_COLUMNS = (
@@ -39,14 +38,6 @@ UTC_DEMO, CDT_DEMO = "909001", "909002"
 
 def _utc(*parts: int) -> dt.datetime:
     return dt.datetime(*parts, tzinfo=dt.UTC)
-
-
-def _alembic_config() -> Config:
-    backend_root = PROJECT_ROOT / "cs2_analytics"
-    config = Config(str(backend_root / "alembic.ini"))
-    config.set_main_option("script_location", str(backend_root / "alembic"))
-    config.set_main_option("prepend_sys_path", str(PROJECT_ROOT))
-    return config
 
 
 def _seed(database) -> None:
@@ -255,7 +246,7 @@ def _cleanup(database) -> None:
 
 @pytest.mark.usefixtures("test_database")
 def test_upgrade_converts_each_value_by_its_writers_clock(test_database) -> None:
-    config = _alembic_config()
+    config = alembic_config()
     try:
         command.downgrade(config, PREVIOUS_REVISION)
         _seed(test_database)
