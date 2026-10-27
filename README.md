@@ -354,7 +354,8 @@ cs2a --env prod ingest discover && cs2a --env prod process
 Individual stages:
 
 ```sh
-cs2a ingest discover            # incremental: newest results, stops when up to date
+cs2a ingest discover            # incremental: walk forward day by day to today
+cs2a ingest discover --overlap-days 10   # re-sweep the last ten days (idempotent)
 cs2a ingest discover --mode backfill   # resume the backward walk toward the window floor
 cs2a ingest discover --mode backfill --since 2023-09-27   # extend the floor (full CS2 era)
 cs2a ingest coverage            # discovery date coverage: frontier, swept/unswept, gaps
@@ -411,16 +412,23 @@ scraper noise versus a structural break like a page layout change - are
 obvious before running `cs2a retry`.
 
 `cs2a ingest discover` has two modes with distinct stop semantics
-(ADR-0016). Incremental scans newest-first and stops as soon as a page
-yields nothing new (`up_to_date`). Backfill resumes at the discovery
-frontier - the oldest recorded match date - and walks backward in
-week-sized date slices toward the window floor, using the source
-listing's date filters so known territory is never re-paged; it exits
-immediately with `window_covered` once the floor is reached. The cap
-(`--max-matches`, defaults 50/1000 per mode) is a per-run budget, never
-a completion signal, and every run summary logs why it stopped.
-`--since` moves the window floor (the walk stays contiguous), which is
-how coverage extends to the full CS2 era without code changes.
+(ADR-0016, ADR-0019). Both walk the calendar from a cursor derived from
+the data, in opposite directions from opposite ends of the recorded
+range. Incremental starts `--overlap-days` (default 1) before the newest
+recorded match date and walks forward one day-window at a time through
+today, stopping with `up_to_date`; it has no budget because the calendar
+bounds it, and `--max-matches` and `--since` are rejected in this mode.
+Re-reading a day is idempotent, so raising `--overlap-days` is the
+repair path for a suspect range: it re-sweeps a contiguous range ending
+today, never an island. Backfill resumes at the discovery frontier - the
+oldest recorded match date - and walks backward in week-sized date
+slices toward the window floor; it exits immediately with
+`window_covered` once the floor is reached. Its cap (`--max-matches`,
+default 1000) is a per-run budget, never a completion signal. Both modes
+use the source listing's date filters so known territory is never
+re-paged, and every run summary logs why it stopped. `--since` moves the
+window floor (the walk stays contiguous), which is how coverage extends
+to the full CS2 era without code changes.
 
 `cs2a ops` serves a local-only operations page at
 `http://127.0.0.1:8765/` (`--port` to change it; any non-loopback

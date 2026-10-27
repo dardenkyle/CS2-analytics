@@ -35,6 +35,13 @@ STOP_RETRIES_EXHAUSTED = "retries_exhausted"
 # re-sweep on resume.
 BACKFILL_CHUNK_DAYS = 7
 
+# Incremental walks forward one day at a time from just before the newest
+# recorded match_date to today (#231). The cursor day is never guaranteed
+# complete (today is still being played; an interrupted run stops
+# mid-day), so the walk starts this many days before it; recording a known
+# match is idempotent, so the overlap only costs page loads.
+DEFAULT_OVERLAP_DAYS = 1
+
 SCRAPER_STOP_TO_RUN_REASON = {
     ResultsScraper.STOP_BUDGET: STOP_BUDGET_EXHAUSTED,
     ResultsScraper.STOP_WINDOW_FLOOR: STOP_WINDOW_COVERED,
@@ -65,20 +72,24 @@ class ResultsController:
 
     def run(
         self,
-        max_matches: int,
+        max_matches: int | None,
         start_date: dt.date,
         end_date: dt.date,
         mode: str = "incremental",
+        overlap_days: int = DEFAULT_OVERLAP_DAYS,
     ) -> RunSummary:
         """Scrapes result pages and records match URLs for downstream stages.
 
         Run parameters are explicit (ADR-0015): the invoker owns the
-        discovery window, cap, and mode. The cap is a per-run budget,
-        never a completion signal (#121). Incremental scans newest-first
-        and stops early once a page yields nothing new; backfill resumes
-        at the derived frontier (oldest recorded match_date) and walks
-        backward in date slices toward the window floor, exiting
-        immediately with `window_covered` when the floor is reached.
+        discovery window, cap, and mode. Backfill resumes at the derived
+        frontier (oldest recorded match_date) and walks backward in date
+        slices toward `start_date`, the window floor, exiting immediately
+        with `window_covered` when the floor is reached; its cap is a
+        per-run budget, never a completion signal (#121). Incremental
+        walks forward one day at a time from `overlap_days` before the
+        newest recorded match_date through `end_date` and stops with
+        `up_to_date` (#231); it has no cap and ignores `start_date`, since
+        the walk is bounded by the calendar.
 
         Returns the run summary (#238) with seen, newly discovered, and
         terminal-failure counts and the stop reason. A run that exhausts
@@ -86,7 +97,7 @@ class ResultsController:
         after logging its summary.
         """
         logger.info(
-            "Running ResultsController mode=%s max_matches=%d window=%s..%s",
+            "Running ResultsController mode=%s max_matches=%s window=%s..%s",
             mode,
             max_matches,
             start_date,
@@ -96,9 +107,11 @@ class ResultsController:
         run_state = _ResultsRunState(scraper=self.scraper)
         try:
             if mode == "backfill":
+                if max_matches is None:
+                    raise ValueError("Backfill discovery requires a run budget.")
                 self._run_backfill(max_matches, start_date, end_date, run_state)
             else:
-                self._run_incremental(max_matches, start_date, end_date, run_state)
+                self._run_incremental(end_date, overlap_days, run_state)
             run_state.status = "succeeded"
             logger.info(
                 "ResultsController complete. seen=%d newly_discovered=%d stop_reason=%s",
@@ -110,7 +123,7 @@ class ResultsController:
             self._close_scraper(run_state)
             logger.info(
                 "ResultsController summary: status=%s stop_reason=%s seen=%d "
-                "newly_discovered=%d retries=%d terminal_failures=%d max_matches=%d",
+                "newly_discovered=%d retries=%d terminal_failures=%d max_matches=%s",
                 run_state.status,
                 run_state.stop_reason,
                 run_state.seen,
@@ -131,28 +144,50 @@ class ResultsController:
 
     def _run_incremental(
         self,
-        max_matches: int,
-        start_date: dt.date,
         end_date: dt.date,
+        overlap_days: int,
         run_state: _ResultsRunState,
     ) -> None:
-        """Scans newest-first from the top of the results listing."""
+        """Walks forward one day at a time to `end_date`.
 
-        def scan(state: _ResultsRunState) -> None:
-            iterator = state.scraper.iter_match_batches(
-                max_matches=max_matches, start_date=start_date, end_date=end_date
-            )
-            for batch in iterator:
-                recorded, new_rows = self.stage_service.record_batch(batch)
-                state.seen += recorded
-                state.newly_discovered += new_rows
-                if recorded and new_rows == 0:
-                    state.stop_reason = STOP_UP_TO_DATE
-                    iterator.close()
-                    return
-            state.stop_reason = SCRAPER_STOP_TO_RUN_REASON[state.scraper.stop_reason]
+        The cursor is max(match_date), derived from the data like the
+        backfill frontier, so consecutive runs resume where the last one
+        stopped and the recorded range stays contiguous. Each day is one
+        source-filtered listing request (two if a day exceeds a page);
+        re-reading a day is idempotent, so `overlap_days` can be raised to
+        re-sweep a suspect range (#231). With nothing recorded yet the walk
+        starts at `end_date`; history belongs to backfill.
+        """
+        cursor = self.match_state.fetch_max_match_date()
+        if cursor is None:
+            first_day = end_date
+        else:
+            first_day = min(end_date, cursor - dt.timedelta(days=overlap_days))
+        logger.info(
+            "Incremental walk %s..%s (cursor=%s overlap_days=%d)",
+            first_day,
+            end_date,
+            cursor,
+            overlap_days,
+        )
 
-        self._attempt_with_retries(scan, run_state)
+        day = first_day
+        while day <= end_date:
+
+            def scan_day(state: _ResultsRunState, day: dt.date = day) -> None:
+                for batch in state.scraper.iter_match_batches(
+                    max_matches=None,
+                    start_date=day,
+                    end_date=day,
+                    use_source_date_filter=True,
+                ):
+                    recorded, new_rows = self.stage_service.record_batch(batch)
+                    state.seen += recorded
+                    state.newly_discovered += new_rows
+
+            self._attempt_with_retries(scan_day, run_state)
+            day += dt.timedelta(days=1)
+        run_state.stop_reason = STOP_UP_TO_DATE
 
     def _run_backfill(
         self,

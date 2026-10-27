@@ -90,6 +90,27 @@ class MatchIngestionState(BaseIngestionState[int]):
         min_date: dt.date | None = row[0] if row is not None else None
         return min_date
 
+    def fetch_max_match_date(self) -> dt.date | None:
+        """Returns the newest recorded match_date - the incremental cursor.
+
+        Null when no row carries a date yet. Incremental discovery walks
+        forward day by day from just before this date to today, so it is
+        the boundary between swept and unswept territory at the new end
+        of the recorded range (#231), as `fetch_min_match_date` is at the
+        old end.
+        """
+        query = "SELECT MAX(match_date) FROM match_ingestion_state;"
+        try:
+            with self.db.get_cursor() as cur:
+                cur.execute(query)
+                row = cur.fetchone()
+        except Exception as e:
+            raise self.error_cls(
+                "Failed to fetch max match_date from match_ingestion_state."
+            ) from e
+        max_date: dt.date | None = row[0] if row is not None else None
+        return max_date
+
     def mark_as_partial(self, id_value: int) -> None:
         """Marks the match as processed with maps still in non-terminal states.
 

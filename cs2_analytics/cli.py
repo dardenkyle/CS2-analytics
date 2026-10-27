@@ -81,10 +81,9 @@ class DiscoverMode(StrEnum):
     BACKFILL = "backfill"
 
 
-DISCOVER_MODE_MAX_MATCHES = {
-    DiscoverMode.INCREMENTAL: 50,
-    DiscoverMode.BACKFILL: 1000,
-}
+# Backfill's default per-run budget. Incremental has no budget: its walk
+# is bounded by the calendar (#231).
+BACKFILL_MAX_MATCHES = 1000
 
 # Exit status when a circuit breaker halts `cs2a process` (#175). 75 is
 # EX_TEMPFAIL in sysexits.h: a temporary failure the caller should retry
@@ -97,6 +96,10 @@ EXIT_BATCH_HALTED = 75
 # scheduler must surface rather than count as a clean run. Partial failure
 # is the normal shape of a run with a few bad pages and exits 0.
 EXIT_BATCH_FAILED = 1
+
+# Mirrors results_controller.DEFAULT_OVERLAP_DAYS; the controller module is
+# imported lazily inside the command so the CLI stays fast to start.
+DEFAULT_OVERLAP_DAYS = 1
 
 # Discovery window floor. Run parameters live with the invoker, not in
 # config (ADR-0015); the CLI is the only pipeline entry point (#181). The
@@ -111,15 +114,16 @@ def discover(
         DiscoverMode,
         typer.Option(
             help=(
-                "incremental scans newest-first (budget 50) and stops when"
-                " up to date; backfill resumes at the frontier and walks"
-                " backward toward the window floor (budget 1000)."
+                "incremental walks forward one day at a time from just"
+                " before the newest recorded match to today; backfill"
+                " resumes at the frontier and walks backward toward the"
+                " window floor (budget 1000)."
             )
         ),
     ] = DiscoverMode.INCREMENTAL,
     max_matches: Annotated[
         int | None,
-        typer.Option(min=1, help="Override the per-mode run budget."),
+        typer.Option(min=1, help="Override the backfill run budget."),
     ] = None,
     since: Annotated[
         datetime | None,
@@ -132,22 +136,54 @@ def discover(
             ),
         ),
     ] = None,
+    overlap_days: Annotated[
+        int,
+        typer.Option(
+            min=1,
+            help=(
+                "Incremental only: days before the newest recorded match"
+                " to start the walk. Raise it to re-sweep a suspect range;"
+                " re-reading a day is idempotent."
+            ),
+        ),
+    ] = DEFAULT_OVERLAP_DAYS,
 ) -> None:
     """Scrape results pages and queue newly discovered matches.
 
-    The budget caps one run's work and is never a completion signal;
-    backfill is complete when the run summary reports window_covered
+    Incremental is bounded by the calendar and exits 0 once today is
+    read; backfill's budget caps one run's work and is never a completion
+    signal - it is complete when the run summary reports window_covered
     (#121). Progress is visible via `cs2a ingest coverage`.
     """
     from cs2_analytics.controllers.results_controller import ResultsController
 
-    cap = max_matches if max_matches is not None else DISCOVER_MODE_MAX_MATCHES[mode]
+    if mode is DiscoverMode.INCREMENTAL:
+        if max_matches is not None:
+            raise typer.BadParameter(
+                "incremental discovery has no budget; --max-matches applies"
+                " to --mode backfill.",
+                param_hint="--max-matches",
+            )
+        if since is not None:
+            raise typer.BadParameter(
+                "incremental discovery walks from the newest recorded match;"
+                " --since applies to --mode backfill.",
+                param_hint="--since",
+            )
+    elif overlap_days != DEFAULT_OVERLAP_DAYS:
+        raise typer.BadParameter(
+            "--overlap-days applies to --mode incremental.",
+            param_hint="--overlap-days",
+        )
+
+    cap = None if mode is DiscoverMode.INCREMENTAL else (max_matches or BACKFILL_MAX_MATCHES)
     window_start = since.date() if since is not None else DISCOVERY_WINDOW_START
     ResultsController().run(
         max_matches=cap,
         start_date=window_start,
         end_date=dt.date.today(),
         mode=mode.value,
+        overlap_days=overlap_days,
     )
 
 

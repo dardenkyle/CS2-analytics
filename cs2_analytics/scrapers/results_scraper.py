@@ -35,11 +35,28 @@ class ResultsScraper:
     STOP_WINDOW_FLOOR = "window_floor_reached"
     STOP_EMPTY_PAGE = "empty_page"
 
+    # Results per listing page; the offset step and the last-page check
+    # both rest on it. A page with fewer results is the last one, so the
+    # scan ends without a request for the (empty) page after it.
+    PAGE_SIZE = 100
+
+    # Days a section date may fall outside the requested window before the
+    # client-side range check stops the scan, when the source's own date
+    # filter is in use. The filter is applied in the source's zone while
+    # section headers render in the browser's zone (#215), so a filtered
+    # page legitimately carries sections dated one day either side of the
+    # window; without slack those matches are dropped by every window and
+    # never recorded. The slack still bounds a scan if the filter were ever
+    # ignored.
+    DATE_FILTER_SLACK_DAYS = 1
+
     def __init__(self) -> None:
         """Initializes the scraper with a SeleniumBase driver."""
         self.driver = Driver(uc=True, headless=True)
         self.base_url = SOURCE_URL
         self.stop_reason = self.STOP_EMPTY_PAGE
+        self.date_slack = dt.timedelta(0)
+        self.last_page_result_count = 0
 
     def __enter__(self) -> "ResultsScraper":
         """Enables use as a context manager."""
@@ -51,7 +68,7 @@ class ResultsScraper:
 
     def iter_match_batches(
         self,
-        max_matches: int,
+        max_matches: int | None,
         start_date: dt.date,
         end_date: dt.date,
         use_source_date_filter: bool = False,
@@ -63,10 +80,13 @@ class ResultsScraper:
         the discovery window and cap; the scraper holds no run defaults.
         After iteration finishes, `stop_reason` records why the scraper
         stopped (STOP_BUDGET, STOP_WINDOW_FLOOR, or STOP_EMPTY_PAGE) so
-        the controller can report it (#121).
+        the controller can report it (#121). STOP_EMPTY_PAGE also covers a
+        page shorter than PAGE_SIZE, which is the last page of the listing.
 
         Args:
-            max_matches (int): Maximum number of matches to discover.
+            max_matches (int | None): Maximum number of matches to
+                discover, or None for no cap (the incremental day-walk
+                is bounded by its date window instead, #231).
             start_date (dt.date): Window floor; discovery stops at older dates.
             end_date (dt.date): Window ceiling; newer dates are skipped.
             use_source_date_filter (bool): When True, the window is also
@@ -81,11 +101,14 @@ class ResultsScraper:
         """
         self.start_date = start_date
         self.end_date = end_date
+        self.date_slack = dt.timedelta(
+            days=self.DATE_FILTER_SLACK_DAYS if use_source_date_filter else 0
+        )
         self.stop_reason = self.STOP_BUDGET
         offset = 0
         total_discovered = 0
 
-        while total_discovered < max_matches:
+        while max_matches is None or total_discovered < max_matches:
             page_url = f"{self.base_url}?offset={offset}&gameType=CS2"
             if use_source_date_filter:
                 page_url += f"&startDate={start_date}&endDate={end_date}"
@@ -94,7 +117,7 @@ class ResultsScraper:
             dated_urls, stop = self._extract_matches_from_page(page_url)
             batch = []
             for full_url, match_date in dated_urls:
-                if total_discovered >= max_matches:
+                if max_matches is not None and total_discovered >= max_matches:
                     break
                 match_id = self._extract_match_id(full_url)
                 if match_id:
@@ -104,17 +127,17 @@ class ResultsScraper:
             if batch:
                 yield batch
 
-            if total_discovered >= max_matches:
+            if max_matches is not None and total_discovered >= max_matches:
                 self.stop_reason = self.STOP_BUDGET
                 break
             if stop:
                 self.stop_reason = self.STOP_WINDOW_FLOOR
                 break
-            if not dated_urls:
+            if not dated_urls or self.last_page_result_count < self.PAGE_SIZE:
                 self.stop_reason = self.STOP_EMPTY_PAGE
                 break
 
-            offset += 100
+            offset += self.PAGE_SIZE
             time.sleep(random.uniform(1.0, 2.0))
 
         logger.info(
@@ -147,6 +170,7 @@ class ResultsScraper:
         stop_scraping = False
         sections_seen = 0
         sections_parsed = 0
+        self.last_page_result_count = len(soup.find_all("div", class_="result-con"))
 
         for section in soup.find_all("div", class_="results-sublist"):
             date_header = section.find("div", class_="standard-headline")
@@ -168,9 +192,9 @@ class ResultsScraper:
                 continue
             sections_parsed += 1
 
-            if match_date > self.end_date:
+            if match_date > self.end_date + self.date_slack:
                 continue
-            if match_date < self.start_date:
+            if match_date < self.start_date - self.date_slack:
                 logger.info(
                     "Stopping at match date %s because it is out of range.", match_date
                 )

@@ -110,3 +110,26 @@ def test_fetch_min_match_date_wraps_database_errors(monkeypatch) -> None:
 
     with pytest.raises(MatchIngestionStateError):
         MatchIngestionState().fetch_min_match_date()
+
+
+def test_fetch_max_match_date_returns_incremental_cursor(monkeypatch) -> None:
+    cursor = _RecordingCursor(fetchone_results=[(dt.date(2026, 10, 26),)])
+    state = _state_with(monkeypatch, cursor)
+
+    assert state.fetch_max_match_date() == dt.date(2026, 10, 26)
+    query, _ = cursor.executed[0]
+    assert "MAX(match_date)" in query
+
+
+def test_fetch_max_match_date_none_when_nothing_dated(monkeypatch) -> None:
+    cursor = _RecordingCursor(fetchone_results=[(None,)])
+    state = _state_with(monkeypatch, cursor)
+
+    assert state.fetch_max_match_date() is None
+
+
+def test_fetch_max_match_date_wraps_database_errors(monkeypatch) -> None:
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _FailingStateDb())
+
+    with pytest.raises(MatchIngestionStateError):
+        MatchIngestionState().fetch_max_match_date()
