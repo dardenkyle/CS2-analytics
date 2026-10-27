@@ -128,6 +128,66 @@ does). Confirm a new host is pointed at production by comparing its
 `cs2a --env prod status` counts with a known-good host's before the first
 write.
 
+## Always-On Runner
+
+The server runs discovery and processing once a day through a systemd
+user timer (#180). The units live in `deploy/systemd/`:
+
+- `cs2a-daily.sh` runs `cs2a --env prod ingest discover`, then
+  `cs2a --env prod process --drain`. Processing runs even when discovery
+  failed, and the script exits with the worst status of the two so the
+  unit fails on either: 75 is a circuit-breaker halt, 1 is a failed
+  discovery run or a stage in which every item failed.
+- `cs2a-daily.service` is a oneshot unit for that script, with the clock
+  zone set explicitly and a six-hour start timeout for catch-up drains.
+- `cs2a-daily.timer` fires it at 3:00 AM Central, after the evening's
+  matches and before the scheduled dbt build at 5:00 AM Central, and
+  runs a missed firing at the next boot.
+
+One unit for both steps means discovery and processing can never overlap
+each other, which the shared-egress rule above requires. `--drain` loops
+batches per stage until a batch comes back short, so a missed day catches
+up in one firing.
+
+Install on the host, from the checkout:
+
+```sh
+mkdir -p ~/.config/systemd/user
+cp deploy/systemd/cs2a-daily.service deploy/systemd/cs2a-daily.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+loginctl enable-linger "$USER"      # timers run without a login session
+```
+
+Run it once under the service before enabling the timer, and watch the
+journal; this is the supervised run that confirms the host passes the
+challenge and survives scraper rotations under systemd (#193):
+
+```sh
+systemctl --user start cs2a-daily.service
+journalctl --user -u cs2a-daily -f
+```
+
+Then enable the timer and confirm the next firing:
+
+```sh
+systemctl --user enable --now cs2a-daily.timer
+systemctl --user list-timers cs2a-daily.timer
+```
+
+Launch context: a systemd service and an interactive terminal are the
+supported ways to run the pipeline. A run started as a managed background
+task of another supervising session (an agent harness, a tool's task
+runner) can be killed by that session's lifecycle at any point, which is
+what #193 traced its mid-run deaths to; if such a session must start a
+run, detach it with `setsid`. The service needs no such care: it is its
+own session and control group.
+
+The runner's output goes to the journal (`journalctl --user -u cs2a-daily
+--since today`) and to `logs/app.log` in the checkout. A failed firing
+leaves the unit in the failed state, visible in `systemctl --user status
+cs2a-daily.service`; a notification hook on failure is tracked
+separately.
+
 ## Deployment Smoke Test
 
 Run the deterministic deployment smoke path after PostgreSQL, migrations, and

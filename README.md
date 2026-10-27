@@ -351,6 +351,11 @@ to run any command against the deployed database instead (section 4):
 cs2a --env prod ingest discover && cs2a --env prod process
 ```
 
+On the always-on host the same two commands run daily from a systemd
+user timer with `--drain`, so a missed day catches up in one firing; the
+units and install steps are in `deploy/systemd/` and
+`docs/deployment.md` ("Always-On Runner").
+
 Individual stages:
 
 ```sh
@@ -360,6 +365,7 @@ cs2a ingest discover --mode backfill   # resume the backward walk toward the win
 cs2a ingest discover --mode backfill --since 2023-09-27   # extend the floor (full CS2 era)
 cs2a ingest coverage            # discovery date coverage: frontier, swept/unswept, gaps
 cs2a process --batch 50         # process pending matches, then maps
+cs2a process --drain            # loop batches per stage until nothing is pending
 cs2a process --stage map --batch 200   # drain only the map backlog
 cs2a process --stage map --stage match # explicit subset; runs match, then map
 cs2a status                     # ingestion-state row counts by status

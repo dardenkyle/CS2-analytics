@@ -1,0 +1,16 @@
+# User unit for the always-on runner (#180). Install notes:
+# docs/deployment.md, "Always-On Runner".
+[Unit]
+Description=CS2-analytics daily discovery and processing
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Code/CS2-analytics
+ExecStart=%h/Code/CS2-analytics/deploy/systemd/cs2a-daily.sh
+# The browser must report the egress region's zone to pass the source's
+# challenge (#194); the host clock is set to it, this makes it explicit.
+Environment=TZ=America/Chicago
+# A catch-up drain after missed days can run for hours.
+TimeoutStartSec=6h
