@@ -1,6 +1,7 @@
 """Tests for the pure results listing parser (#230)."""
 
 import datetime as dt
+import time
 from unittest import mock
 
 import pytest
@@ -207,3 +208,101 @@ def test_rendered_empty_listing_parses_as_no_matches() -> None:
 
     warning_mock.assert_not_called()
     assert result == ResultsPage(matches=[], result_count=0, reached_floor=False)
+
+
+_ENTRY_INSTANT_PAGE = """
+<html><body>
+  <div class="results">
+    <div class="results-sublist">
+      <div class="standard-headline">Results for October 26th 2026</div>
+      <div class="result-con" data-zonedgrouping-entry-unix="1793076540000">
+        <a href="/matches/444/after-midnight-utc"></a>
+      </div>
+      <div class="result-con" data-zonedgrouping-entry-unix="1793037600000">
+        <a href="/matches/555/same-day"></a>
+      </div>
+      <div class="result-con"><a href="/matches/666/no-instant"></a></div>
+    </div>
+  </div>
+</body></html>
+"""
+
+
+@pytest.fixture
+def host_timezone(monkeypatch: pytest.MonkeyPatch):
+    """Switches the process timezone for a test and restores it afterwards."""
+    if not hasattr(time, "tzset"):
+        pytest.skip("time.tzset is POSIX-only; the host zone cannot be switched here")
+
+    def set_zone(zone: str) -> None:
+        monkeypatch.setenv("TZ", zone)
+        time.tzset()
+
+    yield set_zone
+    monkeypatch.undo()
+    time.tzset()
+
+
+def test_entry_instant_gives_the_utc_day_and_the_header_is_only_a_fallback() -> None:
+    result = _parse(_ENTRY_INSTANT_PAGE, dt.date(2026, 10, 1), dt.date(2026, 10, 31))
+
+    assert result.matches == [
+        ("https://www.hltv.org/matches/444/after-midnight-utc", dt.date(2026, 10, 27)),
+        ("https://www.hltv.org/matches/555/same-day", dt.date(2026, 10, 26)),
+        ("https://www.hltv.org/matches/666/no-instant", dt.date(2026, 10, 26)),
+    ]
+
+
+def test_entry_dates_are_the_same_on_every_host(host_timezone) -> None:
+    dates = []
+    for zone in ("UTC", "America/Chicago", "Asia/Tokyo"):
+        host_timezone(zone)
+        result = _parse(_ENTRY_INSTANT_PAGE, dt.date(2026, 10, 1), dt.date(2026, 10, 31))
+        dates.append([date for _, date in result.matches])
+
+    assert dates[0] == dates[1] == dates[2]
+    assert dates[0][0] == dt.date(2026, 10, 27)
+
+
+def test_window_checks_use_the_entry_date_not_the_header() -> None:
+    result = _parse(_ENTRY_INSTANT_PAGE, dt.date(2026, 10, 26), dt.date(2026, 10, 26))
+
+    assert [url for url, _ in result.matches] == [
+        "https://www.hltv.org/matches/555/same-day",
+        "https://www.hltv.org/matches/666/no-instant",
+    ]
+    assert result.reached_floor is False
+
+
+def test_unreadable_entry_instant_warns_and_falls_back_to_the_header() -> None:
+    page = _ENTRY_INSTANT_PAGE.replace(
+        'data-zonedgrouping-entry-unix="1793076540000"',
+        'data-zonedgrouping-entry-unix="soon"',
+    )
+
+    with mock.patch.object(parser_module.logger, "warning") as warning_mock:
+        result = _parse(page, dt.date(2026, 10, 1), dt.date(2026, 10, 31))
+
+    warning_mock.assert_called_once_with("Could not parse entry instant: %s", "soon")
+    assert result.matches[0] == (
+        "https://www.hltv.org/matches/444/after-midnight-utc",
+        dt.date(2026, 10, 26),
+    )
+
+
+def test_entries_with_instants_are_dated_even_when_the_header_is_not() -> None:
+    page = _ENTRY_INSTANT_PAGE.replace("Results for October 26th 2026", "Results for ?")
+
+    with mock.patch.object(parser_module.logger, "warning") as warning_mock:
+        result = _parse(page, dt.date(2026, 10, 1), dt.date(2026, 10, 31))
+
+    assert [url for url, _ in result.matches] == [
+        "https://www.hltv.org/matches/444/after-midnight-utc",
+        "https://www.hltv.org/matches/555/same-day",
+    ]
+    summary_calls = [
+        call
+        for call in warning_mock.call_args_list
+        if call.args and str(call.args[0]).startswith("No date sections parsed")
+    ]
+    assert summary_calls == []

@@ -655,3 +655,46 @@ Consequences:
   #230 lands, which the day-walk makes more important, not less.
 - With nothing recorded yet, incremental starts at today; history is
   backfill's job.
+
+## ADR-0020: Discovery Dates Come From Each Result's Instant, In UTC
+
+Status:
+Accepted
+
+Date:
+Phase 5
+
+Context:
+`match_ingestion_state.match_date` drives the backfill frontier, the
+incremental cursor, and the coverage report. It was read from the results
+listing's date headers ("Results for October 26th 2026"). The source
+renders those headers client-side, grouping each result entry by its own
+instant in the browser's zone. Discovery has run from the desktop in
+America/Chicago and from containers in UTC, so the same match was
+recorded on different days by different hosts: 174 of 12,946 dated rows
+disagreed with the match's own date by one or two days in both
+directions (#215). Each entry on the listing also carries that instant
+as a millisecond attribute, the value the headers are built from.
+
+Decision:
+The results parser dates each entry by the UTC calendar day of its own
+instant and uses the section header only as a fallback for an entry
+without one. No browser timezone override is involved, so the scraper
+stays fetch-only and the derivation is a pure function of the page. The
+entry's instant is the result's posting time, which is the match's end,
+so a match that crosses UTC midnight records the day after its start
+day; the walks already tolerate a one-day difference through the
+incremental overlap day and the source-filter slack (ADR-0019), and
+nothing keys on exact equality between the two. Rows discovered before
+the change were reconciled once to the UTC day of `matches.date` for
+processed matches (migration `20261027_0008`), the only instant stored
+for them.
+
+Consequences:
+- The same results page yields the same dates on every host.
+- `match_date` means the UTC day the source listed the result, within a
+  day of the match's start; it is not a copy of `matches.date`.
+- The source's date filter still runs in the source's zone, so the
+  one-day slack on filtered windows stays.
+- Pending rows discovered before the change keep their header-derived
+  day until processed; a later reconciliation can use the same rule.

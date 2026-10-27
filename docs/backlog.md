@@ -913,11 +913,16 @@ item track record.
       rows and, via `xmin`, that equal rows are not rewritten); matches
       with no usable map keep their midnight date. Production procedure
       and preview query in `docs/deployment.md`
-- [ ] (#215) Discovery date zone: the results scraper records
-      `match_date` from the page's date header, which the source renders
-      in the browser's timezone; pin the browser zone or use a per-match
-      attribute, then reconcile the 174 disagreeing rows against the
-      corrected `matches.date` (after #214)
+- [x] (#215) Discovery date zone: the listing's date headers are grouped
+      client-side in the browser's zone from a per-entry instant, so the
+      recorded `match_date` depended on the discovering host. The results
+      parser now dates each entry by the UTC day of its own instant
+      (`data-zonedgrouping-entry-unix`) and falls back to the header only
+      for an entry without one, proven by a test that parses the same
+      page under three host zones; the one-day source-filter slack stays
+      because the source filters in its own zone. Migration
+      `20261027_0008` reconciles processed rows to the UTC day of
+      `matches.date` and leaves pending rows alone (ADR-0020)
 - [x] (#209) Local ops page: `cs2a ops` serves a loopback-only page from
       a saved snapshot with an update button that re-queries the
       database; shipped in two PRs - first the snapshot builder, the

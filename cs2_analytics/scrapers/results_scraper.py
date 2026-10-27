@@ -48,14 +48,14 @@ class ResultsScraper:
     STOP_WINDOW_FLOOR = "window_floor_reached"
     STOP_EMPTY_PAGE = "empty_page"
 
-    # Days a section date may fall outside the requested window before the
+    # Days an entry's date may fall outside the requested window before the
     # client-side range check stops the scan, when the source's own date
     # filter is in use. The filter is applied in the source's zone while
-    # section headers render in the browser's zone (#215), so a filtered
-    # page legitimately carries sections dated one day either side of the
-    # window; without slack those matches are dropped by every window and
-    # never recorded. The slack still bounds a scan if the filter were ever
-    # ignored.
+    # the parser dates each entry by its instant's UTC day (#215), so a
+    # filtered page legitimately carries entries dated one day either side
+    # of the window; without slack those matches are dropped by every
+    # window and never recorded. The slack still bounds a scan if the
+    # filter were ever ignored.
     DATE_FILTER_SLACK_DAYS = 1
 
     # Results per listing page; the offset step and the last-page check
