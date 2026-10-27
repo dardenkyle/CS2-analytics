@@ -70,6 +70,10 @@ Current implementation note:
 - `ResultsScraper` is fetch-only and yields discovered match batches;
   `ResultsStageService` performs the `match_ingestion_state` lifecycle-row
   refreshes (#71)
+- the scraper waits for the listing container before reading a page, so an
+  unrendered listing is a retryable session error rather than an empty
+  slice, and `parsers/results_parser.py` owns section, date, window, and
+  link extraction (#230)
 - rediscovery refreshes already happen in the current implementation
 
 This stage should not parse match detail pages or write match records directly.

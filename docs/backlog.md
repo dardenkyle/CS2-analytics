@@ -983,6 +983,13 @@ item track record.
       requirements are documented in `docs/deployment.md`; the 80 rows
       the September runs failed were requeued and processed, leaving
       only the KAST placeholder row (#210)
+- [x] (#230) The results scraper waits for the listing container
+      (`div.results`) through the shared page-wait helper, so a
+      challenge interstitial or blank render raises the retryable session
+      error and takes the retry path instead of reading as an empty slice
+      that backfill advanced past; listing parsing moved to
+      `parsers/results_parser.py` so the scraper is fetch-only like the
+      other two. Exhausted retries fail the run with the frontier untouched
 - [x] (#231) Incremental discovery is a forward day-walk from
       `max(match_date)` minus `--overlap-days` through today, the mirror
       of backfill's frontier walk (ADR-0019); it has no budget and
