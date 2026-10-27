@@ -157,12 +157,27 @@ class ResultsController:
         re-reading a day is idempotent, so `overlap_days` can be raised to
         re-sweep a suspect range (#231). With nothing recorded yet the walk
         starts at `end_date`; history belongs to backfill.
+
+        The start never falls below the backfill frontier (oldest recorded
+        match_date): inside the recorded block every day is already swept,
+        so a run that dies mid-walk leaves no hole, whereas a start below
+        the frontier that then failed would move the frontier down past
+        unswept days - an island, which ADR-0016 rules out.
         """
         cursor = self.match_state.fetch_max_match_date()
         if cursor is None:
             first_day = end_date
         else:
             first_day = min(end_date, cursor - dt.timedelta(days=overlap_days))
+            frontier = self.match_state.fetch_min_match_date()
+            if frontier is not None and first_day < frontier:
+                logger.info(
+                    "Overlap of %d day(s) reaches below the frontier %s; "
+                    "starting there instead. Older dates belong to backfill.",
+                    overlap_days,
+                    frontier,
+                )
+                first_day = frontier
         logger.info(
             "Incremental walk %s..%s (cursor=%s overlap_days=%d)",
             first_day,

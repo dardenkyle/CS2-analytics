@@ -343,6 +343,33 @@ def test_incremental_overlap_days_re_sweeps_a_longer_range(
     assert _returned(summary) == (results_module.STOP_UP_TO_DATE, 4, 1, 0, 0)
 
 
+def test_incremental_overlap_never_starts_below_the_backfill_frontier(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An oversized overlap on a short history must not create an island (#231).
+
+    If the walk started below the frontier and died part-way, min(match_date)
+    would move down past days no mode revisits.
+    """
+    scraper = _SlicingScraper(per_slice=1)
+    controller = _build_controller(monkeypatch, lambda: scraper)
+    controller.match_state = _FakeMatchState(
+        min_match_date=dt.date(2026, 10, 20),
+        max_match_date=dt.date(2026, 10, 26),
+    )
+
+    controller.run(
+        max_matches=None,
+        start_date=dt.date(2025, 10, 1),
+        end_date=dt.date(2026, 10, 26),
+        overlap_days=10,
+    )
+
+    assert [call[1] for call in scraper.slice_calls] == [
+        dt.date(2026, 10, 20) + dt.timedelta(days=i) for i in range(7)
+    ]
+
+
 def test_incremental_clamps_a_future_cursor_to_the_end_date(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

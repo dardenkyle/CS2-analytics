@@ -630,6 +630,9 @@ rejected in incremental mode. The cursor day is never assumed complete
 what the overlap is for; recording a known match is idempotent, so a
 re-swept day costs only page loads. Raising `--overlap-days` is the
 bounded repair path: a contiguous range ending today, never an island.
+The start is clamped to the backfill frontier, since a walk that began
+below it and died part-way would move the frontier down past days no
+mode revisits; older dates belong to backfill.
 
 Consequences:
 - The recorded range is one contiguous block whose old end backfill
