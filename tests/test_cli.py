@@ -548,6 +548,103 @@ def test_process_exits_0_when_a_stage_only_partly_failed(monkeypatch) -> None:
     ]
 
 
+class _CountdownController(_RecordingController):
+    """Controller stand-in with a fixed pending set that batches eat through."""
+
+    pending: dict[str, int] = {}
+
+    def run(self, **kwargs):
+        from dataclasses import replace
+
+        summary = super().run(**kwargs)
+        left = self.pending.get(self._name, 0)
+        selected = min(left, summary.selected)
+        self.pending[self._name] = left - selected
+        return replace(summary, selected=selected, succeeded=selected)
+
+
+def _patch_countdown_controllers(monkeypatch, calls, pending: dict[str, int]):
+    import cs2_analytics.controllers.map_controller as map_module
+    import cs2_analytics.controllers.match_controller as match_module
+
+    monkeypatch.setattr(_CountdownController, "pending", dict(pending))
+    monkeypatch.setattr(
+        match_module, "MatchController", lambda: _CountdownController("match", calls)
+    )
+    monkeypatch.setattr(
+        map_module, "MapController", lambda: _CountdownController("map", calls)
+    )
+
+
+def test_process_drain_loops_until_a_batch_comes_back_short(monkeypatch) -> None:
+    """125 matches and 10 maps at batch 50: three match batches, one map batch (#180)."""
+    calls: list[tuple[str, dict]] = []
+    _patch_countdown_controllers(monkeypatch, calls, {"match": 125, "map": 10})
+
+    result = runner.invoke(app, ["process", "--drain"])
+
+    assert result.exit_code == 0
+    assert [name for name, _ in calls] == ["match", "match", "match", "map"]
+    assert "Drained the match stage in 3 batch(es)." in result.stdout
+    assert "Drained the map stage in 1 batch(es)." in result.stdout
+
+
+def test_process_drain_runs_one_more_batch_when_the_last_was_full(
+    monkeypatch,
+) -> None:
+    """Exactly 50 pending: the full batch cannot prove the set is empty."""
+    calls: list[tuple[str, dict]] = []
+    _patch_countdown_controllers(monkeypatch, calls, {"match": 50, "map": 0})
+
+    result = runner.invoke(app, ["process", "--drain", "--stage", "match"])
+
+    assert result.exit_code == 0
+    assert [name for name, _ in calls] == ["match", "match"]
+
+
+def test_process_without_drain_runs_one_batch_per_stage(monkeypatch) -> None:
+    calls: list[tuple[str, dict]] = []
+    _patch_countdown_controllers(monkeypatch, calls, {"match": 125, "map": 125})
+
+    result = runner.invoke(app, ["process"])
+
+    assert result.exit_code == 0
+    assert [name for name, _ in calls] == ["match", "map"]
+    assert "Drained" not in result.stdout
+
+
+def test_process_drain_stops_on_a_breaker_halt(monkeypatch) -> None:
+    import cs2_analytics.controllers.match_controller as match_module
+
+    calls: list[tuple[str, dict]] = []
+    _patch_process_controllers(monkeypatch, calls)
+    monkeypatch.setattr(
+        match_module, "MatchController", lambda: _HaltingController("match", calls)
+    )
+
+    result = runner.invoke(app, ["process", "--drain"])
+
+    assert result.exit_code == 75
+    assert [name for name, _ in calls] == ["match"]
+
+
+def test_process_drain_stops_a_stage_whose_whole_batch_failed(monkeypatch) -> None:
+    """A systemic break must not be worked through one failed batch at a time."""
+    import cs2_analytics.controllers.match_controller as match_module
+
+    calls: list[tuple[str, dict]] = []
+    _patch_countdown_controllers(monkeypatch, calls, {"match": 500, "map": 10})
+    monkeypatch.setattr(
+        match_module, "MatchController", lambda: _AllFailedController("match", calls)
+    )
+
+    result = runner.invoke(app, ["process", "--drain"])
+
+    assert result.exit_code == 1
+    assert [name for name, _ in calls] == ["match", "map"]
+    assert "Every selected item failed in the match stage(s)" in result.stderr
+
+
 def test_process_exits_75_when_the_last_stage_halts(monkeypatch) -> None:
     import cs2_analytics.controllers.map_controller as map_module
 

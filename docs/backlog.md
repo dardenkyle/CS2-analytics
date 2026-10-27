@@ -971,10 +971,14 @@ item track record.
       loaded over the process environment, and `dev` and `test` refuse a
       non-local database host, so production credentials are never read
       by default
-- [ ] (#180) Always-on processing runner on a dedicated home-server host:
-      systemd timer units invoking the CLI, plus a drain mode on
-      `cs2a process` that loops batches until no pending work remains
-      (breaker-aware)
+- [x] (#180) Always-on runner: `cs2a process --drain` loops batches per
+      stage until one comes back short (a breaker halt or an all-failed
+      batch ends it), and `deploy/systemd/` holds a oneshot user service
+      running discovery then a drain through one script, fired by a timer
+      at 3:00 AM Central with missed firings run at boot. Install notes
+      and the launch-context rule carried over from #193 are in
+      `docs/deployment.md`; a failure notification hook is a separate
+      issue
 - [x] (#194) Map stage blocked on the home server: every map stats fetch
       returned the challenge interstitial while match pages passed. The
       cause was the host's system clock zone (UTC) disagreeing with the

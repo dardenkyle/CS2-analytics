@@ -1,0 +1,13 @@
+# Fires the daily run at 3:00 AM Central: after the evening's matches end
+# and before the scheduled dbt build at 10:00 UTC (5:00 AM Central).
+[Unit]
+Description=Run cs2a-daily every day at 3:00 AM Central
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 America/Chicago
+# A firing missed while the host was off runs at the next boot.
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target

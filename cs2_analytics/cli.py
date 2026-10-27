@@ -319,6 +319,17 @@ def process(
             )
         ),
     ] = None,
+    drain: Annotated[
+        bool,
+        typer.Option(
+            "--drain",
+            help=(
+                "Loop batches per stage until a batch comes back short, i.e."
+                " nothing is left pending. A breaker halt or a batch in which"
+                " every item failed ends the drain."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Process pending matches, then pending maps.
 
@@ -328,11 +339,17 @@ def process(
     selection is rejected before any controller is imported, so an
     unimplemented stage never reaches the database.
 
+    `--drain` repeats batches for each selected stage until one selects
+    fewer rows than `--batch`, which means the pending set is empty
+    (#180). This is what the always-on runner uses so a missed day
+    catches up in one firing; each batch still logs its own summary.
+
     A stage halted by its circuit breaker ends the command with exit
     status 75 and skips the stages after it (#175). A stage in which
     every selected item failed still lets later stages run, and the
-    command then exits with status 1 (#238); a partially failed stage
-    exits 0.
+    command then exits with status 1 (#238); under `--drain` it also ends
+    that stage's loop rather than working through the backlog one failed
+    batch at a time. A partially failed stage exits 0.
     """
     selected = frozenset(stage) if stage else IMPLEMENTED_PROCESS_STAGES
     if ProcessStage.DEMO in selected:
@@ -351,8 +368,12 @@ def process(
     }
     failed_stages: list[str] = []
     for process_stage in ProcessStage:
-        if process_stage in selected:
+        if process_stage not in selected:
+            continue
+        batches = 0
+        while True:
             summary = controllers[process_stage]().run(batch_size=batch)
+            batches += 1
             if summary.outcome is BatchOutcome.HALTED:
                 typer.echo(
                     f"The {process_stage.value} stage was halted by the circuit"
@@ -363,6 +384,13 @@ def process(
                 raise typer.Exit(code=EXIT_BATCH_HALTED)
             if summary.all_failed:
                 failed_stages.append(process_stage.value)
+                break
+            if not drain or summary.selected < batch:
+                break
+        if drain:
+            typer.echo(
+                f"Drained the {process_stage.value} stage in {batches} batch(es)."
+            )
     if failed_stages:
         typer.echo(
             "Every selected item failed in the "
