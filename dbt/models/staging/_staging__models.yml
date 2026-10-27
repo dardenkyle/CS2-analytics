@@ -160,7 +160,9 @@ models:
       - name: clutches_won
         description: Total clutches won on this map.
       - name: kast
-        description: KAST percentage on this map.
+        description: >
+          KAST on this map as a fraction between 0 and 1. Null means the
+          source showed no value for this player (a dash placeholder).
       - name: kd_diff
         description: Kill/death differential on this map.
       - name: adr

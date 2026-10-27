@@ -38,8 +38,11 @@ Current implementation note:
 - Treat the source's dash placeholder as a missing value, not a parse
   failure, for metrics the source can leave blank: ADR parses to `None`
   (stored as NULL) when a player was substituted mid-map and has no damage
-  figure (#202). Any other non-numeric text still raises. KAST and rating
-  stay strict until a placeholder is observed in those columns
+  figure (#202), and KAST parses to `None` the same way (#210). Any other
+  non-numeric text still raises. Rating and the kill, assist, and death
+  cells stay strict: on the rows where KAST and ADR were dashes they were
+  still numeric, so a non-numeric value there is a parse failure until a
+  placeholder is observed
 
 ## Stage Services
 

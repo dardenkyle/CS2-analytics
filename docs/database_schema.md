@@ -49,8 +49,9 @@ current codebase.
 
 Grain: one row per player per map. A map can carry more than ten rows
 when a player is substituted mid-map (both players appear), so consumers
-must count players rather than assume five per team. `adr` is NULL when
-the source shows a dash placeholder for that player (#202).
+must count players rather than assume five per team. `adr` and `kast`
+are NULL when the source shows a dash placeholder for that player (#202,
+#210).
 
 - `map_id`, `player_id` (composite PK)
 - `player_name`, `player_url`, `map_name`, `team_name`
