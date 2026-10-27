@@ -7,12 +7,21 @@ inside command bodies.
 """
 
 import datetime as dt
+import re
 
 from typer.testing import CliRunner
 
 from cs2_analytics.cli import app
 
 runner = CliRunner()
+
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+_BOX = re.compile(r"[\u2500-\u257f]")
+
+
+def _plain(text: str) -> str:
+    """Strips the colour codes and box drawing rich adds to a Typer error."""
+    return " ".join(_BOX.sub(" ", _ANSI.sub("", text)).split())
 
 
 class _RecordingController:
@@ -155,7 +164,9 @@ def test_discover_passes_overlap_days_to_the_incremental_walk(monkeypatch) -> No
     assert calls[0][1]["max_matches"] is None
 
 
-def test_discover_rejects_backfill_only_options_in_incremental_mode(monkeypatch) -> None:
+def test_discover_rejects_backfill_only_options_in_incremental_mode(
+    monkeypatch,
+) -> None:
     calls: list[tuple[str, dict]] = []
     _patch_controller(
         monkeypatch,
@@ -169,9 +180,9 @@ def test_discover_rejects_backfill_only_options_in_incremental_mode(monkeypatch)
     floored = runner.invoke(app, ["ingest", "discover", "--since", "2023-09-27"])
 
     assert capped.exit_code == 2
-    assert "applies to --mode backfill" in " ".join(capped.stderr.split())
+    assert "--max-matches applies to --mode backfill" in _plain(capped.stderr)
     assert floored.exit_code == 2
-    assert "applies to --mode backfill" in " ".join(floored.stderr.split())
+    assert "--since applies to --mode backfill" in _plain(floored.stderr)
     assert calls == []
 
 
@@ -190,8 +201,7 @@ def test_discover_rejects_overlap_days_in_backfill_mode(monkeypatch) -> None:
     )
 
     assert result.exit_code == 2
-    assert "--overlap-days" in result.stderr
-    assert "incremental" in result.stderr
+    assert "--overlap-days applies to --mode incremental" in _plain(result.stderr)
     assert calls == []
 
 
