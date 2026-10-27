@@ -13,14 +13,20 @@ Current implementation note:
   `ResultsStageService` owns the `match_ingestion_state` refreshes (#71)
 - a test in `tests/scrapers/test_scraper_boundaries.py` fails if any scraper
   module imports storage or ingestion-state modules
-- `MatchScraper` and `MapScraper` wait for a required selector
-  (`div.match-page` and `div.match-info-box`) through the shared
-  `scrapers/page_wait.py` helper; a page that never renders it, including the
-  source's challenge interstitial, raises `SessionScrapeError` (retryable)
-  with a diagnostic warning that carries the challenge-marker flags, so
-  `cs2a failures` groups such rows under "appears blocked or challenged" or
-  "missing required content" rather than under a parser message; parser
-  errors are reserved for pages that rendered the selector (#57, #224)
+- every scraper waits for a required selector through the shared
+  `scrapers/page_wait.py` helper: `div.match-page` (match), `div.match-info-box`
+  (map stats), and `div.results` (results listing, the container that
+  is present even when a date range has no results); a page that never
+  renders it, including the source's challenge interstitial, raises
+  `SessionScrapeError` (retryable) with a diagnostic warning that carries the
+  challenge-marker flags, so `cs2a failures` groups such rows under "appears
+  blocked or challenged" or "missing required content" rather than under a
+  parser message; parser errors are reserved for pages that rendered the
+  selector (#57, #224, #230)
+- `ResultsScraper` holds no HTML parsing: `parsers/results_parser.py` turns a
+  rendered listing into a `ResultsPage` (in-window matches with section
+  dates, the page's result count, and whether the window floor was reached),
+  and the scraper only fetches and paginates on that outcome (#230)
 
 ## Parsers
 

@@ -526,3 +526,53 @@ def test_backfill_stops_when_the_budget_is_spent(
 
     assert len(scraper.slice_calls) == 1
     assert _returned(summary) == (results_module.STOP_BUDGET_EXHAUSTED, 2, 2, 0, 0)
+
+
+def test_backfill_advances_past_a_rendered_empty_slice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A validated empty slice is finished territory; the walk moves older (#230)."""
+    scraper = _SlicingScraper(per_slice=0)
+    controller = _build_controller(monkeypatch, lambda: scraper)
+    controller.match_state = _FakeMatchState(min_match_date=dt.date(2026, 8, 20))
+
+    summary = controller.run(
+        max_matches=1000,
+        start_date=dt.date(2026, 8, 7),
+        end_date=dt.date(2026, 8, 31),
+        mode="backfill",
+    )
+
+    assert [(call[1], call[2]) for call in scraper.slice_calls] == [
+        (dt.date(2026, 8, 14), dt.date(2026, 8, 20)),
+        (dt.date(2026, 8, 7), dt.date(2026, 8, 13)),
+    ]
+    assert _returned(summary) == (results_module.STOP_WINDOW_COVERED, 0, 0, 0, 0)
+
+
+def test_backfill_does_not_advance_past_a_slice_that_never_rendered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exhausted retries fail the run with the slice unrecorded, frontier untouched (#230)."""
+    info_calls = _capture_logger(monkeypatch, "info")
+    stage = _FakeStageService()
+    controller = _build_controller(
+        monkeypatch, _AlwaysFailingRetryableScraper, stage_service=stage
+    )
+    controller.match_state = _FakeMatchState(min_match_date=dt.date(2026, 8, 20))
+    monkeypatch.setattr(controller, "_reset_scraper", lambda s: s)
+
+    with pytest.raises(PipelineError, match="exhausting retries"):
+        controller.run(
+            max_matches=1000,
+            start_date=dt.date(2026, 8, 7),
+            end_date=dt.date(2026, 8, 31),
+            mode="backfill",
+        )
+
+    assert stage.batches == []
+    assert controller.scraper.run_calls == 3
+    assert _summary_args(info_calls)[:2] == (
+        "failed",
+        results_module.STOP_RETRIES_EXHAUSTED,
+    )

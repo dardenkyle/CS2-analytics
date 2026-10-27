@@ -1,44 +1,52 @@
-"""Scrapes HLTV results pages and yields discovered match links.
+"""Scrapes results listing pages and yields discovered match links.
 
-Fetch-only by contract: this module performs no database or ingestion-state
-writes. Discovered matches are yielded to the caller, and
-ResultsStageService owns recording them.
+Fetch-only by contract: this module loads pages, waits for them to render,
+and paginates; `parsers.results_parser` decides what a page contains and
+`ResultsStageService` owns recording the matches. No database or
+ingestion-state writes happen here.
 """
 
 import datetime as dt
 import random
-import re
 import time
 from collections.abc import Generator
+from urllib.parse import urlsplit
 
-from bs4 import BeautifulSoup
 from seleniumbase import Driver
 
 from cs2_analytics.config.config import SOURCE_URL
 from cs2_analytics.exceptions import ResultsScrapeError, SessionScrapeError
+from cs2_analytics.parsers.results_parser import (
+    ResultsPage,
+    extract_match_id,
+    parse_results_page,
+)
+from cs2_analytics.scrapers.page_wait import (
+    DEFAULT_CONTENT_WAIT_SECONDS,
+    fetch_rendered_page,
+)
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
 
+# The listing container, present on a rendered page even when the requested
+# date range has no results, so a rendered empty slice is distinguishable
+# from the challenge interstitial or a blank render (#230). A page that never
+# renders it raises the retryable session error through page_wait.
+REQUIRED_RESULTS_SELECTOR = "div.results"
+RESULTS_PAGE_LABEL = "Results page"
+
 
 class ResultsScraper:
     """
-    Scrapes HLTV results pages and yields discovered match links.
+    Scrapes results listing pages and yields discovered match links.
 
     Designed to be used as a context manager to ensure the browser is closed.
     """
 
-    # Why the last iter_match_batches call stopped (#121). The scraper
-    # reports its own fetch-level stop cause; run-level semantics (for
-    # example "up to date") belong to the controller.
     STOP_BUDGET = "budget_exhausted"
     STOP_WINDOW_FLOOR = "window_floor_reached"
     STOP_EMPTY_PAGE = "empty_page"
-
-    # Results per listing page; the offset step and the last-page check
-    # both rest on it. A page with fewer results is the last one, so the
-    # scan ends without a request for the (empty) page after it.
-    PAGE_SIZE = 100
 
     # Days a section date may fall outside the requested window before the
     # client-side range check stops the scan, when the source's own date
@@ -50,20 +58,32 @@ class ResultsScraper:
     # ignored.
     DATE_FILTER_SLACK_DAYS = 1
 
-    def __init__(self) -> None:
+    # Results per listing page; the offset step and the last-page check
+    # both rest on it. A page with fewer results is the last one, so the
+    # scan ends without a request for the (empty) page after it.
+    PAGE_SIZE = 100
+
+    def __init__(
+        self,
+        content_wait_seconds: float = DEFAULT_CONTENT_WAIT_SECONDS,
+    ) -> None:
         """Initializes the scraper with a SeleniumBase driver."""
         self.driver = Driver(uc=True, headless=True)
         self.base_url = SOURCE_URL
+        parts = urlsplit(SOURCE_URL)
+        self.link_origin = f"{parts.scheme}://{parts.netloc}"
+        self.content_wait_seconds = content_wait_seconds
         self.stop_reason = self.STOP_EMPTY_PAGE
+        self.start_date: dt.date | None = None
+        self.end_date: dt.date | None = None
         self.date_slack = dt.timedelta(0)
-        self.last_page_result_count = 0
 
     def __enter__(self) -> "ResultsScraper":
         """Enables use as a context manager."""
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Ensures the Selenium driver is closed on exit."""
+        """Closes the browser on exit."""
         self.close()
 
     def iter_match_batches(
@@ -93,7 +113,8 @@ class ResultsScraper:
                 passed to the results listing as date-range query
                 parameters, so a backfill slice fetches only its chunk
                 instead of paging from the newest results (#121). The
-                client-side date checks stay on as a safety net.
+                client-side date checks stay on as a safety net, with one
+                day of slack for the source's zone.
 
         Yields:
             One list of (match_id, match_url, match_date) tuples per
@@ -114,12 +135,12 @@ class ResultsScraper:
                 page_url += f"&startDate={start_date}&endDate={end_date}"
             logger.info("Scraping page: %s", page_url)
 
-            dated_urls, stop = self._extract_matches_from_page(page_url)
+            page = self._fetch_page(page_url)
             batch = []
-            for full_url, match_date in dated_urls:
+            for full_url, match_date in page.matches:
                 if max_matches is not None and total_discovered >= max_matches:
                     break
-                match_id = self._extract_match_id(full_url)
+                match_id = extract_match_id(full_url)
                 if match_id:
                     batch.append((match_id, full_url, match_date))
                     total_discovered += 1
@@ -130,10 +151,10 @@ class ResultsScraper:
             if max_matches is not None and total_discovered >= max_matches:
                 self.stop_reason = self.STOP_BUDGET
                 break
-            if stop:
+            if page.reached_floor:
                 self.stop_reason = self.STOP_WINDOW_FLOOR
                 break
-            if not dated_urls or self.last_page_result_count < self.PAGE_SIZE:
+            if not page.matches or page.result_count < self.PAGE_SIZE:
                 self.stop_reason = self.STOP_EMPTY_PAGE
                 break
 
@@ -146,89 +167,35 @@ class ResultsScraper:
             self.stop_reason,
         )
 
-    def _extract_matches_from_page(
-        self, url: str
-    ) -> tuple[list[tuple[str, dt.date]], bool]:
-        """
-        Extracts match links with their section dates from a results page.
+    def _fetch_page(self, url: str) -> ResultsPage:
+        """Loads one listing page, waits for it to render, and parses it.
 
-        Args:
-            url (str): Page URL to scrape.
-
-        Returns:
-            Tuple of (list of (match URL, section date) pairs, whether to
-            stop scraping)
+        A page that never renders the listing container, including the
+        source's challenge interstitial, raises `SessionScrapeError` so the
+        controller retries with a fresh session instead of reading the page
+        as an empty slice (#230).
         """
+        assert self.start_date is not None and self.end_date is not None
         try:
-            self.driver.get(url)
-            time.sleep(random.uniform(3, 5))
-            soup = BeautifulSoup(self.driver.page_source, "html.parser")
+            page_source = fetch_rendered_page(
+                self.driver,
+                url,
+                REQUIRED_RESULTS_SELECTOR,
+                RESULTS_PAGE_LABEL,
+                self.content_wait_seconds,
+            )
+        except SessionScrapeError:
+            raise
         except Exception as e:
             raise SessionScrapeError(f"Failed to fetch results page: {url}") from e
-
-        matches: list[tuple[str, dt.date]] = []
-        stop_scraping = False
-        sections_seen = 0
-        sections_parsed = 0
-        self.last_page_result_count = len(soup.find_all("div", class_="result-con"))
-
-        for section in soup.find_all("div", class_="results-sublist"):
-            date_header = section.find("div", class_="standard-headline")
-            if not date_header:
-                continue
-            sections_seen += 1
-
-            # Strip only day ordinals (31st, 2nd); an unanchored strip also
-            # removes the "st" inside "August" and blanks the whole month.
-            raw_date = re.sub(
-                r"(?<=\d)(st|nd|rd|th)\b",
-                "",
-                date_header.text.replace("Results for ", ""),
-            )
-            try:
-                match_date = dt.datetime.strptime(raw_date.strip(), "%B %d %Y").date()
-            except ValueError:
-                logger.warning("Could not parse date: %s", raw_date)
-                continue
-            sections_parsed += 1
-
-            if match_date > self.end_date + self.date_slack:
-                continue
-            if match_date < self.start_date - self.date_slack:
-                logger.info(
-                    "Stopping at match date %s because it is out of range.", match_date
-                )
-                return matches, True
-
-            for match in section.find_all("div", class_="result-con"):
-                a_tag = match.find("a", href=True)
-                if not a_tag:
-                    continue
-                full_url = f"https://www.hltv.org{a_tag['href']}"
-                matches.append((full_url, match_date))
-
-        if sections_seen and not sections_parsed:
-            logger.warning(
-                "No date sections parsed on %s: %d section(s) skipped, so no "
-                "matches were discovered from this page.",
-                url,
-                sections_seen,
-            )
-
-        return matches, stop_scraping
-
-    def _extract_match_id(self, url: str) -> int | None:
-        """
-        Extracts numeric match ID from the match URL.
-
-        Args:
-            url (str): HLTV match URL.
-
-        Returns:
-            Match ID or None if not found.
-        """
-        match = re.search(r"/matches/(\d+)", url)
-        return int(match.group(1)) if match else None
+        return parse_results_page(
+            page_source,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            date_slack=self.date_slack,
+            page_url=url,
+            link_origin=self.link_origin,
+        )
 
     def close(self) -> None:
         """Closes the SeleniumBase driver."""
