@@ -241,8 +241,9 @@ Consequences:
 - The SPA builds statically and deploys to GitHub Pages from `main`, with
   Vite `base` set to the project-page path for builds and preview only.
 - Frontend deploys cannot affect backend runtime, schema, or data.
-- Loading, empty, and error states are explicit, including cold-start
-  messaging for the free-tier API wake-up delay.
+- Loading, empty, and error states are explicit. The cold-start messaging
+  for the free-tier API wake-up delay was retired in #245 once the API
+  moved to a paid instance.
 - Local development against the production API requires the localhost
   origins in the Render `API_CORS_ORIGINS` allowlist.
 

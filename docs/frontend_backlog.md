@@ -55,9 +55,10 @@ A1 implementation notes:
   retire the Streamlit debug app (`f678196`), scaffold the React + TypeScript
   + Vite toolchain (`08b1564`), and add the public introduction landing page
   (`5c7d3dd`).
-- The intro page has no API integration; A2 adds the `top_players` call with
-  loading, empty, and error states, including cold-start messaging for the
-  Render free-tier API wake-up delay.
+- The intro page had no API integration; A2 added the `top_players` call
+  with loading, empty, and error states. Its cold-start messaging for the
+  Render free-tier wake-up delay was retired in #245 once the API moved to
+  a paid instance.
 - Verification for A1 was `npm run build` (includes TypeScript checking),
   `npm run lint` (oxlint), and manual responsive review at 1440px and 390px.
   The commands are documented in `frontend/README.md`.
@@ -73,8 +74,12 @@ A2 implementation notes:
   browsers block responses for origins outside the allowlist. Details in
   `frontend/README.md`; keep exact values in the Render dashboard rather than
   docs.
-- The loading state switches to cold-start messaging after five seconds to
-  cover the Render free-tier wake-up delay.
+- The loading state originally switched to cold-start messaging after five
+  seconds to cover the Render free-tier wake-up delay. That messaging and
+  the "backfill is ongoing" caption were retired in #245 once the API
+  moved to a paid instance and the CS2-era backfill completed; the
+  five-second hint now says only that the response is taking longer than
+  usual.
 
 ### Planned work
 
