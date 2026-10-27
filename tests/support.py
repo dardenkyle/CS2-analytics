@@ -1,6 +1,9 @@
 """Shared test fakes for transaction-aware stage-service wiring."""
 
 from contextlib import contextmanager
+from pathlib import Path
+
+from alembic.config import Config
 
 from cs2_analytics.exceptions import DatabaseConnectionError, DatabaseOperationError
 
@@ -70,6 +73,18 @@ NO_TEST_DB_REASON = (
     "differ from .env.test); start it with `docker compose "
     "-f docker-compose.yml -f docker-compose.test.yml up -d db` (README: Run Tests)"
 )
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def alembic_config() -> Config:
+    """Alembic configuration pointed at the project's migration scripts."""
+    backend_root = PROJECT_ROOT / "cs2_analytics"
+    config = Config(str(backend_root / "alembic.ini"))
+    config.set_main_option("script_location", str(backend_root / "alembic"))
+    config.set_main_option("prepend_sys_path", str(PROJECT_ROOT))
+    return config
 
 
 def open_test_database():

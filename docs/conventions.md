@@ -114,6 +114,14 @@ The `cs2a` CLI entry point is intentionally thin and is not the primary architec
   with `now()`, so no client clock or timezone reaches storage. Older
   tables still declare plain `TIMESTAMP` columns and are converted as
   they are touched
+- Source dates are UTC instants derived from the source's unix timestamp,
+  never from the local clock: both the match and map parsers convert with
+  `tz=dt.UTC` and keep the time of day (#214). The source stamps every
+  map of a match with the match's start instant, so `MIN(maps.date)` is
+  the match instant wherever a map parsed with a timestamp; migration
+  `20261027_0007` used it to correct rows the old parser wrote.
+  `matches.date` and `maps.date` are still naive `TIMESTAMP` columns
+  holding those UTC values
 - Never pass a Python `datetime.now()` as a lifecycle timestamp parameter
 - Convert only at the presentation layer: operator output goes through
   `cs2_analytics.utils.time_format.format_local`, which renders

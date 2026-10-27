@@ -500,6 +500,37 @@ any ingestion command from the same release: the new writers stamp rows
 with the database's `now()`, which the old naive columns would store as
 UTC without the witness the migration relies on.
 
+Migration `20261027_0007` rewrites `matches.date` to the UTC start of each
+match's maps (#214): the old match parser converted the source timestamp
+in the writing machine's zone and kept only the day, so rows written from
+Central and from UTC containers disagree by a day and every row sits at
+midnight. The source stamps every map with the match's start instant, so
+the value is exact wherever a map parsed with a timestamp; maps stored at
+midnight (the map parser's text fallback) are ignored. The rewritten rows
+also get a fresh `last_updated_at` so the incremental
+`fact_player_map_stats` mart picks them up on its next scheduled build
+without a full refresh. It is data-dependent, so take the recovery point
+first. Preview the affected rows and record both counts on the issue
+before applying:
+
+```sql
+SELECT COUNT(*) FILTER (WHERE matches.date::date <> first_map.map_start::date)
+         AS day_changes,
+       COUNT(*) AS rows_updated
+FROM matches
+JOIN (SELECT match_id, MIN(date) AS map_start
+      FROM maps
+      WHERE date <> date_trunc('day', date)
+      GROUP BY match_id) AS first_map USING (match_id)
+WHERE matches.date <> first_map.map_start;
+```
+
+The query is a one-row aggregate. After applying it reports
+`rows_updated = 0` and `day_changes = 0`, and that stays true after a
+match is reprocessed, since the match page carries the same instant.
+`cs2a ingest coverage` reports the same per-period counts as before except
+where `day_changes` moved a match across a period boundary.
+
 Write-based deterministic smoke tests should not run against the production
 analytics database.
 
