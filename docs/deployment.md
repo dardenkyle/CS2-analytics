@@ -94,7 +94,11 @@ map stage failed every item there while the same code passed on the desktop.
   `sudo timedatectl set-timezone America/Chicago`. A host zone of UTC was
   the sole cause of the failure above; GPU, headless mode, installed
   fonts, Chrome version, and the per-host IPv6 address were each ruled
-  out one variable at a time.
+  out one variable at a time. This applies to native runs, which is how
+  production scraping runs: the `docker compose` pipeline service above
+  is wired to the local development database and does not inherit the
+  host zone (the compose file sets no `TZ`), so do not use it for
+  production scraping without setting the container's zone as well.
 - **Current Chrome.** SeleniumBase downloads a matching driver on first
   use. Keep the browser on the stable channel's current release.
 - **No display, GPU, or virtual framebuffer.** Both the desktop and a
