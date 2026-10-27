@@ -249,15 +249,22 @@ class MatchParser:
         return map_name.lower() == "default"
 
     def _extract_match_date(self, soup) -> str:
-        """Extracts the match date in YYYY-MM-DD format."""
+        """Extracts the match start as a UTC timestamp string.
+
+        The source's unix timestamp is an instant, so it is converted in
+        UTC and keeps its time of day, matching the map parser. Converting
+        in the machine's local zone put a late-evening Central match on
+        the next calendar day when a UTC container processed it (#214).
+        """
         match_date_tag = soup.find("div", class_="date")
         if not match_date_tag or not match_date_tag.has_attr("data-unix"):
             raise MatchParseError("Failed to extract match date from match page.")
 
         try:
             return dt.datetime.fromtimestamp(
-                int(match_date_tag["data-unix"]) / 1000
-            ).strftime("%Y-%m-%d")
+                int(match_date_tag["data-unix"]) / 1000,
+                tz=dt.UTC,
+            ).strftime("%Y-%m-%d %H:%M:%S")
         except (TypeError, ValueError, OSError, OverflowError) as e:
             raise MatchParseError(
                 "Failed to extract match date from match page."
