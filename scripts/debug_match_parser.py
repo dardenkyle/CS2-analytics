@@ -1,41 +1,35 @@
-"""Manual debug script: parse a single live match page with MatchParser.
+"""Manual debug script: fetch one live match page and log what MatchParser makes of it.
 
-Usage: python scripts/debug_match_parser.py (no database required; edit
-match_url to target a different page). Launches a headless SeleniumBase
-browser, fetches the page, parses it, and prints the result. Useful when
-the upstream markup changes and parser output needs a quick check.
+Usage: python scripts/debug_match_parser.py MATCH_URL
+
+Opens no database connection and writes nothing. Fetches the page through
+MatchScraper, the same path the match stage uses, then logs the parsed
+match and the map and demo links it found. Useful when the source's markup
+changes and parser output needs a quick check against a real page.
 """
 
-from bs4 import BeautifulSoup
-from seleniumbase import Driver
+import argparse
 
 from cs2_analytics.parsers.match_parser import MatchParser
+from cs2_analytics.scrapers.match_scraper import MatchScraper
+from cs2_analytics.utils.log_manager import get_logger
+
+logger = get_logger(__name__)
 
 
-def main():
-    """Fetch and parse one match page, printing the parser result."""
-    match_url = "https://www.hltv.org/matches/2381532/sangal-vs-fire-flux-galaxy-battle-2025-phase-1"
+def main() -> None:
+    """Fetch and parse one match page, logging the parsed result."""
+    arg_parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    arg_parser.add_argument("match_url", help="Full URL of a match page.")
+    args = arg_parser.parse_args()
 
-    driver = Driver(uc=True, headless=True)
-    try:
-        print("Fetching HLTV match page...")
-        driver.get(match_url)
+    with MatchScraper() as scraper:
+        soup = scraper.fetch_soup(args.match_url)
 
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-
-        print("Parsing match with MatchParser...")
-        parser = MatchParser()
-        match = parser.parse_match(soup, match_url)
-
-        if match:
-            print("MatchParser succeeded:")
-            print(match)
-        else:
-            print("MatchParser returned None.")
-
-    finally:
-        driver.quit()
-        print("Browser closed.")
+    match, map_links, demo_links = MatchParser().parse_match(soup, args.match_url)
+    logger.info("Parsed match: %s", match)
+    logger.info("Map links (%s): %s", len(map_links), map_links)
+    logger.info("Demo links (%s): %s", len(demo_links), demo_links)
 
 
 if __name__ == "__main__":
