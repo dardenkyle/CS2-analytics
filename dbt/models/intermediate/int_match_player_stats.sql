@@ -8,6 +8,14 @@
 -- The canonical map_name comes from stg_maps; the parsed stg_players.map_name
 -- context column is intentionally not carried through (see
 -- docs/schema_target_pre_dbt.md).
+--
+-- Materialization: a table, overriding the intermediate layer's view default
+-- (#270). The three-way join runs once per build, and the incremental fact,
+-- int_player_current_team, and this model's data tests read the stored
+-- result instead of re-running the join. Removing the config block below
+-- returns it to a view; see docs/dbt_models.md (Materialization Strategy).
+
+{{ config(materialized='table') }}
 
 with players as (
 

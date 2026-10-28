@@ -265,7 +265,7 @@ Possible responsibilities:
 # 2. Intermediate Layer
 
 Status: `int_match_player_stats` is implemented (#111) under
-`dbt/models/intermediate/` as a reusable-join view over the staging models
+`dbt/models/intermediate/` as a reusable-join table over the staging models
 (grain: one row per player per map), documented in
 `dbt/models/intermediate/_intermediate__models.yml`. The other `int_*` models
 below remain planning-only until a mart needs them.
@@ -721,9 +721,26 @@ Implemented (dbt_project.yml plus per-model config):
 
 ### intermediate
 
-- views (reusable joins); `int_match_player_stats` also exposes
-  `source_updated_at`, the greatest `last_updated_at` across the joined
-  player, map, and match rows, as the incremental watermark for facts
+- reusable joins, view by default (`dbt_project.yml`); the two current
+  models override that default with a per-model `materialized='table'`
+  config (#270). `int_match_player_stats` carries the players -> maps ->
+  matches join and `int_player_current_team` carries a window over every
+  player-map row; as views, every downstream model and data test re-ran
+  that work. As tables, the join and the window run once per build and the
+  incremental fact, the roster snapshot, and the data tests read a stored
+  result. `int_match_player_stats` as a table is a second copy of
+  roughly the fact's size, so whether it stays a table is decided from
+  per-node timings of a scheduled production build (#270); reverting it is
+  removing its config line
+- `int_match_player_stats` also exposes `source_updated_at`, the greatest
+  `last_updated_at` across the joined player, map, and match rows, as the
+  incremental watermark for facts. The value is computed by the same SQL
+  under either materialization, so the fact's incremental filter is
+  unaffected by the choice
+- switching an existing view to a table makes dbt-postgres drop the old
+  view with `cascade`; `int_player_current_team` was the only view built on
+  `int_match_player_stats`, and a full build recreates it (as a table) in
+  the same run
 
 ### marts
 

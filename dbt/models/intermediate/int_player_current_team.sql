@@ -14,6 +14,13 @@
 --
 -- Rows with a null player_id or null team_name are excluded: a membership
 -- observation needs both sides of the player-team pair.
+--
+-- Materialization: a table, overriding the intermediate layer's view default
+-- (#270). The window over every player-map row runs once per build, and the
+-- roster snapshot and this model's data tests read the stored result instead
+-- of re-running it.
+
+{{ config(materialized='table') }}
 
 with player_maps as (
 
