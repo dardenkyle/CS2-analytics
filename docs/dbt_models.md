@@ -264,11 +264,13 @@ Possible responsibilities:
 
 # 2. Intermediate Layer
 
-Status: `int_match_player_stats` is implemented (#111) under
-`dbt/models/intermediate/` as a reusable-join table over the staging models
-(grain: one row per player per map), documented in
-`dbt/models/intermediate/_intermediate__models.yml`. The other `int_*` models
-below remain planning-only until a mart needs them.
+Status: two intermediate models are implemented under
+`dbt/models/intermediate/`, documented in
+`dbt/models/intermediate/_intermediate__models.yml`: `int_match_player_stats`
+(#111), the reusable-join view over the staging models (grain: one row per
+player per map), and `int_player_current_team` (#130), a table holding each
+player's most recent team (grain: one row per player). The other `int_*`
+models below remain planning-only until a mart needs them.
 
 The intermediate layer handles reusable joins and logic that should not be repeated in marts.
 
@@ -721,26 +723,25 @@ Implemented (dbt_project.yml plus per-model config):
 
 ### intermediate
 
-- reusable joins, view by default (`dbt_project.yml`); the two current
-  models override that default with a per-model `materialized='table'`
-  config (#270). `int_match_player_stats` carries the players -> maps ->
-  matches join and `int_player_current_team` carries a window over every
-  player-map row; as views, every downstream model and data test re-ran
-  that work. As tables, the join and the window run once per build and the
-  incremental fact, the roster snapshot, and the data tests read a stored
-  result. `int_match_player_stats` as a table is a second copy of
-  roughly the fact's size, so whether it stays a table is decided from
-  per-node timings of a scheduled production build (#270); reverting it is
-  removing its config line
+- reusable joins, view by default (`dbt_project.yml`)
+- `int_player_current_team` overrides that default with a per-model
+  `materialized='table'` config (#270). It carries a window over every
+  player-map row to pick each player's most recent team; as a view, the
+  roster snapshot and each of its data tests re-ran that window and the
+  join beneath it. As a table, they run once per build and the readers get
+  a stored result of about 6,400 rows. On the deployed database nothing
+  depended on the view (checked 2026-10-28 with a read-only `pg_depend`
+  query), so the `cascade` drop dbt-postgres issues when it replaces a view
+  with a table removes nothing else
+- `int_match_player_stats` stays a view for now. Whether it also becomes a
+  table is measured separately on #270, because as a table it would be a
+  second copy of roughly the fact's size, and each rebuild would briefly
+  hold two copies (dbt builds the new table in full before swapping it in
+  and drops the old one after commit) plus the write-ahead log for a full
+  rewrite
 - `int_match_player_stats` also exposes `source_updated_at`, the greatest
   `last_updated_at` across the joined player, map, and match rows, as the
-  incremental watermark for facts. The value is computed by the same SQL
-  under either materialization, so the fact's incremental filter is
-  unaffected by the choice
-- switching an existing view to a table makes dbt-postgres drop the old
-  view with `cascade`; `int_player_current_team` was the only view built on
-  `int_match_player_stats`, and a full build recreates it (as a table) in
-  the same run
+  incremental watermark for facts
 
 ### marts
 

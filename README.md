@@ -628,7 +628,7 @@ results discovery
 
 The analytics warehouse is a shipped dbt project (`dbt/`) layered over the
 ingestion schema: staging views standardize the Alembic-owned source
-tables, intermediate tables factor the reusable joins, and mart tables are
+tables, intermediate models factor the reusable joins, and mart tables are
 the analytics-facing contract. The marts are not a side artifact - the
 API's read paths query them in production, they are rebuilt daily against
 the deployed database by a scheduled workflow, and the whole DAG builds
@@ -646,7 +646,7 @@ flowchart LR
         stg_maps
         stg_players
     end
-    subgraph intermediate["intermediate (tables)"]
+    subgraph intermediate["intermediate"]
         int_mps["int_match_player_stats"]
         int_pct["int_player_current_team"]
     end
