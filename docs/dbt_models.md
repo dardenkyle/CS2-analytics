@@ -735,8 +735,15 @@ Implemented (dbt_project.yml plus per-model config):
   the small residual timezone skew in pre-#132 audit values; because the
   watermark is the greatest of the three source timestamps, a re-scraped
   match or map re-emits its player rows, and delete+insert replaces them
-  in place. The existing grain test is the guard against duplicate
-  insertion.
+  in place. A unique index on (map_id, player_id), declared in the model
+  config (#269), turns the delete into an index lookup instead of a scan
+  of the whole table, and it rejects duplicate insertion at write time
+  alongside the grain test. It is declared in config rather than created
+  by hand because dbt rebuilds the table on `--full-refresh`, which would
+  drop a hand-made index. dbt-postgres creates configured indexes only
+  when it creates the table (the first build or a `--full-refresh`), not
+  on an incremental run, so an existing table gains the index from one
+  `--full-refresh` of this model.
 - `fact_matches` stays full-refresh on purpose: it is one row per match
   (hundreds of rows), and its `map_count` aggregates child rows that
   arrive after the match row, so a full rebuild is both cheaper and safer
