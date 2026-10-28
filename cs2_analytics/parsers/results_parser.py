@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from bs4 import BeautifulSoup
 
 from cs2_analytics.utils.log_manager import get_logger
+from cs2_analytics.utils.unix_time import utc_from_unix_ms
 
 logger = get_logger(__name__)
 
@@ -32,8 +33,8 @@ class ResultsPage:
     being each entry's own instant as a UTC calendar day (#215, ADR-0020);
     `result_count` is every result entry on the page regardless of date, so
     the scraper can tell a short last page from a full one; `reached_floor`
-    is True when a section fell below the window floor (minus slack), which
-    ends an offset-paged scan.
+    is True when the last dated entry on the page fell below the window
+    floor (minus slack), which ends an offset-paged scan.
     """
 
     matches: list[tuple[str, dt.date]] = field(default_factory=list)
@@ -67,8 +68,8 @@ def parse_entry_date(result) -> dt.date | None:
     if raw_unix is None:
         return None
     try:
-        return dt.datetime.fromtimestamp(int(raw_unix) / 1000, tz=dt.UTC).date()
-    except (TypeError, ValueError, OSError, OverflowError):
+        return utc_from_unix_ms(raw_unix).date()
+    except ValueError:
         logger.warning("Could not parse entry instant: %s", raw_unix)
         return None
 
@@ -88,50 +89,56 @@ def parse_results_page(
     page_url: str,
     link_origin: str,
 ) -> ResultsPage:
-    """Extracts in-window match links with their section dates from a page.
+    """Extracts in-window match links with their dates from a page.
 
     `link_origin` (scheme and host) is prefixed to the relative match links
     the listing carries.
 
     Each entry's date is the UTC day of its own instant, so the same page
     yields the same dates on every host; the section header, which the
-    source renders in the browser's zone, is only the fallback for an entry
-    without one (#215, ADR-0020). Entries newer than `end_date` plus slack
-    are skipped; the first entry older than `start_date` minus slack ends
-    the page with `reached_floor`. The slack exists because the source
-    applies its date filter in its own zone (#215, ADR-0019).
+    source renders in the browser's zone, is parsed only when an entry
+    lacks an instant (#215, ADR-0020). Entries outside `start_date` minus
+    slack through `end_date` plus slack are skipped one by one, and the
+    page has `reached_floor` when its last dated entry is below the floor:
+    a header-dated fallback can sit a day off its instant-dated
+    neighbours, so no single entry is allowed to end the page early. The
+    slack exists because the source applies its date filter in its own
+    zone (#215, ADR-0019).
     """
     soup = BeautifulSoup(page_source, "html.parser")
     result_count = len(soup.find_all("div", class_=RESULT_CLASS))
     matches: list[tuple[str, dt.date]] = []
+    floor = start_date - date_slack
+    ceiling = end_date + date_slack
     sections_seen = 0
     sections_dated = 0
+    last_dated: dt.date | None = None
 
     for section in soup.find_all("div", class_=SECTION_CLASS):
         date_header = section.find("div", class_=SECTION_HEADER_CLASS)
         if not date_header:
             continue
         sections_seen += 1
-        section_date = parse_section_date(date_header.text)
-        section_dated = section_date is not None
+        header_date: dt.date | None = None
+        header_parsed = False
+        section_dated = False
 
         for result in section.find_all("div", class_=RESULT_CLASS):
             a_tag = result.find("a", href=True)
             if not a_tag:
                 continue
-            match_date = parse_entry_date(result) or section_date
+            match_date = parse_entry_date(result)
+            if match_date is None:
+                if not header_parsed:
+                    header_date = parse_section_date(date_header.text)
+                    header_parsed = True
+                match_date = header_date
             if match_date is None:
                 continue
             section_dated = True
-
-            if match_date > end_date + date_slack:
-                continue
-            if match_date < start_date - date_slack:
-                logger.info(
-                    "Stopping at match date %s because it is out of range.", match_date
-                )
-                return ResultsPage(matches, result_count, reached_floor=True)
-            matches.append((f"{link_origin}{a_tag['href']}", match_date))
+            last_dated = match_date
+            if floor <= match_date <= ceiling:
+                matches.append((f"{link_origin}{a_tag['href']}", match_date))
 
         if section_dated:
             sections_dated += 1
@@ -144,4 +151,11 @@ def parse_results_page(
             sections_seen,
         )
 
-    return ResultsPage(matches, result_count)
+    reached_floor = last_dated is not None and last_dated < floor
+    if reached_floor:
+        logger.info(
+            "Page ends at match date %s, below the window floor %s.",
+            last_dated,
+            floor,
+        )
+    return ResultsPage(matches, result_count, reached_floor)

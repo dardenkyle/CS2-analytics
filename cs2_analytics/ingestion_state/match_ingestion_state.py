@@ -23,17 +23,16 @@ class MatchIngestionState(BaseIngestionState[int]):
         source: str = "results_scraper",
         priority: int = 0,
     ) -> int:
-        """Adds or refreshes discovered matches with their result dates.
+        """Adds or refreshes discovered matches with their listing dates.
 
-        Match-specific variant of record_many (#121): stores the
-        results-section match_date at discovery time. On conflict the
-        newest observed date wins (the source is authoritative - if it
-        re-files a match under a corrected date, the frontier and
-        coverage must follow), while a null observation never erases an
-        existing date (COALESCE), so a re-sweep dates legacy undated
-        rows and a date-less sweep cannot lose information. Returns the
-        number of newly inserted rows so the caller can detect an
-        all-known page (incremental early stop).
+        Match-specific variant of record_many (#121): stores the UTC day
+        of each entry's listing instant as a placeholder match_date. On
+        conflict an existing date is kept and only a null is filled
+        (COALESCE), so a re-sweep dates legacy undated rows but never
+        replaces the match's own start day once `record_match_date` has
+        written it (#215, ADR-0020). Returns the number of newly inserted
+        rows so the caller can detect an all-known page (incremental
+        early stop).
         """
         if not items:
             return 0
@@ -46,8 +45,8 @@ class MatchIngestionState(BaseIngestionState[int]):
         VALUES (%s, %s, %s, 'discovered', %s, %s, now(), now(), now())
         ON CONFLICT (match_id) DO UPDATE
         SET match_url = EXCLUDED.match_url,
-            match_date = COALESCE(EXCLUDED.match_date,
-                                  match_ingestion_state.match_date),
+            match_date = COALESCE(match_ingestion_state.match_date,
+                                  EXCLUDED.match_date),
             source = EXCLUDED.source,
             priority = GREATEST(
                 COALESCE(match_ingestion_state.priority, 0),
@@ -70,6 +69,31 @@ class MatchIngestionState(BaseIngestionState[int]):
                 "Failed to record discovered matches in match_ingestion_state."
             ) from e
         return new_rows
+
+    def record_match_date(self, match_id: int, match_date: dt.date, cur=None) -> None:
+        """Sets the row's match_date to the match's own UTC start day.
+
+        Called by the match stage once the match page is parsed, so the
+        column settles on the day the match started (#215, ADR-0020);
+        the listing day discovery recorded is only a placeholder until
+        then. Joins the caller's transaction when cur is given (ADR-0013).
+        """
+        query = """
+        UPDATE match_ingestion_state
+        SET match_date = %s
+        WHERE match_id = %s;
+        """
+        params = (match_date, match_id)
+        try:
+            if cur is not None:
+                cur.execute(query, params)
+            else:
+                with self.db.get_cursor() as own_cur:
+                    own_cur.execute(query, params)
+        except Exception as e:
+            raise self.error_cls(
+                "Failed to record match_date in match_ingestion_state."
+            ) from e
 
     def fetch_min_match_date(self) -> dt.date | None:
         """Returns the oldest recorded match_date - the backfill frontier.

@@ -1,5 +1,12 @@
+import datetime as dt
+from types import SimpleNamespace
+
 from cs2_analytics.stage_services import MatchStageService
 from tests.support import FakeTransactionDb
+
+
+def _match(date: str = "2026-10-26 23:30:00") -> SimpleNamespace:
+    return SimpleNamespace(date=date)
 
 
 class _FakeScraper:
@@ -34,10 +41,14 @@ class _FakeMatchState:
     def __init__(self) -> None:
         self.processing: list[int] = []
         self.processed: list[int] = []
+        self.dated: list[tuple[int, dt.date]] = []
         self.failed: list[tuple[int, str]] = []
 
     def mark_as_processing(self, item_id: int) -> None:
         self.processing.append(item_id)
+
+    def record_match_date(self, item_id: int, match_date: dt.date, cur=None) -> None:
+        self.dated.append((item_id, match_date))
 
     def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)
@@ -64,7 +75,7 @@ class _FakeFollowupState:
 
 def test_match_stage_service_processes_success_and_records_followups() -> None:
     stored_matches: list[list[object]] = []
-    match = object()
+    match = _match()
     match_state = _FakeMatchState()
     map_state = _FakeFollowupState()
     demo_state = _FakeFollowupState()
@@ -89,6 +100,7 @@ def test_match_stage_service_processes_success_and_records_followups() -> None:
     assert result.status == "processed"
     assert match_state.processing == []
     assert match_state.processed == [1]
+    assert match_state.dated == [(1, dt.date(2026, 10, 26))]
     assert match_state.failed == []
     assert stored_matches == [[match]]
     assert map_state.recorded == [
@@ -132,6 +144,7 @@ def test_match_stage_service_marks_failed_when_parser_returns_none() -> None:
     assert result.message == "Parsing returned None"
     assert match_state.processing == []
     assert match_state.processed == []
+    assert match_state.dated == []
     assert match_state.failed == [(1, "Parsing returned None")]
     assert stored_matches == []
 
@@ -139,7 +152,7 @@ def test_match_stage_service_marks_failed_when_parser_returns_none() -> None:
 def test_match_stage_service_processes_with_attempt_scraper() -> None:
     attempt_scraper = _FakeScraper()
     service = MatchStageService(
-        parser=_FakeParser(match=object()),
+        parser=_FakeParser(match=_match()),
         store_matches=lambda _matches, cur=None: None,
         match_state=_FakeMatchState(),
         map_state=_FakeFollowupState(),

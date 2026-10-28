@@ -12,12 +12,11 @@ onto a host-independent value.
 
 For every processed row, `match_date` becomes the UTC calendar day of
 `matches.date`, the match's start instant corrected by 20261027_0007.
-Rows that are not yet processed have no match row to reconcile against
-and keep what discovery recorded. The new parser records the UTC day of
-the result's posting instant, which is the match's end, so a new row
-can sit one day after its match's start day when the match crosses UTC
-midnight; the backfill and incremental walks tolerate that through their
-overlap day and slack (ADR-0019, ADR-0020).
+That is the meaning the column settles on: the match stage writes the
+same value whenever a match is processed, and discovery never overwrites
+a recorded date (ADR-0020). Rows not in `processed` at the time, including
+the few processed once and later reset or failed, keep what discovery
+recorded until their next successful processing sets the start day.
 
 Downgrade is a no-op: the header-derived values are not recoverable, and
 nothing in the previous revision depends on them.

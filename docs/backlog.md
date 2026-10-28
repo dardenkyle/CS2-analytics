@@ -920,9 +920,11 @@ item track record.
       (`data-zonedgrouping-entry-unix`) and falls back to the header only
       for an entry without one, proven by a test that parses the same
       page under three host zones; the one-day source-filter slack stays
-      because the source filters in its own zone. Migration
-      `20261027_0008` reconciles processed rows to the UTC day of
-      `matches.date` and leaves pending rows alone (ADR-0020)
+      because the source filters in its own zone. The column settles on
+      the match's UTC start day: the match stage writes it from the match
+      page on processing, discovery never overwrites a recorded date, and
+      migration `20261027_0008` brought already-processed rows onto the
+      same rule (ADR-0020)
 - [x] (#209) Local ops page: `cs2a ops` serves a loopback-only page from
       a saved snapshot with an update button that re-queries the
       database; shipped in two PRs - first the snapshot builder, the

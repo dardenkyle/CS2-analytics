@@ -1,3 +1,5 @@
+import datetime as dt
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -56,6 +58,9 @@ class _FakeMatchState:
     def mark_as_failed(self, item_id: int, reason: str) -> None:
         self.failed.append((item_id, reason))
 
+    def record_match_date(self, item_id: int, match_date: dt.date, cur=None) -> None:
+        self.calls.append("record_match_date")
+
     def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)
 
@@ -106,6 +111,10 @@ class _SuccessfulScraper(_PassiveScraper):
         return object()
 
 
+def _parsed_match() -> SimpleNamespace:
+    return SimpleNamespace(date="2026-10-26 23:30:00")
+
+
 class _ParseFailureParser:
     def parse_match(self, _soup: object, _match_url: str) -> tuple[object, list, list]:
         raise MatchParseError("Missing team names on match page.")
@@ -113,7 +122,7 @@ class _ParseFailureParser:
 
 class _SuccessfulParser:
     def parse_match(self, _soup: object, _match_url: str) -> tuple[object, list, list]:
-        return object(), [], []
+        return _parsed_match(), [], []
 
 
 class _FailOnceThenSucceedParser:
@@ -124,7 +133,7 @@ class _FailOnceThenSucceedParser:
         self.calls += 1
         if self.calls == 1:
             raise MatchParseError("Missing team names on match page.")
-        return object(), [], []
+        return _parsed_match(), [], []
 
 
 def _build_match_controller(

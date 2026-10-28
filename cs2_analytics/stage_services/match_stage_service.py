@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import TYPE_CHECKING
 
 from cs2_analytics.stage_services.stage_result import StageItemResult
@@ -50,7 +51,9 @@ class MatchStageService:
         """Process one match ingestion-state row.
 
         Returns the explicit per-item outcome after the service updates
-        ingestion state.
+        ingestion state. A processed row's match_date becomes the UTC day
+        the match started, from the parsed match page, replacing the
+        listing day discovery recorded (#215, ADR-0020).
         """
         soup = scraper.fetch_soup(match_url)
         match, map_links, demo_links = self.parser.parse_match(soup, match_url)
@@ -63,6 +66,9 @@ class MatchStageService:
         with self.db.transaction() as cur:
             self.store_matches([match], cur=cur)
             self._record_followups(match_id, map_links, demo_links, cur=cur)
+            self.match_state.record_match_date(
+                match_id, dt.datetime.fromisoformat(match.date).date(), cur=cur
+            )
             self.match_state.mark_as_processed(match_id, cur=cur)
         return StageItemResult.processed()
 

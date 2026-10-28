@@ -124,8 +124,10 @@ They describe:
 - Current role in code: tracks discovered match lifecycle state
 - Primary key: `match_id`
 - URL field: `match_url`
-- Discovery date: `match_date` (nullable DATE) - the results-section date
-  recorded at discovery time (#121); `min(match_date)` derives the
+- Discovery date: `match_date` (nullable DATE) - the UTC day the match
+  started, written by the match stage when the match is processed and
+  never overwritten by discovery (#215, ADR-0020); until then the UTC day
+  of the listing entry's own instant (#121). `min(match_date)` derives the
   backfill frontier, and rows discovered before the column existed stay
   null until a re-sweep dates them
 - Lifecycle fields: `status`, `first_seen_at`, `last_seen_at`, `last_attempted_at`, `last_processed_at`, `last_failed_at`, `failure_count`, `last_error_message`, `source`, `priority`, `last_updated_at`

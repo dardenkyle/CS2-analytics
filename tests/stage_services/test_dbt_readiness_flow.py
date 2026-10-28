@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from cs2_analytics.models.map import Map
 from cs2_analytics.models.match import Match
@@ -82,7 +82,11 @@ class _FakeMapParser:
 class _FakeMatchState:
     def __init__(self) -> None:
         self.processed: list[int] = []
+        self.dated: list[tuple[int, date]] = []
         self.failed: list[tuple[int, str]] = []
+
+    def record_match_date(self, item_id: int, match_date: date, cur=None) -> None:
+        self.dated.append((item_id, match_date))
 
     def mark_as_processed(self, item_id: int, cur=None) -> None:
         self.processed.append(item_id)

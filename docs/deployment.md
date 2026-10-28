@@ -555,10 +555,11 @@ WHERE state.status = 'processed'
   AND state.match_date IS DISTINCT FROM matches.date::date;
 ```
 
-After applying, the query reports `rows_updated = 0`. New rows carry the
-UTC day of the result's posting instant, which can be the day after the
-match's start day for a match that crosses UTC midnight, so the count can
-grow again by design; see ADR-0020.
+After applying, the query reports `rows_updated = 0` and stays there: the
+match stage writes the same value when it processes a match, and discovery
+never overwrites a recorded date. A row discovered after the change carries
+the UTC day of its listing instant only until it is processed; see
+ADR-0020.
 
 Write-based deterministic smoke tests should not run against the production
 analytics database.

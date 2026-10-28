@@ -118,7 +118,8 @@ class ResultsScraper:
 
         Yields:
             One list of (match_id, match_url, match_date) tuples per
-            results page, where match_date is the parsed section date.
+            results page, where match_date is the UTC day of the entry's
+            own instant on the listing (#215).
         """
         self.start_date = start_date
         self.end_date = end_date

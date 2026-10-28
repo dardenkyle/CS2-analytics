@@ -190,7 +190,7 @@ def test_source_filtered_window_keeps_sections_one_day_either_side() -> None:
     assert result.result_count == 4
 
 
-def test_unfiltered_window_stops_at_the_first_out_of_range_section() -> None:
+def test_unfiltered_window_reaches_the_floor_from_the_last_dated_entry() -> None:
     result = _parse(_BOUNDARY_PAGE, dt.date(2026, 10, 26), dt.date(2026, 10, 26))
 
     assert [url for url, _ in result.matches] == [
@@ -306,3 +306,74 @@ def test_entries_with_instants_are_dated_even_when_the_header_is_not() -> None:
         if call.args and str(call.args[0]).startswith("No date sections parsed")
     ]
     assert summary_calls == []
+
+
+def test_header_is_not_parsed_when_every_entry_has_an_instant() -> None:
+    no_instant_entry = (
+        '<div class="result-con"><a href="/matches/666/no-instant"></a></div>'
+    )
+    page = _ENTRY_INSTANT_PAGE.replace(
+        "Results for October 26th 2026", "Results for ?"
+    ).replace(no_instant_entry, "")
+
+    with mock.patch.object(parser_module.logger, "warning") as warning_mock:
+        result = _parse(page, dt.date(2026, 10, 1), dt.date(2026, 10, 31))
+
+    warning_mock.assert_not_called()
+    assert len(result.matches) == 2
+
+
+def test_header_is_parsed_once_per_section_for_entries_without_instants() -> None:
+    page = """
+    <html><body>
+      <div class="results-sublist">
+        <div class="standard-headline">Results for not-a-date</div>
+        <div class="result-con"><a href="/matches/1/a-vs-b"></a></div>
+        <div class="result-con"><a href="/matches/2/c-vs-d"></a></div>
+      </div>
+    </body></html>
+    """
+
+    with mock.patch.object(parser_module.logger, "warning") as warning_mock:
+        result = _parse(page, dt.date(2026, 1, 1), dt.date(2026, 12, 31))
+
+    assert result.matches == []
+    date_calls = [
+        call
+        for call in warning_mock.call_args_list
+        if call.args and call.args[0] == "Could not parse date: %s"
+    ]
+    assert len(date_calls) == 1
+
+
+def test_header_dated_fallback_cannot_end_the_page_before_later_entries() -> None:
+    """A Central host groups 04:49 UTC and 01:00 UTC on the 27th under the 26th.
+
+    With the window floor on the 27th the header-dated entry between them is
+    out of range, but the instant-dated entry behind it is in range and must
+    still be collected; the floor is reached only by the last dated entry.
+    """
+    page = """
+    <html><body>
+      <div class="results">
+        <div class="results-sublist">
+          <div class="standard-headline">Results for October 26th 2026</div>
+          <div class="result-con" data-zonedgrouping-entry-unix="1793076540000">
+            <a href="/matches/1/late"></a>
+          </div>
+          <div class="result-con"><a href="/matches/2/no-instant"></a></div>
+          <div class="result-con" data-zonedgrouping-entry-unix="1793062800000">
+            <a href="/matches/3/early"></a>
+          </div>
+        </div>
+      </div>
+    </body></html>
+    """
+
+    result = _parse(page, dt.date(2026, 10, 27), dt.date(2026, 10, 27))
+
+    assert result.matches == [
+        ("https://www.hltv.org/matches/1/late", dt.date(2026, 10, 27)),
+        ("https://www.hltv.org/matches/3/early", dt.date(2026, 10, 27)),
+    ]
+    assert result.reached_floor is False

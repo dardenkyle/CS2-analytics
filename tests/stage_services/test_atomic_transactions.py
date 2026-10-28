@@ -7,6 +7,7 @@ rolls back the data write.
 """
 
 import datetime as dt
+from types import SimpleNamespace
 
 import pytest
 
@@ -26,6 +27,9 @@ class _RecordingState:
     def __init__(self) -> None:
         self.calls: list[tuple[str, object]] = []
 
+    def record_match_date(self, item_id, match_date, cur=None) -> None:
+        self.calls.append(("record_match_date", cur))
+
     def mark_as_processed(self, item_id, cur=None) -> None:
         self.calls.append(("mark_as_processed", cur))
 
@@ -42,7 +46,8 @@ class _MatchParser:
         self.demo_links = demo_links
 
     def parse_match(self, _soup, _url):
-        return object(), self.map_links, self.demo_links
+        match = SimpleNamespace(date="2026-10-26 23:30:00")
+        return match, self.map_links, self.demo_links
 
 
 class _MapParser:
@@ -83,7 +88,10 @@ def test_match_stage_writes_share_one_transaction_cursor() -> None:
     assert store_cursors == [shared]
     assert map_state.calls == [("queue", shared)]
     assert demo_state.calls == [("queue", shared)]
-    assert match_state.calls == [("mark_as_processed", shared)]
+    assert match_state.calls == [
+        ("record_match_date", shared),
+        ("mark_as_processed", shared),
+    ]
 
 
 def test_map_stage_writes_share_one_transaction_cursor() -> None:
