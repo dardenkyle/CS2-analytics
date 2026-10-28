@@ -183,7 +183,7 @@ def _returned(summary: RunSummary) -> tuple[str | None, int, int, int, int]:
 def test_results_controller_retries_retryable_scrape_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    info_calls = _capture_logger(monkeypatch, "info")
+    _capture_logger(monkeypatch, "info")
     reset_calls: list[object] = []
     controller = _build_controller(monkeypatch, _RetryThenSucceedScraper)
     monkeypatch.setattr(
@@ -445,7 +445,7 @@ def test_backfill_rejects_a_missing_budget(monkeypatch: pytest.MonkeyPatch) -> N
 def test_backfill_exits_immediately_when_window_already_covered(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    info_calls = _capture_logger(monkeypatch, "info")
+    _capture_logger(monkeypatch, "info")
     scraper = _SlicingScraper()
     controller = _build_controller(monkeypatch, lambda: scraper)
     controller.match_state = _FakeMatchState(min_match_date=dt.date(2025, 9, 30))
@@ -464,7 +464,7 @@ def test_backfill_exits_immediately_when_window_already_covered(
 def test_backfill_resumes_at_frontier_and_walks_to_the_floor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    info_calls = _capture_logger(monkeypatch, "info")
+    _capture_logger(monkeypatch, "info")
     scraper = _SlicingScraper(per_slice=1)
     controller = _build_controller(monkeypatch, lambda: scraper)
     controller.match_state = _FakeMatchState(min_match_date=dt.date(2026, 8, 20))
@@ -512,7 +512,7 @@ def test_backfill_starts_at_window_end_when_nothing_is_dated(
 def test_backfill_stops_when_the_budget_is_spent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    info_calls = _capture_logger(monkeypatch, "info")
+    _capture_logger(monkeypatch, "info")
     scraper = _SlicingScraper(per_slice=5)
     controller = _build_controller(monkeypatch, lambda: scraper)
     controller.match_state = _FakeMatchState(min_match_date=dt.date(2026, 8, 20))

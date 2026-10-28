@@ -1,5 +1,7 @@
 """Tests for the dbt CI fixture seeder's local-database guard and shape."""
 
+from datetime import UTC, datetime
+
 from scripts import seed_dbt_ci_fixture
 from scripts.seed_dbt_ci_fixture import (
     fixture_maps,
@@ -7,7 +9,6 @@ from scripts.seed_dbt_ci_fixture import (
     fixture_players,
     require_local_database,
 )
-from datetime import UTC, datetime
 
 
 def test_require_local_database_accepts_local_hosts(monkeypatch) -> None:

@@ -424,7 +424,7 @@ def test_map_controller_retries_lost_database_connection_then_stores(
     sleeps: list[float] = []
     monkeypatch.setattr(map_module.time, "sleep", sleeps.append)
     warning_calls = _capture_map_log(monkeypatch, "warning")
-    info_calls = _capture_map_log(monkeypatch, "info")
+    _capture_map_log(monkeypatch, "info")
 
     summary = controller.run(batch_size=1)
 
@@ -446,7 +446,7 @@ def test_map_controller_marks_failed_after_connection_stays_lost(
     controller, reset_calls = _build_single_map_controller(monkeypatch, db)
     error_calls = _capture_map_log(monkeypatch, "error")
     exception_calls = _capture_map_log(monkeypatch, "exception")
-    info_calls = _capture_map_log(monkeypatch, "info")
+    _capture_map_log(monkeypatch, "info")
 
     summary = controller.run(batch_size=1)
 
@@ -476,7 +476,7 @@ def test_map_controller_fails_non_retryable_storage_error_on_first_attempt(
     warning_calls = _capture_map_log(monkeypatch, "warning")
     error_calls = _capture_map_log(monkeypatch, "error")
     exception_calls = _capture_map_log(monkeypatch, "exception")
-    info_calls = _capture_map_log(monkeypatch, "info")
+    _capture_map_log(monkeypatch, "info")
 
     summary = controller.run(batch_size=1)
 
@@ -537,7 +537,7 @@ def test_map_controller_halts_batch_when_every_fetch_is_blocked(
     )
     error_calls = _capture_map_log(monkeypatch, "error")
     warning_calls = _capture_map_log(monkeypatch, "warning")
-    info_calls = _capture_map_log(monkeypatch, "info")
+    _capture_map_log(monkeypatch, "info")
 
     summary = controller.run(batch_size=4)
 
@@ -571,7 +571,7 @@ def test_map_controller_does_not_halt_on_isolated_retryable_errors(
     controller = _build_scripted_map_controller(
         monkeypatch, map_ids, lambda _url, nth_fetch: nth_fetch == 1
     )
-    info_calls = _capture_map_log(monkeypatch, "info")
+    _capture_map_log(monkeypatch, "info")
 
     summary = controller.run(batch_size=len(map_ids))
 
@@ -611,7 +611,7 @@ def test_map_controller_halt_leaves_rows_failed_before_the_streak(
     controller = _build_scripted_map_controller(
         monkeypatch, [1, 2, 3, 4, 5], lambda url, _nth_fetch: url != _map_url(2)
     )
-    info_calls = _capture_map_log(monkeypatch, "info")
+    _capture_map_log(monkeypatch, "info")
 
     summary = controller.run(batch_size=5)
 

@@ -399,7 +399,7 @@ def test_match_controller_retries_lost_database_connection_then_stores(
     sleeps: list[float] = []
     monkeypatch.setattr(match_module.time, "sleep", sleeps.append)
     warning_calls = _capture_match_log(monkeypatch, "warning")
-    info_calls = _capture_match_log(monkeypatch, "info")
+    _capture_match_log(monkeypatch, "info")
     reset_calls = _track_match_resets(monkeypatch, controller)
 
     summary = controller.run(batch_size=1)
@@ -424,7 +424,7 @@ def test_match_controller_marks_failed_after_connection_stays_lost(
     )
     error_calls = _capture_match_log(monkeypatch, "error")
     exception_calls = _capture_match_log(monkeypatch, "exception")
-    info_calls = _capture_match_log(monkeypatch, "info")
+    _capture_match_log(monkeypatch, "info")
     reset_calls = _track_match_resets(monkeypatch, controller)
 
     summary = controller.run(batch_size=1)
@@ -457,7 +457,7 @@ def test_match_controller_fails_non_retryable_storage_error_on_first_attempt(
     warning_calls = _capture_match_log(monkeypatch, "warning")
     error_calls = _capture_match_log(monkeypatch, "error")
     exception_calls = _capture_match_log(monkeypatch, "exception")
-    info_calls = _capture_match_log(monkeypatch, "info")
+    _capture_match_log(monkeypatch, "info")
 
     summary = controller.run(batch_size=1)
 
@@ -515,7 +515,7 @@ def test_match_controller_halts_batch_when_every_fetch_is_blocked(
     )
     error_calls = _capture_match_log(monkeypatch, "error")
     warning_calls = _capture_match_log(monkeypatch, "warning")
-    info_calls = _capture_match_log(monkeypatch, "info")
+    _capture_match_log(monkeypatch, "info")
 
     summary = controller.run(batch_size=4)
 
