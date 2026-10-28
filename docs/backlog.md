@@ -936,12 +936,15 @@ item track record.
       the lifetime floor; the cumulative line the issue sketched is a
       tooltip and table value instead, since a cumulative series over
       monthly bars needs a second axis
-- [ ] (#227) Database pool timeouts: the shared connection pool sets no
-      connect timeout, statement timeout, or keepalive settings, so an
-      unreachable or silently dropped database can block a run on kernel
-      TCP defaults; add bounded, named timeouts that surface as
-      `DatabaseConnectionError` (found while tracing outage behavior for
-      #175; hardening for #180)
+- [ ] (#244, absorbs #227) Connection settings and the API pool: no
+      connection sets a connect timeout, keepalives, a statement timeout,
+      or a lock timeout, so an unreachable or silently dropped database
+      can block a run on kernel TCP defaults, and the API shares a
+      `SimpleConnectionPool` across worker threads that raises on
+      exhaustion; define connection settings once, with timeouts that
+      surface as `DatabaseConnectionError`, and give the API a thread-safe
+      blocking pool (found while tracing outage behavior for #175;
+      hardening for #180)
 - [ ] (#228) State writes outside the retry path: `mark_as_processing`
       and the terminal `mark_as_failed` write are not covered by the
       lost-connection retry from #208, so a connection blip at either
@@ -1053,13 +1056,109 @@ item track record.
       wrapper hardcoded (incremental discovery, then match and map
       processing at batch 50); the Dockerfile, CI lint/mypy targets, and
       the #177 coverage omit no longer mention the removed files
-- [ ] (#182) README "Design decisions and tradeoffs" section distilled from the
-      decision log (last v1.0 polish item)
+- [x] (#182) README "Design decisions and tradeoffs" section distilled from the
+      decision log (last v1.0 polish item) - already delivered by #97;
+      closed 2026-10-28
 - [x] (#195) `cs2a process --stage` (repeatable: match, map, demo) so a
       single backlog can be drained without running the other stage;
       selected stages run in the canonical order regardless of argument
       order, demo is rejected until a demo controller exists, and the
       default remains match then map
+- [ ] (#235) Map parser strictness: drop the hardcoded column-index
+      fallback, treat missing optional metrics the way #202 treats ADR
+      instead of defaulting to 0, and make `data_complete` meaningful or
+      remove it
+- [ ] (#236) Match stage edge cases: a two-map series fails best-of
+      detection, tied scores name team2 the winner, and a non-forfeit
+      match with no map links is marked `processed` and never revisited;
+      measure how many rows each affects, then handle them explicitly
+- [ ] (#237) Groupable failure reasons: persist a reason built from the
+      exception's cause chain, without item URLs, so `cs2a failures
+      --group` groups distinct storage, scrape, and parse failures instead
+      of returning one group per row
+- [ ] (#260) Challenge detection: the page-wait markers search the whole
+      page source, so a fully rendered page whose scripts mention
+      "captcha" or "cloudflare" is reported as blocked; make the markers
+      specific to a challenge page
+- [ ] (#258) Thin-day flag in `cs2a ingest coverage`: flag days whose
+      match count is far below their neighbors, with a documented,
+      tunable threshold, so partly discovered days can be sized and an
+      `--overlap-days` value chosen instead of guessed
+- [ ] (#262) Failure notification for the daily runner: an `OnFailure=`
+      templated unit on `cs2a-daily.service` opens an incident issue with
+      the exit status and the last journal lines
+- [ ] (#239) One parameterized batch controller and page scraper: the
+      match and map controllers and scrapers duplicate their run loop,
+      rotation, retry dispatch, and failure handling and have drifted
+      (cooldown and session health check exist on the match side only);
+      replace each pair with one implementation driven by a stage spec,
+      and start the browser inside the `try/finally` that closes it
+- [ ] (#234) Captured source pages as parser fixtures: a small corpus of
+      real pages with golden tests asserting the full parsed model, since
+      every current parser test builds its HTML from the parser's own
+      selectors
+- [ ] (#242) Database-backed stage-service pipeline test: run
+      `MatchStageService` and `MapStageService` `process_item` with real
+      storage and state managers, and make the hand-written fakes match
+      the signatures of the classes they replace
+- [ ] (#221) Test suite audit follow-up: retire the superseded test
+      files, fail CI when the database-backed tests skip silently, and
+      replace substring and tautological assertions with behavior checks
+- [ ] (#243) Test database schema state: the harness always migrates
+      `cs2_test` to head and recovers from an unknown revision, and the
+      compose database binds to 127.0.0.1 (the dedicated test database
+      itself landed with #179)
+- [ ] (#241) CI dbt job depth: build twice so the incremental filter,
+      delete+insert merge, and snapshot change detection run; migrate with
+      dbt views present; and exercise the API routes against the built
+      marts
+- [ ] (#269) Unique index on `fact_player_map_stats` (map_id, player_id)
+      so a typical lookback batch deletes by index lookup; merged in #272
+      and on the deployed table after a one-time full refresh; open until
+      the first small-batch scheduled build is measured
+- [ ] (#270) Intermediate models as tables: `int_player_current_team`
+      first (#273), then `int_match_player_stats` as its own change, kept
+      only if a scheduled build shows it is faster; each change measured
+      by a cold scheduled build
+- [ ] (#240) Roster history from map dates: build
+      `dim_player_roster_history` from per-map `map_date` instead of
+      snapshot run dates, and rank `dim_players` names by play date
+- [ ] (#245) Leaderboard ranking: a one-row-per-player aggregate mart,
+      deterministic ordering, `player_id` in the response, and a
+      minimum-maps floor on the dashboard (the stale copy was corrected in
+      #266)
+- [ ] (#271) Drop `idx_players_map_id`, `idx_players_player_id`, and
+      `idx_maps_match_id`, each covered by a composite index with the same
+      leading column, in a migration with `schema.sql` aligned
+- [ ] (#247) Schema cleanup: drop the eight tables with no reader or
+      writer outside the migrations, the mirror, and the wipe list, and
+      generate `schema.sql` from the migrations or remove it
+- [ ] (#232) One local-host guard: reduce the five copies of the
+      local-host rule to one function in config, and make
+      `scripts/deployment_smoke.py` refuse a non-local host unless opted
+      in and exit non-zero when its cleanup fails
+- [ ] (#251) Secrets and database roles: trim the env files, keep the
+      deployed secrets in one encrypted source, give each machine and
+      service a least-privilege database role, then rotate the existing
+      credentials
+- [ ] (#246) Manual pipeline worker workflow: retire it, or restrict it so
+      it cannot scrape against the deployed database from a hosted runner
+      with job-level database secrets
+- [ ] (#217) Deployed commit on `/health`: report the commit the running
+      service was built from (`RENDER_GIT_COMMIT`, then `GIT_COMMIT`, else
+      `unknown`)
+- [ ] (#218) API deploys from CI: a `deploy-api` job on pushes to main,
+      after the test jobs pass, calls the service's deploy hook, replacing
+      the dashboard-only auto-deploy setting
+- [ ] (#233) Remove the debug ingestion scripts that write outside the
+      stage transaction; `cs2a process --stage` and `cs2a inspect` cover
+      the same need through the real path
+- [ ] (#248) Low-severity cleanup list (status enum, exception names, dead
+      code, logging setup, config defaults, source base URL, stale docs),
+      one small PR per bullet when the area is next touched
+- [x] (#274) Backlog synced with the open issue list: #182 checked off as
+      delivered by #97, #227 folded into #244, and entries added for the
+      open issues filed since 2026-09-23
 
 ---
 
@@ -1133,6 +1232,12 @@ deployment baseline work, and dbt.
       now Phase 5 work; the remaining prerequisite is separate egress IPs -
       a single residential IP gains nothing from concurrency given
       per-item pacing
+
+### Data Exports
+
+- [ ] (#205) Export one or two marts to Parquet in S3 after the scheduled
+      dbt build, so the marts have a durable, queryable copy outside the
+      serving database
 
 ### v1.0 Polish
 
