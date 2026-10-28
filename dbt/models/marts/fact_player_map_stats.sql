@@ -13,9 +13,8 @@
 -- window that absorbs late-arriving updates. Run with --full-refresh after
 -- logic changes to this model or its upstream, or for backfills; see
 -- docs/dbt_models.md (Materialization Strategy). The unique index on the
--- grain makes the incremental delete an index lookup instead of a scan of
--- the whole table; it is declared here so dbt recreates it after a
--- --full-refresh.
+-- grain lets a typical lookback batch delete its rows by index lookup; it
+-- is declared here so dbt recreates it after a --full-refresh.
 
 {{
     config(
