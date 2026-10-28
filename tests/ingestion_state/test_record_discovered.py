@@ -49,9 +49,9 @@ def _state_with(monkeypatch, cursor: _RecordingCursor) -> MatchIngestionState:
 
 def test_record_discovered_upserts_dates_and_counts_new_rows(monkeypatch) -> None:
     # (xmax = 0) is True for a fresh insert, False for a conflict update.
-    # COALESCE argument order is deliberate: EXCLUDED first means the
-    # newest observed date wins on conflict, while a null observation
-    # never erases an existing date.
+    # COALESCE argument order is deliberate: the existing date first means
+    # a recorded date is never overwritten by a re-sweep, while a null one
+    # is filled by the observation (#215).
     cursor = _RecordingCursor(fetchone_results=[(True,), (False,)])
     state = _state_with(monkeypatch, cursor)
     items = [
@@ -66,7 +66,7 @@ def test_record_discovered_upserts_dates_and_counts_new_rows(monkeypatch) -> Non
     query, params = cursor.executed[0]
     assert "INSERT INTO match_ingestion_state" in query
     assert "match_date" in query
-    assert "COALESCE(EXCLUDED.match_date" in query
+    assert "COALESCE(match_ingestion_state.match_date" in query
     assert "RETURNING (xmax = 0)" in query
     assert params[:3] == (111, "https://example.test/matches/111", dt.date(2026, 8, 30))
     assert cursor.executed[1][1][:3] == (222, "https://example.test/matches/222", None)
@@ -87,6 +87,36 @@ def test_record_discovered_wraps_database_errors(monkeypatch) -> None:
         MatchIngestionState().record_discovered(
             [(1, "https://example.test/matches/1", None)]
         )
+
+
+def test_record_match_date_writes_the_start_day(monkeypatch) -> None:
+    cursor = _RecordingCursor(fetchone_results=[])
+    state = _state_with(monkeypatch, cursor)
+
+    state.record_match_date(111, dt.date(2026, 10, 26))
+
+    query, params = cursor.executed[0]
+    assert "UPDATE match_ingestion_state" in query
+    assert "SET match_date = %s" in query
+    assert params == (dt.date(2026, 10, 26), 111)
+
+
+def test_record_match_date_joins_the_callers_cursor(monkeypatch) -> None:
+    own_cursor = _RecordingCursor(fetchone_results=[])
+    state = _state_with(monkeypatch, own_cursor)
+    shared = _RecordingCursor(fetchone_results=[])
+
+    state.record_match_date(111, dt.date(2026, 10, 26), cur=shared)
+
+    assert own_cursor.executed == []
+    assert len(shared.executed) == 1
+
+
+def test_record_match_date_wraps_database_errors(monkeypatch) -> None:
+    monkeypatch.setattr(base_state_module, "get_db", lambda: _FailingStateDb())
+
+    with pytest.raises(MatchIngestionStateError):
+        MatchIngestionState().record_match_date(1, dt.date(2026, 10, 26))
 
 
 def test_fetch_min_match_date_returns_frontier(monkeypatch) -> None:

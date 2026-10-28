@@ -122,6 +122,12 @@ The `cs2a` CLI entry point is intentionally thin and is not the primary architec
   `20261027_0007` used it to correct rows the old parser wrote.
   `matches.date` and `maps.date` are still naive `TIMESTAMP` columns
   holding those UTC values
+- Discovery dates (`match_ingestion_state.match_date`) are the UTC
+  calendar day the match started, written by the match stage from the
+  match page and never overwritten by discovery; until a match is
+  processed the row carries the UTC day of its listing entry's own
+  instant, never the rendered section header, which the source groups in
+  the browser's zone (#215, ADR-0020)
 - Never pass a Python `datetime.now()` as a lifecycle timestamp parameter
 - Convert only at the presentation layer: operator output goes through
   `cs2_analytics.utils.time_format.format_local`, which renders

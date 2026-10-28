@@ -469,6 +469,14 @@ For the first cloud deploy, migrations are a manual release step:
    cs2a db upgrade --allow-remote
    ```
 
+   The target defaults to the head of the checkout the command runs from,
+   so a feature branch that carries an unmerged migration applies it too.
+   When applying from anything but `main`, name the revision explicitly:
+
+   ```sh
+   cs2a db upgrade 20261027_0007 --allow-remote
+   ```
+
    Do not substitute `alembic -c cs2_analytics/alembic.ini upgrade head` or
    `python manage_db.py --init` here. Both reach the same database with the
    same settings but bypass the host guard and the prompt, so they are
@@ -530,6 +538,28 @@ The query is a one-row aggregate. After applying it reports
 match is reprocessed, since the match page carries the same instant.
 `cs2a ingest coverage` reports the same per-period counts as before except
 where `day_changes` moved a match across a period boundary.
+
+Migration `20261027_0008` sets `match_ingestion_state.match_date` to the
+UTC day of `matches.date` for every processed row whose value differs
+(#215): discovery used to read the listing's date headers, which the
+source renders in the browser's zone, so rows discovered from Central and
+from UTC containers disagree with the match's own day. Apply it after
+`20261027_0007`, which it reads. Record `cs2a ingest coverage` before and
+after on the issue, and preview the count first:
+
+```sql
+SELECT COUNT(*) AS rows_updated
+FROM match_ingestion_state AS state
+JOIN matches USING (match_id)
+WHERE state.status = 'processed'
+  AND state.match_date IS DISTINCT FROM matches.date::date;
+```
+
+After applying, the query reports `rows_updated = 0` and stays there: the
+match stage writes the same value when it processes a match, and discovery
+never overwrites a recorded date. A row discovered after the change carries
+the UTC day of its listing instant only until it is processed; see
+ADR-0020.
 
 Write-based deterministic smoke tests should not run against the production
 analytics database.

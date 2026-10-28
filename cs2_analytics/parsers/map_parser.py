@@ -9,6 +9,7 @@ from cs2_analytics.exceptions import MapParseError
 from cs2_analytics.models.map import Map
 from cs2_analytics.models.player import Player
 from cs2_analytics.utils.log_manager import get_logger
+from cs2_analytics.utils.unix_time import utc_from_unix_ms
 
 logger = get_logger(__name__)
 
@@ -476,11 +477,10 @@ class MapParser:
         date_tag = soup.find("div", class_="date")
         if date_tag and date_tag.has_attr("data-unix"):
             try:
-                return dt.datetime.fromtimestamp(
-                    int(date_tag["data-unix"]) / 1000,
-                    tz=dt.UTC,
-                ).strftime("%Y-%m-%d %H:%M:%S")
-            except (TypeError, ValueError, OSError, OverflowError) as e:
+                return utc_from_unix_ms(date_tag["data-unix"]).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+            except ValueError as e:
                 raise MapParseError(
                     "Failed to extract map date from map stats page."
                 ) from e

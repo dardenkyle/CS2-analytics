@@ -7,6 +7,7 @@ from typing import TypedDict
 from cs2_analytics.exceptions import MatchParseError
 from cs2_analytics.models.match import Match
 from cs2_analytics.utils.log_manager import get_logger
+from cs2_analytics.utils.unix_time import utc_from_unix_ms
 
 logger = get_logger(__name__)
 
@@ -261,11 +262,10 @@ class MatchParser:
             raise MatchParseError("Failed to extract match date from match page.")
 
         try:
-            return dt.datetime.fromtimestamp(
-                int(match_date_tag["data-unix"]) / 1000,
-                tz=dt.UTC,
-            ).strftime("%Y-%m-%d %H:%M:%S")
-        except (TypeError, ValueError, OSError, OverflowError) as e:
+            return utc_from_unix_ms(match_date_tag["data-unix"]).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+        except ValueError as e:
             raise MatchParseError(
                 "Failed to extract match date from match page."
             ) from e

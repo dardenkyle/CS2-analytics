@@ -655,3 +655,51 @@ Consequences:
   #230 lands, which the day-walk makes more important, not less.
 - With nothing recorded yet, incremental starts at today; history is
   backfill's job.
+
+## ADR-0020: Discovery Dates Settle On The Match's UTC Start Day
+
+Status:
+Accepted
+
+Date:
+Phase 5
+
+Context:
+`match_ingestion_state.match_date` drives the backfill frontier, the
+incremental cursor, and the coverage report. It was read from the results
+listing's date headers ("Results for October 26th 2026"). The source
+renders those headers client-side, grouping each result entry by its own
+instant in the browser's zone. Discovery has run from the desktop in
+America/Chicago and from containers in UTC, so the same match was
+recorded on different days by different hosts: 174 of 12,946 dated rows
+disagreed with the match's own date by one or two days in both
+directions (#215). Each entry on the listing also carries that instant
+as a millisecond attribute, the value the headers are built from.
+
+Decision:
+`match_date` means the UTC calendar day the match started, the day of
+`matches.date`. The match stage writes it from the parsed match page
+whenever a match is processed, and discovery's upsert keeps an existing
+date and fills only a null, so a re-sweep cannot replace it. Until a
+match is processed the row carries a placeholder: the results parser
+dates each entry by the UTC calendar day of its own instant and parses
+the section header only for an entry without one. No browser timezone
+override is involved, so the scraper stays fetch-only and the derivation
+is a pure function of the page. The entry's instant is when the result
+was finalised, one match length after kickoff (1h48m to 2h49m across
+four best-of-threes checked on 2026-10-28), so the placeholder can sit a
+day after the start day for a match crossing UTC midnight; the walks
+tolerate that through the incremental overlap day and the source-filter
+slack (ADR-0019). Rows processed before the change were reconciled once
+to the same rule by migration `20261027_0008`.
+
+Consequences:
+- Once a match is processed, `match_date` has one meaning: its UTC start
+  day, equal to `matches.date::date`.
+- The same results page yields the same placeholder dates on every host.
+- A recorded date never changes on discovery, so the frontier and cursor
+  cannot drift when a day is re-swept.
+- The source's date filter still runs in the source's zone, so the
+  one-day slack on filtered windows stays.
+- Pending rows discovered before the change keep their header-derived
+  day until processed, when the start day replaces it.

@@ -343,8 +343,22 @@ def test_record_discovered_counts_new_rows_and_keeps_dates(clean_state) -> None:
 
     later = dt.date(2026, 3, 5)
     state.record_discovered([(1, _url(1), later), (2, _url(2), dt.date(2026, 2, 1))])
-    assert _row(clean_state, state, 1)["match_date"] == later
+    assert _row(clean_state, state, 1)["match_date"] == first_date
+    assert _row(clean_state, state, 2)["match_date"] == dt.date(2026, 2, 1)
     assert state.fetch_min_match_date() == dt.date(2026, 2, 1)
+
+
+def test_record_match_date_replaces_the_listing_day_for_good(clean_state) -> None:
+    state = MatchIngestionState()
+    listing_day = dt.date(2026, 10, 27)
+    start_day = dt.date(2026, 10, 26)
+    state.record_discovered([(1, _url(1), listing_day)])
+
+    state.record_match_date(1, start_day)
+    assert _row(clean_state, state, 1)["match_date"] == start_day
+
+    state.record_discovered([(1, _url(1), listing_day)])
+    assert _row(clean_state, state, 1)["match_date"] == start_day
 
 
 def test_fetch_min_match_date_is_none_without_dated_rows(clean_state) -> None:
