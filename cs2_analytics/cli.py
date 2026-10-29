@@ -790,13 +790,24 @@ def db_current() -> None:
 
 @app.command()
 def status() -> None:
-    """Print ingestion-state row counts grouped by lifecycle status."""
+    """Print ingestion-state lifecycle counts, then domain and analytics row counts.
+
+    Read-only. Domain and analytics counts are exact scans, so the command
+    takes a few seconds against a full database (#278).
+    """
+    from cs2_analytics.storage.database_summary import (
+        fetch_analytics_summary,
+        fetch_domain_summary,
+    )
     from cs2_analytics.storage.ingestion_state_summary import (
         fetch_ingestion_state_counts,
     )
 
+    _echo_target_database()
     try:
         counts = fetch_ingestion_state_counts()
+        domain = fetch_domain_summary()
+        analytics = fetch_analytics_summary()
     except DatabaseConnectionError as e:
         typer.echo(f"Database unavailable: {e}", err=True)
         raise typer.Exit(code=1) from e
@@ -807,6 +818,30 @@ def status() -> None:
             typer.echo("  (no rows)")
         for state_name, row_count in sorted(statuses.items()):
             typer.echo(f"  {state_name:<12} {row_count}")
+
+    typer.echo("domain tables:")
+    for table, row_count in domain["row_counts"].items():
+        newest = format_local(domain["newest_updated_at"].get(table))
+        typer.echo(f"  {table:<12} {row_count:>10}  last updated {newest}")
+    typer.echo(f"  newest match date: {format_local(domain['newest_match_date'])}")
+
+    typer.echo("analytics:")
+    if not analytics["built"]:
+        typer.echo("  (not built: no analytics schema; run the dbt build)")
+        return
+    if not analytics["relations"]:
+        typer.echo("  (no relations)")
+    for relation in analytics["relations"]:
+        relation_count = relation["row_count"]
+        count_text = "" if relation_count is None else f"{relation_count:>10}"
+        typer.echo(
+            f"  {relation['name']:<34} {relation['kind']:<17} {count_text}".rstrip()
+        )
+    if analytics["fact_newest_source_updated_at"] is not None:
+        typer.echo(
+            "  newest fact source update: "
+            f"{format_local(analytics['fact_newest_source_updated_at'])}"
+        )
 
 
 # The ops page reads whatever database the environment points at, which is
