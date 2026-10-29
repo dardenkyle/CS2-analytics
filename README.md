@@ -391,8 +391,8 @@ lifecycle status, then exact row counts for `matches`, `maps`, and
 and the newest `source_updated_at` in `fact_player_map_stats` as mart
 freshness. A database with no `analytics` schema yet reports it as not
 built. The counts are full scans (one per table, count and newest
-timestamp together), so the command takes about ten seconds against the
-deployed database. Each table is counted in its own short transaction with
+timestamp together), so the command takes 10 to 20 seconds against the
+deployed database, mostly the `fact_player_map_stats` scan. Each table is counted in its own short transaction with
 a two-second lock timeout, so running it during the nightly dbt build
 reports a table being swapped as busy instead of holding up the build, and
 dbt's in-progress `__dbt_tmp` / `__dbt_backup` tables are labeled rather

@@ -838,7 +838,7 @@ def status() -> None:
     Read-only. Each section prints as soon as it is read, so a failure in a
     later section does not hide an earlier one; a failed section prints its
     reason and the command exits 1. Domain and analytics counts are exact
-    scans, about ten seconds against the deployed database (#278).
+    scans, 10 to 20 seconds against the deployed database (#278).
     """
     from cs2_analytics.storage.database_summary import (
         fetch_analytics_summary,
