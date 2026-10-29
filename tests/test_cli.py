@@ -915,6 +915,52 @@ def test_retry_exits_nonzero_when_fetch_fails(monkeypatch) -> None:
     assert result.exit_code == 1
 
 
+def _patch_status_sections(monkeypatch, *, analytics=None) -> None:
+    """Stub the domain and analytics summaries so status tests open no database."""
+    import cs2_analytics.storage.database_summary as database_summary_module
+
+    monkeypatch.setattr(
+        database_summary_module,
+        "fetch_domain_summary",
+        lambda: {
+            "row_counts": {"matches": 31611, "maps": 65637, "players": 657129},
+            "newest_match_date": dt.datetime(2026, 10, 27, 18, 0),
+            "newest_updated_at": {
+                "matches": dt.datetime(2026, 10, 28, 8, 11, 42, tzinfo=dt.UTC),
+                "maps": None,
+                "players": dt.datetime(2026, 10, 28, 8, 11, 42, tzinfo=dt.UTC),
+            },
+        },
+    )
+    monkeypatch.setattr(
+        database_summary_module,
+        "fetch_analytics_summary",
+        lambda: analytics
+        or {
+            "built": True,
+            "relations": [
+                {
+                    "name": "fact_player_map_stats",
+                    "kind": "table",
+                    "row_count": 657129,
+                    "note": None,
+                },
+                {
+                    "name": "fact_matches__dbt_tmp",
+                    "kind": "table",
+                    "row_count": None,
+                    "note": "dbt build in progress",
+                },
+                {"name": "stg_players", "kind": "view", "row_count": None, "note": None},
+            ],
+            "fact_status": "ok",
+            "fact_newest_source_updated_at": dt.datetime(
+                2026, 10, 28, 8, 11, 42, tzinfo=dt.UTC
+            ),
+        },
+    )
+
+
 def test_status_prints_counts_per_table(monkeypatch) -> None:
     import cs2_analytics.storage.ingestion_state_summary as summary_module
 
@@ -927,6 +973,7 @@ def test_status_prints_counts_per_table(monkeypatch) -> None:
             "demo_ingestion_state": {"failed": 2},
         },
     )
+    _patch_status_sections(monkeypatch)
 
     result = runner.invoke(app, ["status"])
 
@@ -936,6 +983,116 @@ def test_status_prints_counts_per_table(monkeypatch) -> None:
     assert "3" in result.stdout
     assert "(no rows)" in result.stdout
     assert "failed" in result.stdout
+
+
+def test_status_prints_target_then_ingestion_domain_and_analytics_sections(
+    monkeypatch,
+) -> None:
+    import cs2_analytics.storage.ingestion_state_summary as summary_module
+
+    monkeypatch.setattr(
+        summary_module,
+        "fetch_ingestion_state_counts",
+        lambda: {"match_ingestion_state": {"processed": 3}},
+    )
+    _patch_status_sections(monkeypatch)
+
+    result = runner.invoke(app, ["status"])
+    lines = result.stdout.splitlines()
+
+    assert result.exit_code == 0
+    assert lines[0].startswith("Target database:")
+    assert lines.index("match_ingestion_state:") < lines.index("domain tables:")
+    assert lines.index("domain tables:") < lines.index("analytics:")
+    assert "  players          657129  last updated 2026-10-28 03:11:42 AM CDT" in lines
+    assert "  maps              65637  last updated -" in lines
+    assert "  newest match date: 2026-10-27 01:00:00 PM CDT" in lines
+    assert any(
+        line.split() == ["fact_player_map_stats", "table", "657129"] for line in lines
+    )
+    assert any(line.split() == ["stg_players", "view"] for line in lines)
+    assert any(
+        line.split()[:2] == ["fact_matches__dbt_tmp", "table"]
+        and line.endswith("dbt build in progress")
+        for line in lines
+    )
+    assert "  newest fact source update: 2026-10-28 03:11:42 AM CDT" in lines
+
+
+def test_status_reports_an_unbuilt_analytics_schema(monkeypatch) -> None:
+    import cs2_analytics.storage.ingestion_state_summary as summary_module
+
+    monkeypatch.setattr(summary_module, "fetch_ingestion_state_counts", lambda: {})
+    _patch_status_sections(
+        monkeypatch,
+        analytics={
+            "built": False,
+            "relations": [],
+            "fact_status": "not built",
+            "fact_newest_source_updated_at": None,
+        },
+    )
+
+    result = runner.invoke(app, ["status"])
+
+    assert result.exit_code == 0
+    assert result.stdout.splitlines()[-1] == (
+        "  (not built: no analytics schema; run the dbt build)"
+    )
+
+
+def test_status_names_why_fact_freshness_is_unavailable(monkeypatch) -> None:
+    import cs2_analytics.storage.ingestion_state_summary as summary_module
+
+    monkeypatch.setattr(summary_module, "fetch_ingestion_state_counts", lambda: {})
+    _patch_status_sections(
+        monkeypatch,
+        analytics={
+            "built": True,
+            "relations": [],
+            "fact_status": "missing column",
+            "fact_newest_source_updated_at": None,
+        },
+    )
+
+    result = runner.invoke(app, ["status"])
+
+    assert result.exit_code == 0
+    assert result.stdout.splitlines()[-1] == (
+        "  newest fact source update: unavailable (missing column)"
+    )
+
+
+def test_status_keeps_earlier_sections_when_a_later_one_fails(monkeypatch) -> None:
+    import psycopg2
+
+    import cs2_analytics.storage.database_summary as database_summary_module
+    import cs2_analytics.storage.ingestion_state_summary as summary_module
+    from cs2_analytics.exceptions import DatabaseOperationError
+
+    def _fail():
+        raise DatabaseOperationError("Failed during database operation.") from (
+            psycopg2.errors.InsufficientPrivilege("permission denied for schema analytics")
+        )
+
+    monkeypatch.setattr(
+        summary_module,
+        "fetch_ingestion_state_counts",
+        lambda: {"match_ingestion_state": {"processed": 3}},
+    )
+    _patch_status_sections(monkeypatch)
+    monkeypatch.setattr(database_summary_module, "fetch_analytics_summary", _fail)
+
+    result = runner.invoke(app, ["status"])
+    lines = result.stdout.splitlines()
+
+    assert result.exit_code == 1
+    assert "match_ingestion_state:" in lines
+    assert "domain tables:" in lines
+    assert lines[-2:] == [
+        "analytics:",
+        "  (unavailable: permission denied for schema analytics)",
+    ]
 
 
 def test_ops_refuses_non_loopback_host(monkeypatch) -> None:

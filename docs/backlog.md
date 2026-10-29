@@ -1090,6 +1090,12 @@ item track record.
 - [ ] (#262) Failure notification for the daily runner: an `OnFailure=`
       templated unit on `cs2a-daily.service` opens an incident issue with
       the exit status and the last journal lines
+- [x] (#278) `cs2a status` beyond the state tables: it now prints the
+      target database, then exact row counts and newest updates for
+      `matches`, `maps`, and `players`, then every relation in the dbt
+      `analytics` schema (tables counted, views listed) with the fact's
+      newest `source_updated_at`; a database without the schema reports it
+      as not built
 - [ ] (#239) One parameterized batch controller and page scraper: the
       match and map controllers and scrapers duplicate their run loop,
       rotation, retry dispatch, and failure handling and have drifted

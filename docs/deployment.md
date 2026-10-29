@@ -123,8 +123,8 @@ server sit on the same residential connection; both prefer IPv6 and
 present different addresses in the same /64, so treat the egress as
 shared and do not overlap a desktop run with a server run.
 
-`cs2a status` does not print the `Target database:` line (only `cs2a db`
-does). Confirm a new host is pointed at production by comparing its
+`cs2a status` prints the `Target database:` line first (#278). Confirm a
+new host is pointed at production by checking that line and comparing its
 `cs2a --env prod status` counts with a known-good host's before the first
 write.
 

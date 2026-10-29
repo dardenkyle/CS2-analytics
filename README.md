@@ -372,7 +372,7 @@ cs2a process --batch 50         # process pending matches, then maps
 cs2a process --drain            # loop batches per stage until nothing is pending
 cs2a process --stage map --batch 200   # drain only the map backlog
 cs2a process --stage map --stage match # explicit subset; runs match, then map
-cs2a status                     # ingestion-state row counts by status
+cs2a status                     # ingestion-state counts, then domain and analytics row counts
 cs2a failures --stage match     # recent failed rows with error details
 cs2a failures --stage map --group   # aggregate failures by error message
 cs2a inspect match 2394877      # one match: state row + relational presence
@@ -383,6 +383,21 @@ cs2a retry --stage match        # requeue failed matches for reprocessing
 cs2a retry --stage map --dry-run
 cs2a retry --stage map --status processing --dry-run   # inspect rows stuck by an interrupted run
 ```
+
+`cs2a status` prints the target database, then ingestion-state counts by
+lifecycle status, then exact row counts for `matches`, `maps`, and
+`players` with their newest update, then every relation in the dbt
+`analytics` schema: tables with exact row counts, views listed without one,
+and the newest `source_updated_at` in `fact_player_map_stats` as mart
+freshness. A database with no `analytics` schema yet reports it as not
+built. The counts are full scans (one per table, count and newest
+timestamp together), so the command takes 10 to 20 seconds against the
+deployed database, mostly the `fact_player_map_stats` scan. Each table is counted in its own short transaction with
+a two-second lock timeout, so running it during the nightly dbt build
+reports a table being swapped as busy instead of holding up the build, and
+dbt's in-progress `__dbt_tmp` / `__dbt_backup` tables are labeled rather
+than counted. Each section prints as soon as it is read; a section that
+fails prints its reason and the command exits 1.
 
 `cs2a process` runs the match stage and then the map stage with one
 `--batch` size. `--stage` (repeatable: `match`, `map`, `demo`) restricts a
