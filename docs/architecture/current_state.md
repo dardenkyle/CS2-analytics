@@ -155,7 +155,8 @@ applies to the application/ingestion surface; the scheduled dbt build's
 Normal database setup applies Alembic migrations through
 `alembic -c cs2_analytics/alembic.ini upgrade head` or
 `python manage_db.py --init`. Destructive table wipes remain explicit and
-interactive.
+interactive, and are limited to local database hosts with no override
+(#212).
 
 The local container runtime now packages the existing Python entrypoints without
 changing ingestion responsibilities:

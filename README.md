@@ -261,7 +261,9 @@ The wipe command prints the target database, refuses a host outside the
 local set (`localhost`, `127.0.0.1`, `db`) with no override, and asks for `y`
 confirmation, naming the database and host, before dropping tables. Dropping
 deployed tables is a manual psql session or a provider restore, never this
-command. Alembic owns
+command. Like the `cs2a db` guard, the check trusts the configured host name,
+so a `localhost` tunnel or port-forward to a deployed database is not
+detected. Alembic owns
 the application/source schema; the dbt models are downstream and do not
 manage ingestion tables.
 
