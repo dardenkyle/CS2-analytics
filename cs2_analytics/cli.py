@@ -8,13 +8,18 @@ do not pay the scraper-stack import cost.
 """
 
 import datetime as dt
+from collections.abc import Callable
 from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated
 
 import typer
 
-from cs2_analytics.exceptions import DatabaseConnectionError, IngestionStateError
+from cs2_analytics.exceptions import (
+    DatabaseConnectionError,
+    DatabaseOperationError,
+    IngestionStateError,
+)
 from cs2_analytics.runtime_env import ENV_FILES, ENV_SELECTOR_VAR, RuntimeEnv
 from cs2_analytics.utils.time_format import format_local
 
@@ -788,12 +793,52 @@ def db_current() -> None:
     command.current(_alembic_config())
 
 
+def _echo_ingestion_section(counts: dict[str, dict[str, int]]) -> None:
+    for table, statuses in counts.items():
+        typer.echo(f"{table}:")
+        if not statuses:
+            typer.echo("  (no rows)")
+        for state_name, row_count in sorted(statuses.items()):
+            typer.echo(f"  {state_name:<12} {row_count}")
+
+
+def _echo_domain_section(domain) -> None:
+    for table, row_count in domain["row_counts"].items():
+        newest = format_local(domain["newest_updated_at"].get(table))
+        typer.echo(f"  {table:<12} {row_count:>10}  last updated {newest}")
+    typer.echo(f"  newest match date: {format_local(domain['newest_match_date'])}")
+
+
+def _echo_analytics_section(analytics) -> None:
+    if not analytics["built"]:
+        typer.echo("  (not built: no analytics schema; run the dbt build)")
+        return
+    if not analytics["relations"]:
+        typer.echo("  (no relations)")
+    for relation in analytics["relations"]:
+        relation_count = relation["row_count"]
+        detail = (
+            f"{relation_count:>10}"
+            if relation_count is not None
+            else relation["note"] or ""
+        )
+        typer.echo(f"  {relation['name']:<34} {relation['kind']:<17} {detail}".rstrip())
+    fact_status = analytics["fact_status"]
+    if fact_status == "ok":
+        newest = format_local(analytics["fact_newest_source_updated_at"])
+        typer.echo(f"  newest fact source update: {newest}")
+    else:
+        typer.echo(f"  newest fact source update: unavailable ({fact_status})")
+
+
 @app.command()
 def status() -> None:
     """Print ingestion-state lifecycle counts, then domain and analytics row counts.
 
-    Read-only. Domain and analytics counts are exact scans, so the command
-    takes a few seconds against a full database (#278).
+    Read-only. Each section prints as soon as it is read, so a failure in a
+    later section does not hide an earlier one; a failed section prints its
+    reason and the command exits 1. Domain and analytics counts are exact
+    scans, about ten seconds against the deployed database (#278).
     """
     from cs2_analytics.storage.database_summary import (
         fetch_analytics_summary,
@@ -803,45 +848,26 @@ def status() -> None:
         fetch_ingestion_state_counts,
     )
 
+    sections: tuple[tuple[str | None, Callable[[], None]], ...] = (
+        (None, lambda: _echo_ingestion_section(fetch_ingestion_state_counts())),
+        ("domain tables:", lambda: _echo_domain_section(fetch_domain_summary())),
+        ("analytics:", lambda: _echo_analytics_section(fetch_analytics_summary())),
+    )
     _echo_target_database()
-    try:
-        counts = fetch_ingestion_state_counts()
-        domain = fetch_domain_summary()
-        analytics = fetch_analytics_summary()
-    except DatabaseConnectionError as e:
-        typer.echo(f"Database unavailable: {e}", err=True)
-        raise typer.Exit(code=1) from e
-
-    for table, statuses in counts.items():
-        typer.echo(f"{table}:")
-        if not statuses:
-            typer.echo("  (no rows)")
-        for state_name, row_count in sorted(statuses.items()):
-            typer.echo(f"  {state_name:<12} {row_count}")
-
-    typer.echo("domain tables:")
-    for table, row_count in domain["row_counts"].items():
-        newest = format_local(domain["newest_updated_at"].get(table))
-        typer.echo(f"  {table:<12} {row_count:>10}  last updated {newest}")
-    typer.echo(f"  newest match date: {format_local(domain['newest_match_date'])}")
-
-    typer.echo("analytics:")
-    if not analytics["built"]:
-        typer.echo("  (not built: no analytics schema; run the dbt build)")
-        return
-    if not analytics["relations"]:
-        typer.echo("  (no relations)")
-    for relation in analytics["relations"]:
-        relation_count = relation["row_count"]
-        count_text = "" if relation_count is None else f"{relation_count:>10}"
-        typer.echo(
-            f"  {relation['name']:<34} {relation['kind']:<17} {count_text}".rstrip()
-        )
-    if analytics["fact_newest_source_updated_at"] is not None:
-        typer.echo(
-            "  newest fact source update: "
-            f"{format_local(analytics['fact_newest_source_updated_at'])}"
-        )
+    failed = False
+    for heading, render_section in sections:
+        if heading is not None:
+            typer.echo(heading)
+        try:
+            render_section()
+        except DatabaseConnectionError as e:
+            typer.echo(f"Database unavailable: {e}", err=True)
+            raise typer.Exit(code=1) from e
+        except DatabaseOperationError as e:
+            typer.echo(f"  (unavailable: {e.__cause__ or e})".rstrip())
+            failed = True
+    if failed:
+        raise typer.Exit(code=1)
 
 
 # The ops page reads whatever database the environment points at, which is
