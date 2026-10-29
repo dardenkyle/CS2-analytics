@@ -1079,10 +1079,11 @@ item track record.
       exception's cause chain, without item URLs, so `cs2a failures
       --group` groups distinct storage, scrape, and parse failures instead
       of returning one group per row
-- [ ] (#260) Challenge detection: the page-wait markers search the whole
+- [x] (#260) Challenge detection: the page-wait markers searched the whole
       page source, so a fully rendered page whose scripts mention
-      "captcha" or "cloudflare" is reported as blocked; make the markers
-      specific to a challenge page
+      "captcha" or "cloudflare" was reported as blocked; they now match the
+      page's visible text (title and body without script, style, noscript,
+      or template content)
 - [ ] (#258) Thin-day flag in `cs2a ingest coverage`: flag days whose
       match count is far below their neighbors, with a documented,
       tunable threshold, so partly discovered days can be sized and an

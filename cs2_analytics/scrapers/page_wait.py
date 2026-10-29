@@ -6,10 +6,17 @@ selector never appears within the wait, the page is either the source's
 bot-challenge interstitial or an incomplete render; both are transient and
 must surface as the retryable session error so the controller can rotate
 the session and try again instead of recording a permanent parse failure.
+
+Challenge markers are matched against the page's visible text (its title
+and body with script, style, noscript, and template content removed), not
+the raw source: a fully rendered page can mention "captcha" or
+"cloudflare" in its scripts and markup, and must then be reported as
+missing content rather than as a challenge (#260).
 """
 
 import time
 
+from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -30,6 +37,7 @@ CHALLENGE_MARKERS = (
     "just a moment",
     "verify you are human",
 )
+NON_VISIBLE_TAGS = ("script", "style", "noscript", "template")
 
 
 def fetch_rendered_page(
@@ -107,18 +115,35 @@ def wait_for_required_content(
         ) from e
 
 
+def visible_text(page_source: str) -> str:
+    """Return the page's title and body text, lowercased with whitespace collapsed.
+
+    Script, style, noscript, and template content is dropped, so marker
+    words that only appear in code, styles, or a no-JavaScript fallback a
+    running browser never shows do not count. Attribute values are never
+    part of the text.
+    """
+    soup = BeautifulSoup(page_source, "html.parser")
+    for tag in soup(NON_VISIBLE_TAGS):
+        tag.decompose()
+    return " ".join(soup.get_text(" ").split()).lower()
+
+
 def log_missing_content(
     driver,
     requested_url: str,
     required_selector: str,
     page_label: str,
 ) -> dict[str, bool]:
-    """Logs page diagnostics for a missing selector and returns marker flags."""
+    """Logs page diagnostics for a missing selector and returns marker flags.
+
+    The flags come from the page's visible text, so they mark a challenge
+    interstitial, not a rendered page whose scripts mention the same words.
+    """
     page_source = driver.page_source or ""
-    page_source_lower = page_source.lower()
+    page_text = visible_text(page_source)
     marker_flags = {
-        marker.replace(" ", "_"): marker in page_source_lower
-        for marker in CHALLENGE_MARKERS
+        marker.replace(" ", "_"): marker in page_text for marker in CHALLENGE_MARKERS
     }
     snippet = " ".join(page_source.split())[:PAGE_SNIPPET_LIMIT]
 
