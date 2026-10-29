@@ -1150,9 +1150,14 @@ item track record.
 - [ ] (#218) API deploys from CI: a `deploy-api` job on pushes to main,
       after the test jobs pass, calls the service's deploy hook, replacing
       the dashboard-only auto-deploy setting
-- [ ] (#233) Remove the debug ingestion scripts that write outside the
-      stage transaction; `cs2a process --stage` and `cs2a inspect` cover
-      the same need through the real path
+- [x] (#233) Remove the debug ingestion scripts that write outside the
+      stage transaction: the match and map ingestion scripts and the map
+      scraper script (which read the state table) are deleted, and
+      `scripts/debug_match_parser.py` stays as the one read-only helper,
+      now taking the URL as an argument and fetching through
+      `MatchScraper`. No database-free helper remains for map stats pages;
+      captured-page fixtures (#234) are the planned parser check. Removing
+      `MapParser.parse_map` moved to #221
 - [ ] (#248) Low-severity cleanup list (status enum, exception names, dead
       code, logging setup, config defaults, source base URL, stale docs),
       one small PR per bullet when the area is next touched

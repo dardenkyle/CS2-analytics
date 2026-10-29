@@ -2,10 +2,14 @@
 
 Usage: python scripts/debug_match_parser.py MATCH_URL
 
-Opens no database connection and writes nothing. Fetches the page through
-MatchScraper, the same path the match stage uses, then logs the parsed
-match and the map and demo links it found. Useful when the source's markup
-changes and parser output needs a quick check against a real page.
+Opens no database connection and writes nothing to the database; the
+shared logger still writes ./logs/app.log. Project configuration loads at
+import, so the selected env file must name a local database host even
+though none is contacted (the default dev environment does). Fetches the
+page through MatchScraper, the same path the match stage uses, then logs
+the parsed match and the map and demo links it found. Useful when the
+source's markup changes and parser output needs a quick check against a
+real page.
 """
 
 import argparse
