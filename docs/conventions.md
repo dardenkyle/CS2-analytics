@@ -19,7 +19,10 @@ Current implementation note:
   is present even when a date range has no results); a page that never
   renders it, including the source's challenge interstitial, raises
   `SessionScrapeError` (retryable) with a diagnostic warning that carries the
-  challenge-marker flags, so `cs2a failures` groups such rows under "appears
+  challenge-marker flags, matched against the page's visible text (title and
+  body, without script, style, noscript, or template content) so a rendered
+  page whose scripts mention the marker words is not taken for a challenge
+  (#260), so `cs2a failures` groups such rows under "appears
   blocked or challenged" or "missing required content" rather than under a
   parser message; parser errors are reserved for pages that rendered the
   selector (#57, #224, #230)

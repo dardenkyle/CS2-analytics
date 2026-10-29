@@ -19,6 +19,29 @@ CHALLENGE_PAGE = (
     "<html><head><title>Just a moment...</title></head>"
     "<body>Enable JavaScript and cookies to continue. cloudflare</body></html>"
 )
+# A fully rendered page that lacks the required selector but whose scripts
+# and markup mention marker words, as the live results listing did (#260).
+RENDERED_PAGE_MENTIONING_MARKERS = (
+    "<html><head><title>CS2 Match Results</title>"
+    "<script src='https://challenges.cloudflare.com/turnstile/v0/api.js'></script>"
+    "<script>window.captchaSiteKey = 'abc'; var cloudflareBeacon = true;</script>"
+    "<style>.captcha-widget { display: none; }</style>"
+    "</head><body><div class='results' data-provider='cloudflare'>"
+    "<div class='result-con'>Team One 16 - 9 Team Two</div>"
+    "<noscript>Please enable JavaScript to view the comments.</noscript>"
+    "</div></body></html>"
+)
+# Shaped like the source's interstitial: the no-JavaScript notice sits in a
+# noscript block and the human check wraps across lines.
+CHALLENGE_INTERSTITIAL = (
+    "<html><head><title>Just a moment...</title>"
+    "<script>window._cf_chl_opt = {cType: 'managed'};</script></head>"
+    "<body><div class='main-content'><h1>www.example.org</h1>"
+    "<p>Verify you are\n      human by completing the action below.</p>"
+    "<noscript><div>Enable JavaScript and cookies to continue</div></noscript>"
+    "</div><div class='footer'>Performance &amp; security by "
+    "<a href='https://www.cloudflare.com'>Cloudflare</a></div></body></html>"
+)
 RENDERED_PAGE = (
     "<html><body><div class='match-page'>"
     "<div class='teamName'>Team One</div>"
@@ -108,6 +131,35 @@ def test_challenge_page_raises_retryable_session_error(
         "Match page missing required selector=div.match-page"
     )
     assert "marker_flags=" in rendered_warning
+
+
+def test_rendered_page_mentioning_markers_reports_missing_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    driver = FakeDriver(RENDERED_PAGE_MENTIONING_MARKERS, renders_after_polls=None)
+    scraper = _build_scraper(monkeypatch, driver)
+
+    with pytest.raises(
+        SessionScrapeError,
+        match="Match page missing required content after 0.1s",
+    ):
+        scraper.fetch_soup(MATCH_URL)
+
+
+def test_challenge_interstitial_is_reported_with_its_visible_markers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    driver = FakeDriver(CHALLENGE_INTERSTITIAL, renders_after_polls=None)
+    scraper = _build_scraper(monkeypatch, driver)
+
+    with pytest.raises(
+        SessionScrapeError,
+        match=(
+            r"Match page appears blocked or challenged after 0\.1s "
+            r"\(markers: cloudflare, just_a_moment, verify_you_are_human\)"
+        ),
+    ):
+        scraper.fetch_soup(MATCH_URL)
 
 
 def test_unrendered_page_without_markers_is_retryable(
