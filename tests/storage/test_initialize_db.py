@@ -5,10 +5,17 @@ from pathlib import Path, PurePath
 
 import pytest
 
-from cs2_analytics.exceptions import DatabaseOperationError
+from cs2_analytics.exceptions import ConfigurationError, DatabaseOperationError
 from cs2_analytics.storage import initialize_db as initialize_db_module
 
 SCHEMA_PATH = Path(__file__).parents[2] / "cs2_analytics" / "storage" / "schema.sql"
+
+
+def _target_line() -> str:
+    return (
+        f"Target database: {initialize_db_module.DB_NAME} on "
+        f"{initialize_db_module.DB_HOST}:{initialize_db_module.DB_PORT}"
+    )
 
 
 class _RecordingCursor:
@@ -278,6 +285,98 @@ def test_wipe_flag_runs_wipe_after_confirmation(
     initialize_db_module.main(["--wipe"])
 
     assert wipe_calls == [True]
+
+
+def test_wipe_refuses_non_local_host_before_prompting(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    wipe_calls: list[bool] = []
+
+    def fail_prompt(_prompt: str) -> str:
+        raise AssertionError("the wipe prompt must not be reached")
+
+    monkeypatch.setattr(initialize_db_module, "DB_HOST", "db.example.com")
+    monkeypatch.setattr(builtins, "input", fail_prompt)
+    monkeypatch.setattr(
+        initialize_db_module,
+        "wipe_database",
+        lambda: wipe_calls.append(True),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        initialize_db_module.main(["--wipe"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 1
+    assert wipe_calls == []
+    assert captured.out.splitlines() == [_target_line()]
+    assert "Refusing to wipe non-local database host 'db.example.com'" in (
+        captured.err
+    )
+
+
+def test_wipe_database_refuses_non_local_host_before_connecting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_connect(**_kwargs: object) -> None:
+        raise AssertionError("no connection may be opened for a non-local wipe")
+
+    monkeypatch.setattr(initialize_db_module, "DB_HOST", "db.example.com")
+    monkeypatch.setattr(initialize_db_module.psycopg2, "connect", fail_connect)
+
+    with pytest.raises(
+        ConfigurationError, match="Refusing to wipe non-local database host"
+    ):
+        initialize_db_module.wipe_database()
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [[], ["--init"], ["--create-database"], ["--wipe"]],
+    ids=["default", "init", "create-database", "wipe"],
+)
+def test_every_mode_prints_the_target_database_first(
+    argv: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    events: list[tuple[str, list[str]]] = []
+
+    def record_initialize(create_db: bool = False) -> None:
+        events.append(("initialize", capsys.readouterr().out.splitlines()))
+
+    def record_prompt(_prompt: str) -> str:
+        events.append(("prompt", capsys.readouterr().out.splitlines()))
+        return "n"
+
+    monkeypatch.setattr(initialize_db_module, "initialize_database", record_initialize)
+    monkeypatch.setattr(builtins, "input", record_prompt)
+
+    initialize_db_module.main(argv)
+
+    expected_step = "prompt" if argv == ["--wipe"] else "initialize"
+    assert events == [(expected_step, [_target_line()])]
+
+
+def test_wipe_prompt_names_the_host_and_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prompts: list[str] = []
+
+    def record_prompt(prompt: str) -> str:
+        prompts.append(prompt)
+        return "n"
+
+    monkeypatch.setattr(builtins, "input", record_prompt)
+
+    initialize_db_module.main(["--wipe"])
+
+    assert len(prompts) == 1
+    assert f"'{initialize_db_module.DB_NAME}'" in prompts[0]
+    assert (
+        f"on {initialize_db_module.DB_HOST}:{initialize_db_module.DB_PORT}"
+        in prompts[0]
+    )
 
 
 def test_create_database_if_missing_creates_database_when_absent(

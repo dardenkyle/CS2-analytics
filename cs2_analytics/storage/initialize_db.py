@@ -1,14 +1,22 @@
 """Database setup commands for schema creation and explicit wipes."""
 
 import argparse
+import sys
 from contextlib import closing
 from pathlib import Path
 
 import psycopg2
 from psycopg2 import sql
 
-from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
-from cs2_analytics.exceptions import DatabaseOperationError
+from cs2_analytics.config.config import (
+    DB_HOST,
+    DB_NAME,
+    DB_PASS,
+    DB_PORT,
+    DB_USER,
+    LOCAL_DB_HOSTS,
+)
+from cs2_analytics.exceptions import ConfigurationError, DatabaseOperationError
 from cs2_analytics.utils.log_manager import get_logger
 
 logger = get_logger(__name__)
@@ -86,8 +94,25 @@ def run_migrations() -> None:
         raise DatabaseOperationError("Failed to apply database migrations.") from e
 
 
+def require_local_wipe_host() -> None:
+    """Raise unless the configured database host is in the local set.
+
+    A wipe drops every application table, so it is limited to local
+    databases with no override: dropping deployed tables is a manual psql
+    session or a provider restore, never a scripted command (#212). The
+    check trusts the configured host name, like the `cs2a db` guard (#200):
+    a `localhost` tunnel or port-forward to a deployed database passes it.
+    """
+    if DB_HOST not in LOCAL_DB_HOSTS:
+        raise ConfigurationError(
+            f"Refusing to wipe non-local database host {DB_HOST!r}. "
+            "Wiping is limited to local databases and has no override."
+        )
+
+
 def wipe_database() -> None:
-    """Drop application tables from the configured database."""
+    """Drop application tables from the configured local database."""
+    require_local_wipe_host()
     drop_sql = "\n".join(
         f"DROP TABLE IF EXISTS {table_name} CASCADE;" for table_name in TABLES_TO_WIPE
     )
@@ -103,11 +128,25 @@ def wipe_database() -> None:
         raise DatabaseOperationError("Failed to wipe database tables.") from e
 
 
+def print_target_database() -> None:
+    """Print the target database so the operator sees local versus production."""
+    print(f"Target database: {DB_NAME} on {DB_HOST}:{DB_PORT}", flush=True)
+
+
+def refuse_remote_wipe() -> None:
+    """Exit with status 1 before prompting when a wipe targets a non-local host."""
+    try:
+        require_local_wipe_host()
+    except ConfigurationError as e:
+        print(e, file=sys.stderr)
+        raise SystemExit(1) from e
+
+
 def confirm_wipe() -> bool:
     """Ask for interactive confirmation before wiping application tables."""
     answer = input(
-        f"This will drop CS2 Analytics tables in database '{DB_NAME}'. "
-        "Are you sure? [y/n]: "
+        f"This will drop CS2 Analytics tables in database '{DB_NAME}' "
+        f"on {DB_HOST}:{DB_PORT}. Are you sure? [y/n]: "
     )
     return answer.strip().lower() == "y"
 
@@ -148,7 +187,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
+    print_target_database()
     if args.wipe:
+        refuse_remote_wipe()
         if not confirm_wipe():
             logger.info("Database wipe cancelled.")
             return

@@ -893,11 +893,14 @@ item track record.
       `20260923_0005`, backfilled from `matches.demo_links`) so demo rows
       join their parent like map rows do; `cs2a failures` and `inspect` render local time through
       one shared formatter, which the #209 ops page reuses
-- [ ] (#212) Initialize guard: `python -m cs2_analytics.storage.initialize_db`
-      and `manage_db.py` refuse a non-local host; the migration modes gain
-      the same `--allow-remote` override as `cs2a db`, and `--wipe` refuses
-      a non-local host with no override at all (follow-up from #200, which
-      left this second migration entry point unguarded)
+- [x] (#212) Initialize guard: every mode of
+      `python -m cs2_analytics.storage.initialize_db` and `manage_db.py`
+      prints the target database first, and `--wipe` refuses a non-local
+      host with no override before its prompt, which now names the host as
+      well as the database. Since #179, `dev` and `test` already refuse a
+      non-local host at configuration load, so this covers an explicit
+      `prod` selection; guarding the migration modes is #232 (follow-up
+      from #200)
 - [x] (#214) Match date zone: the match parser derived `matches.date` in
       the writing machine's timezone and dropped the time of day, so rows
       written from Central and from UTC containers disagreed by a day.
