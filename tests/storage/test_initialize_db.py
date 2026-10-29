@@ -280,6 +280,85 @@ def test_wipe_flag_runs_wipe_after_confirmation(
     assert wipe_calls == [True]
 
 
+def test_wipe_refuses_non_local_host_before_prompting(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    wipe_calls: list[bool] = []
+
+    def fail_prompt(_prompt: str) -> str:
+        raise AssertionError("the wipe prompt must not be reached")
+
+    monkeypatch.setattr(initialize_db_module, "DB_HOST", "db.example.com")
+    monkeypatch.setattr(builtins, "input", fail_prompt)
+    monkeypatch.setattr(
+        initialize_db_module,
+        "wipe_database",
+        lambda: wipe_calls.append(True),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        initialize_db_module.main(["--wipe"])
+
+    assert exc_info.value.code == 1
+    assert wipe_calls == []
+    assert "Refusing to wipe non-local database host 'db.example.com'" in (
+        capsys.readouterr().err
+    )
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [[], ["--init"], ["--create-database"], ["--wipe"]],
+    ids=["default", "init", "create-database", "wipe"],
+)
+def test_every_mode_prints_the_target_database_first(
+    argv: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    events: list[str] = []
+
+    def record_initialize(create_db: bool = False) -> None:
+        events.append("initialize")
+
+    def record_prompt(_prompt: str) -> str:
+        events.append("prompt")
+        return "n"
+
+    monkeypatch.setattr(initialize_db_module, "initialize_database", record_initialize)
+    monkeypatch.setattr(builtins, "input", record_prompt)
+
+    initialize_db_module.main(argv)
+
+    target_line = (
+        f"Target database: {initialize_db_module.DB_NAME} on "
+        f"{initialize_db_module.DB_HOST}:{initialize_db_module.DB_PORT}"
+    )
+    assert capsys.readouterr().out.splitlines()[0] == target_line
+    assert events == (["prompt"] if argv == ["--wipe"] else ["initialize"])
+
+
+def test_wipe_prompt_names_the_host_and_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prompts: list[str] = []
+
+    def record_prompt(prompt: str) -> str:
+        prompts.append(prompt)
+        return "n"
+
+    monkeypatch.setattr(builtins, "input", record_prompt)
+
+    initialize_db_module.main(["--wipe"])
+
+    assert len(prompts) == 1
+    assert f"'{initialize_db_module.DB_NAME}'" in prompts[0]
+    assert (
+        f"on {initialize_db_module.DB_HOST}:{initialize_db_module.DB_PORT}"
+        in prompts[0]
+    )
+
+
 def test_create_database_if_missing_creates_database_when_absent(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

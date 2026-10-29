@@ -211,8 +211,8 @@ python manage_db.py --init
 ```
 
 Running `python manage_db.py` with no flags also applies migrations. Both
-forms are for a local database: they print no target and ask no
-confirmation, and neither is covered by the remote-host guard below.
+forms print the target database first but ask no confirmation and are not
+covered by the remote-host guard below, so they are for a local database.
 
 Deployed environments are migrated through the CLI, which is the only
 guarded migration path. Each command first prints the target database
@@ -257,7 +257,11 @@ To explicitly wipe application tables:
 python manage_db.py --wipe
 ```
 
-The wipe command asks for `y` confirmation before dropping tables. Alembic owns
+The wipe command prints the target database, refuses a host outside the
+local set (`localhost`, `127.0.0.1`, `db`) with no override, and asks for `y`
+confirmation, naming the database and host, before dropping tables. Dropping
+deployed tables is a manual psql session or a provider restore, never this
+command. Alembic owns
 the application/source schema; the dbt models are downstream and do not
 manage ingestion tables.
 

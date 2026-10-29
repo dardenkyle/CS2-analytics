@@ -1,13 +1,21 @@
 """Database setup commands for schema creation and explicit wipes."""
 
 import argparse
+import sys
 from contextlib import closing
 from pathlib import Path
 
 import psycopg2
 from psycopg2 import sql
 
-from cs2_analytics.config.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
+from cs2_analytics.config.config import (
+    DB_HOST,
+    DB_NAME,
+    DB_PASS,
+    DB_PORT,
+    DB_USER,
+    LOCAL_DB_HOSTS,
+)
 from cs2_analytics.exceptions import DatabaseOperationError
 from cs2_analytics.utils.log_manager import get_logger
 
@@ -103,11 +111,33 @@ def wipe_database() -> None:
         raise DatabaseOperationError("Failed to wipe database tables.") from e
 
 
+def print_target_database() -> None:
+    """Print the target database so the operator sees local versus production."""
+    print(f"Target database: {DB_NAME} on {DB_HOST}:{DB_PORT}", flush=True)
+
+
+def refuse_remote_wipe() -> None:
+    """Exit before prompting when a wipe targets a non-local database host.
+
+    Unlike `cs2a db --allow-remote`, there is no override: dropping deployed
+    tables is never a scripted operation. If it ever has to happen, it is a
+    manual psql session or a provider restore (#212).
+    """
+    if DB_HOST in LOCAL_DB_HOSTS:
+        return
+    print(
+        f"Refusing to wipe non-local database host {DB_HOST!r}. "
+        "Wiping is limited to local databases and has no override.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
 def confirm_wipe() -> bool:
     """Ask for interactive confirmation before wiping application tables."""
     answer = input(
-        f"This will drop CS2 Analytics tables in database '{DB_NAME}'. "
-        "Are you sure? [y/n]: "
+        f"This will drop CS2 Analytics tables in database '{DB_NAME}' "
+        f"on {DB_HOST}:{DB_PORT}. Are you sure? [y/n]: "
     )
     return answer.strip().lower() == "y"
 
@@ -148,7 +178,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
+    print_target_database()
     if args.wipe:
+        refuse_remote_wipe()
         if not confirm_wipe():
             logger.info("Database wipe cancelled.")
             return
