@@ -44,7 +44,9 @@ models:
       # Staging models are thin views over the Alembic-owned sources.
       +materialized: view
     intermediate:
-      # Intermediate models are reusable-join views over staging models.
+      # Intermediate models are reusable joins over staging models. View is
+      # the layer default; models whose join or window is read by several
+      # downstream nodes override it with a per-model table config (#270).
       +materialized: view
     marts:
       # Marts are business-ready fact/dim tables for analytics and API reads.
