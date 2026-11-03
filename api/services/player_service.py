@@ -18,11 +18,13 @@ class PlayerService:
 
     def fetch_top_players(self, min_maps: int, limit: int) -> list[PlayerStats]:
         """
-        Fetches top players by average rating, filtered by minimum maps played.
+        Fetches top players by average rating, filtered by minimum rated maps.
 
         Reads the dbt-built `analytics.agg_player_ratings` mart, which holds
-        one row per player with the unrounded average, so each request is an
-        ordered read rather than an aggregation over every player-map row.
+        one row per player with the exact, unrounded average, so each request
+        is an ordered read rather than an aggregation over every player-map
+        row. The floor applies to `rated_maps`, the maps the average is
+        computed from, so maps without a rating cannot carry a player over it.
         Ordering uses the unrounded average, then maps played, then
         player_id, so ties resolve the same way on every build; the average
         is rounded to two decimals only for the response. The ORDER BY
@@ -31,7 +33,7 @@ class PlayerService:
         are excluded.
 
         Args:
-            min_maps (int): Minimum number of maps a player must have played.
+            min_maps (int): Minimum number of rated maps a player must have.
             limit (int): Number of players to return.
 
         Returns:
@@ -44,7 +46,7 @@ class PlayerService:
                 maps_played,
                 ROUND(avg_rating::numeric, 2) AS avg_rating
             FROM analytics.agg_player_ratings
-            WHERE maps_played >= %s
+            WHERE rated_maps >= %s
                 AND avg_rating IS NOT NULL
             ORDER BY agg_player_ratings.avg_rating DESC, maps_played DESC, player_id
             LIMIT %s;

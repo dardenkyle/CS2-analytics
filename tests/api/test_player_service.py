@@ -46,7 +46,7 @@ def test_fetch_top_players_reads_the_aggregate_mart(monkeypatch) -> None:
     assert "FROM analytics.agg_player_ratings" in query
     assert "fact_player_map_stats" not in query
     assert "GROUP BY" not in query
-    assert "WHERE maps_played >= %s" in query
+    assert "WHERE rated_maps >= %s" in query
     assert params == (2, 10)
     assert result[0].player_id == 930_000_201
     assert result[0].player_name == "Smoke Test Player"

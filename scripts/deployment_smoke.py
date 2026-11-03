@@ -200,7 +200,7 @@ def ensure_smoke_mart_relations() -> None:
         cur.execute(
             "CREATE TABLE IF NOT EXISTS analytics.agg_player_ratings ("
             "player_id BIGINT, player_name TEXT, maps_played BIGINT,"
-            " avg_rating DOUBLE PRECISION);"
+            " rated_maps BIGINT, avg_rating NUMERIC);"
         )
 
 
@@ -222,9 +222,9 @@ def seed_smoke_mart_rows() -> None:
     with db.get_cursor() as cur:
         cur.execute(
             "INSERT INTO analytics.agg_player_ratings"
-            " (player_id, player_name, maps_played, avg_rating)"
-            " VALUES (%s, %s, %s, %s);",
-            (SMOKE_PLAYER_ID, SMOKE_PLAYER_NAME, 1, 9.99),
+            " (player_id, player_name, maps_played, rated_maps, avg_rating)"
+            " VALUES (%s, %s, %s, %s, %s);",
+            (SMOKE_PLAYER_ID, SMOKE_PLAYER_NAME, 1, 1, 9.99),
         )
 
 

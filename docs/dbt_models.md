@@ -545,19 +545,25 @@ Fields:
 
 - `player_id`, `player_name` (from `dim_players`)
 - `maps_played`: the player's row count in `fact_player_map_stats`
-- `avg_rating`: the unrounded mean of the player's per-map rating
+- `rated_maps`: the rows with a non-null rating, which `avg_rating` is
+  computed from
+- `avg_rating`: the exact (numeric), unrounded mean of the player's non-null
+  per-map ratings; taken over numeric rather than float so it does not
+  depend on summation order, and equal averages stay equal across rebuilds
 
 Use cases:
 
-- the `/api/top_players` leaderboard, which filters on `maps_played`,
-  orders by `avg_rating`, `maps_played`, then `player_id`, and rounds only
+- the `/api/top_players` leaderboard, which filters on `rated_maps` (so
+  unrated maps cannot carry a player over the floor), orders by `avg_rating`, `maps_played`, then `player_id`, and rounds only
   for the response; the aggregate runs once per build instead of once per
   request
 
 Tests: `player_id` unique, not null, and present in `dim_players`;
-`player_name` and `maps_played` not null; `maps_played` at least 1; and
-`assert_agg_player_ratings_covers_fact`, which fails when `maps_played`
-summed over the mart differs from the fact's row count.
+`player_name`, `maps_played`, and `rated_maps` not null; `maps_played` at
+least 1; `rated_maps` at most `maps_played`; `avg_rating` null exactly when
+`rated_maps` is 0, and within 0 to 4 (warn, matching the fact's rating
+range); and `assert_agg_player_ratings_covers_fact`, which fails when
+`maps_played` summed over the mart differs from the fact's row count.
 
 ---
 

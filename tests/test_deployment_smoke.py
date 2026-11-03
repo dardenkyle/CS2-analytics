@@ -129,6 +129,7 @@ def test_seed_smoke_mart_rows_inserts_fixed_id(monkeypatch) -> None:
         deployment_smoke.SMOKE_PLAYER_ID,
         deployment_smoke.SMOKE_PLAYER_NAME,
         1,
+        1,
         9.99,
     )
 

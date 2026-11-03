@@ -239,8 +239,16 @@ models:
     description: >
       Career rating summary per player. Grain: one row per player with at
       least one row in fact_player_map_stats, keyed by player_id. Holds the
-      unrounded average so consumers apply their own minimum-maps floor and
-      rounding. Intended consumers: the API's top-players leaderboard.
+      exact, unrounded average so consumers apply their own minimum-maps
+      floor and rounding. Intended consumers: the API's top-players
+      leaderboard.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "rated_maps <= maps_played"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "(avg_rating is null) = (rated_maps = 0)"
     columns:
       - name: player_id
         description: Player identifier. Primary key; grain of this model.
@@ -262,10 +270,24 @@ models:
           - dbt_utils.accepted_range:
               arguments:
                 min_value: 1
+      - name: rated_maps
+        description: >
+          Number of the player's fact rows with a non-null rating; the rows
+          avg_rating is computed from and the column a minimum-maps floor
+          should use.
+        data_tests:
+          - not_null
       - name: avg_rating
         description: >
-          Unrounded mean of the player's per-map rating; null only when every
-          one of the player's map ratings is null.
+          Exact (numeric), unrounded mean of the player's non-null per-map
+          ratings; null exactly when rated_maps is 0.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 4
+              config:
+                severity: warn
 
   - name: dim_players
     description: >

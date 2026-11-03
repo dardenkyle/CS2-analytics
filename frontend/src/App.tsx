@@ -31,12 +31,18 @@ const PIPELINE_STAGES: PipelineStage[] = [
   },
   {
     step: '04',
-    title: 'Serve',
+    title: 'Transform',
     description:
-      'A FastAPI service deployed on Render exposes player analytics from the live database over a public REST API.',
+      'A daily dbt build turns the stored rows into staging models, fact and dimension marts, and per-player aggregates, with data tests run on every build.',
   },
   {
     step: '05',
+    title: 'Serve',
+    description:
+      'A FastAPI service deployed on Render reads the dbt marts and exposes player analytics over a public REST API.',
+  },
+  {
+    step: '06',
     title: 'Present',
     description:
       'This site is the public face of the system. The top players table above is fetched live from the production database through that API.',
@@ -74,6 +80,7 @@ const HIGHLIGHTS: Highlight[] = [
 const TECH_STACK: string[] = [
   'Python',
   'PostgreSQL',
+  'dbt',
   'FastAPI',
   'Alembic',
   'SeleniumBase',
@@ -158,7 +165,7 @@ function PipelineSection() {
     <section className="section">
       <h2>How the system works</h2>
       <p className="section-sub">
-        One pipeline, five stages — every piece below is running or deployed today.
+        One pipeline, six stages - every piece below is running or deployed today.
       </p>
       <ol className="pipeline">
         {PIPELINE_STAGES.map((stage) => (

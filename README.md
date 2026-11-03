@@ -709,7 +709,7 @@ Mart grains:
 | `dim_players` | one row per player (`player_id`) | player identity for joins |
 | `dim_maps` | one row per map name (`map_name`) | map catalog across matches |
 | `dim_player_roster_history` | one row per player-team membership interval (`player_id`, `valid_from`) | SCD2 shaped over the snapshot, with `is_current` flag |
-| `agg_player_ratings` | one row per player (`player_id`) | maps played and unrounded average rating; serves the top players API read path |
+| `agg_player_ratings` | one row per player (`player_id`) | maps played, rated maps, and exact unrounded average rating; serves the top players API read path |
 
 The SCD2 piece is `player_roster_history_snapshot`: a dbt snapshot that
 records player-to-team roster membership over time. The source data has no
