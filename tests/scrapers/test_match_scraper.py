@@ -1,5 +1,7 @@
 """Tests for the fetch-only match scraper."""
 
+import re
+
 import pytest
 
 from cs2_analytics.exceptions import (
@@ -29,6 +31,7 @@ RENDERED_PAGE_MENTIONING_MARKERS = (
     "</head><body><div class='results' data-provider='cloudflare'>"
     "<div class='result-con'>Team One 16 - 9 Team Two</div>"
     "<noscript>Please enable JavaScript to view the comments.</noscript>"
+    "<template><p>Verify you are human</p></template>"
     "</div></body></html>"
 )
 # Shaped like the source's interstitial: the no-JavaScript notice sits in a
@@ -137,6 +140,7 @@ def test_rendered_page_mentioning_markers_reports_missing_content(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     driver = FakeDriver(RENDERED_PAGE_MENTIONING_MARKERS, renders_after_polls=None)
+    warning_calls = _capture_log(monkeypatch, "warning")
     scraper = _build_scraper(monkeypatch, driver)
 
     with pytest.raises(
@@ -144,6 +148,12 @@ def test_rendered_page_mentioning_markers_reports_missing_content(
         match="Match page missing required content after 0.1s",
     ):
         scraper.fetch_soup(MATCH_URL)
+
+    assert len(warning_calls) == 1
+    rendered_warning = warning_calls[0][0] % warning_calls[0][1:]
+    flags = re.search(r"marker_flags=(\{[^}]*\})", rendered_warning)
+    assert flags is not None
+    assert "True" not in flags.group(1)
 
 
 def test_challenge_interstitial_is_reported_with_its_visible_markers(

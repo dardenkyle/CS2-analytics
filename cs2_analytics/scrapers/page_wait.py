@@ -7,11 +7,13 @@ bot-challenge interstitial or an incomplete render; both are transient and
 must surface as the retryable session error so the controller can rotate
 the session and try again instead of recording a permanent parse failure.
 
-Challenge markers are matched against the page's visible text (its title
-and body with script, style, noscript, and template content removed), not
-the raw source: a fully rendered page can mention "captcha" or
-"cloudflare" in its scripts and markup, and must then be reported as
-missing content rather than as a challenge (#260).
+A page counts as challenged when a challenge marker appears in its title,
+or when the page is interstitial-sized and a marker appears in its visible
+text (title and body with script, style, noscript, and template content
+removed). A fully rendered page is hundreds of kilobytes; its scripts,
+hidden forms, or user comments can mention "captcha" or "just a moment",
+and such a page must be reported as missing content rather than as a
+challenge (#260).
 """
 
 import time
@@ -38,6 +40,11 @@ CHALLENGE_MARKERS = (
     "verify you are human",
 )
 NON_VISIBLE_TAGS = ("script", "style", "noscript", "template")
+# Measured page source (#260): a live challenge interstitial was 44,870
+# characters; rendered results listings, a match page, and the home page
+# were 281,271 to 439,508. Body-text markers only count at or below this
+# length.
+INTERSTITIAL_MAX_LENGTH = 100_000
 
 
 def fetch_rendered_page(
@@ -115,18 +122,35 @@ def wait_for_required_content(
         ) from e
 
 
-def visible_text(page_source: str) -> str:
-    """Return the page's title and body text, lowercased with whitespace collapsed.
+def normalized_text(soup: BeautifulSoup) -> str:
+    """Return the soup's text lowercased with whitespace collapsed.
 
-    Script, style, noscript, and template content is dropped, so marker
-    words that only appear in code, styles, or a no-JavaScript fallback a
-    running browser never shows do not count. Attribute values are never
-    part of the text.
+    Text is joined with a space at every tag boundary, so a word split by
+    inline markup (`Ver<b>ify</b>`) reads as two words.
+    """
+    return " ".join(soup.get_text(" ").split()).lower()
+
+
+def challenge_marker_flags(page_source: str) -> dict[str, bool]:
+    """Return one flag per challenge marker for a page that lacks its selector.
+
+    A marker counts when it is in the page title, at any page size, or in
+    the visible text of a page no longer than `INTERSTITIAL_MAX_LENGTH`.
+    Visible text drops script, style, noscript, and template content;
+    attribute values are never part of it. Text hidden by CSS and user
+    content still count as visible, which is why the size gate is needed.
     """
     soup = BeautifulSoup(page_source, "html.parser")
-    for tag in soup(NON_VISIBLE_TAGS):
-        tag.decompose()
-    return " ".join(soup.get_text(" ").split()).lower()
+    title_text = normalized_text(soup.title) if soup.title else ""
+    searched_text = title_text
+    if len(page_source) <= INTERSTITIAL_MAX_LENGTH:
+        for tag in soup(NON_VISIBLE_TAGS):
+            tag.decompose()
+        searched_text = normalized_text(soup)
+    return {
+        marker.replace(" ", "_"): marker in searched_text
+        for marker in CHALLENGE_MARKERS
+    }
 
 
 def log_missing_content(
@@ -137,14 +161,11 @@ def log_missing_content(
 ) -> dict[str, bool]:
     """Logs page diagnostics for a missing selector and returns marker flags.
 
-    The flags come from the page's visible text, so they mark a challenge
-    interstitial, not a rendered page whose scripts mention the same words.
+    The flags come from `challenge_marker_flags`, so they mark a challenge
+    interstitial, not a rendered page that mentions the same words.
     """
     page_source = driver.page_source or ""
-    page_text = visible_text(page_source)
-    marker_flags = {
-        marker.replace(" ", "_"): marker in page_text for marker in CHALLENGE_MARKERS
-    }
+    marker_flags = challenge_marker_flags(page_source)
     snippet = " ".join(page_source.split())[:PAGE_SNIPPET_LIMIT]
 
     logger.warning(
