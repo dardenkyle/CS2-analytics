@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { API_BASE_URL } from '../config'
 
-const MIN_MAPS = 1
+const MIN_MAPS = 50
 const LIMIT = 10
 const SLOW_RESPONSE_HINT_DELAY_MS = 5000
 
 interface TopPlayer {
+  player_id: number
   player_name: string
   maps_played: number
   avg_rating: number
@@ -115,7 +116,7 @@ function PlayersTable({ players }: { players: TopPlayer[] }) {
         </thead>
         <tbody>
           {players.map((player, index) => (
-            <tr key={player.player_name}>
+            <tr key={player.player_id}>
               <td className="rank-col">{index + 1}</td>
               <td className="player-name">{player.player_name}</td>
               <td className="num-col">{player.maps_played}</td>

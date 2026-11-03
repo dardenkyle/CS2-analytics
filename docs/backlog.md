@@ -1134,10 +1134,10 @@ item track record.
 - [ ] (#240) Roster history from map dates: build
       `dim_player_roster_history` from per-map `map_date` instead of
       snapshot run dates, and rank `dim_players` names by play date
-- [ ] (#245) Leaderboard ranking: a one-row-per-player aggregate mart,
-      deterministic ordering, `player_id` in the response, and a
-      minimum-maps floor on the dashboard (the stale copy was corrected in
-      #266)
+- [x] (#245) Leaderboard ranking: a one-row-per-player aggregate mart
+      (`agg_player_ratings`), deterministic ordering, `player_id` in the
+      response, and a 50-map floor on the dashboard (the stale copy was
+      corrected in #266)
 - [ ] (#271) Drop `idx_players_map_id`, `idx_players_player_id`, and
       `idx_maps_match_id`, each covered by a composite index with the same
       leading column, in a migration with `schema.sql` aligned

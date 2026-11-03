@@ -186,59 +186,45 @@ def seed_smoke_source_rows() -> None:
 
 
 def ensure_smoke_mart_relations() -> None:
-    """Create smoke-only stand-ins for the dbt-built mart relations.
+    """Create a smoke-only stand-in for the dbt-built mart the API reads.
 
-    The API reads the analytics marts, but the disposable smoke database
-    never runs dbt (the runtime image does not include it), so the
-    relations the read path uses are created here with only the columns
-    that path touches. Real environments get the full tables from
-    `dbt build`, which replaces these stand-ins.
+    The API reads `analytics.agg_player_ratings`, but the disposable smoke
+    database never runs dbt (the runtime image does not include it), so the
+    relation is created here with only the columns the read path uses. Real
+    environments get the full table from `dbt build`, which replaces this
+    stand-in.
     """
     db = Database()
     with db.get_cursor() as cur:
         cur.execute("CREATE SCHEMA IF NOT EXISTS analytics;")
         cur.execute(
-            "CREATE TABLE IF NOT EXISTS analytics.fact_player_map_stats ("
-            "map_id BIGINT, player_id BIGINT, rating DOUBLE PRECISION);"
-        )
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS analytics.dim_players ("
-            "player_id BIGINT, player_name TEXT);"
+            "CREATE TABLE IF NOT EXISTS analytics.agg_player_ratings ("
+            "player_id BIGINT, player_name TEXT, maps_played BIGINT,"
+            " avg_rating DOUBLE PRECISION);"
         )
 
 
 def cleanup_smoke_mart_rows() -> None:
-    """Remove fixed-ID smoke rows from the mart relations if they exist."""
+    """Remove the fixed-ID smoke row from the mart relation if it exists."""
     db = Database()
     with db.get_cursor() as cur:
-        cur.execute("SELECT to_regclass('analytics.fact_player_map_stats');")
+        cur.execute("SELECT to_regclass('analytics.agg_player_ratings');")
         if cur.fetchone()[0] is not None:
             cur.execute(
-                "DELETE FROM analytics.fact_player_map_stats"
-                " WHERE map_id = %s AND player_id = %s;",
-                (SMOKE_MAP_ID, SMOKE_PLAYER_ID),
-            )
-        cur.execute("SELECT to_regclass('analytics.dim_players');")
-        if cur.fetchone()[0] is not None:
-            cur.execute(
-                "DELETE FROM analytics.dim_players WHERE player_id = %s;",
+                "DELETE FROM analytics.agg_player_ratings WHERE player_id = %s;",
                 (SMOKE_PLAYER_ID,),
             )
 
 
 def seed_smoke_mart_rows() -> None:
-    """Seed mart rows so the API read check can see the smoke player."""
+    """Seed a mart row so the API read check can see the smoke player."""
     db = Database()
     with db.get_cursor() as cur:
         cur.execute(
-            "INSERT INTO analytics.fact_player_map_stats"
-            " (map_id, player_id, rating) VALUES (%s, %s, %s);",
-            (SMOKE_MAP_ID, SMOKE_PLAYER_ID, 9.99),
-        )
-        cur.execute(
-            "INSERT INTO analytics.dim_players"
-            " (player_id, player_name) VALUES (%s, %s);",
-            (SMOKE_PLAYER_ID, SMOKE_PLAYER_NAME),
+            "INSERT INTO analytics.agg_player_ratings"
+            " (player_id, player_name, maps_played, avg_rating)"
+            " VALUES (%s, %s, %s, %s);",
+            (SMOKE_PLAYER_ID, SMOKE_PLAYER_NAME, 1, 9.99),
         )
 
 
@@ -262,7 +248,7 @@ def verify_top_players_read(api_base_url: str, timeout_seconds: int) -> None:
     smoke_rows = [
         row
         for row in payload
-        if isinstance(row, dict) and row.get("player_name") == SMOKE_PLAYER_NAME
+        if isinstance(row, dict) and row.get("player_id") == SMOKE_PLAYER_ID
     ]
     if not smoke_rows:
         raise RuntimeError("Seeded smoke player was not returned by top players API.")

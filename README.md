@@ -317,9 +317,8 @@ The API is available at `http://localhost:8000` by default. See
 `docs/deployment.md` for Docker build, environment variable, runtime data, and
 container command details.
 
-The `/api/top_players` endpoint reads the dbt-built marts
-(`analytics.fact_player_map_stats`, `analytics.dim_players`), not the raw
-ingestion tables, so on a fresh database run `dbt build` (section 10) after
+The `/api/top_players` endpoint reads the dbt-built
+`analytics.agg_player_ratings` mart, not the raw ingestion tables, so on a fresh database run `dbt build` (section 10) after
 migrations before exercising the API read path; the deployment smoke path
 below is the exception and provisions its own minimal stand-ins.
 
@@ -677,6 +676,7 @@ flowchart LR
         dim_players
         dim_maps
         dim_prh["dim_player_roster_history"]
+        agg_pr["agg_player_ratings"]
     end
     snap["player_roster_history_snapshot (SCD2)"]
     api["FastAPI read paths"]
@@ -692,6 +692,8 @@ flowchart LR
     stg_maps --> dim_maps
     stg_players --> dim_players
     int_mps --> fact_pms
+    fact_pms --> agg_pr
+    dim_players --> agg_pr
     int_mps --> int_pct
     int_pct --> snap
     snap --> dim_prh
@@ -702,11 +704,12 @@ Mart grains:
 
 | Model | Grain | Notes |
 | --- | --- | --- |
-| `fact_player_map_stats` | one row per player per map (`map_id`, `player_id`) | per-map performance stats; serves the top players API read path |
+| `fact_player_map_stats` | one row per player per map (`map_id`, `player_id`) | per-map performance stats |
 | `fact_matches` | one row per match (`match_id`) | derives winning/losing team and map count |
 | `dim_players` | one row per player (`player_id`) | player identity for joins |
 | `dim_maps` | one row per map name (`map_name`) | map catalog across matches |
 | `dim_player_roster_history` | one row per player-team membership interval (`player_id`, `valid_from`) | SCD2 shaped over the snapshot, with `is_current` flag |
+| `agg_player_ratings` | one row per player (`player_id`) | maps played and unrounded average rating; serves the top players API read path |
 
 The SCD2 piece is `player_roster_history_snapshot`: a dbt snapshot that
 records player-to-team roster membership over time. The source data has no

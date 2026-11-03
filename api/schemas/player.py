@@ -10,6 +10,7 @@ class PlayerStats(BaseModel):
     Response model for top player statistics.
     """
 
+    player_id: int
     player_name: str
     maps_played: int
     avg_rating: float

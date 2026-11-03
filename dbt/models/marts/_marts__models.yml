@@ -235,6 +235,38 @@ models:
         description: >
           Whether the source match row satisfies its required-field contract.
 
+  - name: agg_player_ratings
+    description: >
+      Career rating summary per player. Grain: one row per player with at
+      least one row in fact_player_map_stats, keyed by player_id. Holds the
+      unrounded average so consumers apply their own minimum-maps floor and
+      rounding. Intended consumers: the API's top-players leaderboard.
+    columns:
+      - name: player_id
+        description: Player identifier. Primary key; grain of this model.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_players')
+                field: player_id
+      - name: player_name
+        description: Player name from dim_players.
+        data_tests:
+          - not_null
+      - name: maps_played
+        description: Number of the player's rows in fact_player_map_stats.
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+      - name: avg_rating
+        description: >
+          Unrounded mean of the player's per-map rating; null only when every
+          one of the player's map ratings is null.
+
   - name: dim_players
     description: >
       Stable player identity dimension. Grain: one row per player, keyed by

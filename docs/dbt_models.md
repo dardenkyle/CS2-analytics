@@ -391,7 +391,8 @@ Status: an initial mart set is implemented (#112) under `dbt/models/marts/` as
 tables, documented in `dbt/models/marts/_marts__models.yml`:
 `fact_player_map_stats` (player-per-map, built on `int_match_player_stats`),
 `fact_matches` (per match), `dim_players` (per player), and `dim_maps` (per map
-name). The other fact/dim models below remain planning-only.
+name), plus the aggregate `agg_player_ratings` (per player, #245). The other
+fact/dim models below remain planning-only.
 
 The mart layer contains business-ready models intended for analytics, reporting, and API use.
 
@@ -530,6 +531,33 @@ Use cases:
 
 - filtering by player
 - joining player metadata to fact tables
+
+---
+
+## Aggregate models
+
+### agg_player_ratings
+
+Implemented (#245). Grain: one row per player with at least one row in
+`fact_player_map_stats`, keyed by `player_id`.
+
+Fields:
+
+- `player_id`, `player_name` (from `dim_players`)
+- `maps_played`: the player's row count in `fact_player_map_stats`
+- `avg_rating`: the unrounded mean of the player's per-map rating
+
+Use cases:
+
+- the `/api/top_players` leaderboard, which filters on `maps_played`,
+  orders by `avg_rating`, `maps_played`, then `player_id`, and rounds only
+  for the response; the aggregate runs once per build instead of once per
+  request
+
+Tests: `player_id` unique, not null, and present in `dim_players`;
+`player_name` and `maps_played` not null; `maps_played` at least 1; and
+`assert_agg_player_ratings_covers_fact`, which fails when `maps_played`
+summed over the mart differs from the fact's row count.
 
 ---
 
@@ -703,6 +731,7 @@ Use these prefixes consistently:
 - `int_` for intermediate models
 - `fact_` for fact tables
 - `dim_` for dimension tables
+- `agg_` for aggregate marts: one row per entity, summarizing a fact
 - `_snapshot` suffix for snapshots
 
 Rules:
