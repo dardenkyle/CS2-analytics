@@ -152,8 +152,8 @@ export function TopPlayersSection() {
             <p className="data-note">
               Rankings average each player's rating over every map in the
               published dataset, which covers the full CS2 era and is
-              refreshed with the daily build. Any player with at least one
-              map is included, so a single strong map can rank highly.
+              refreshed with the daily build. Only players with at least{' '}
+              {MIN_MAPS} maps are included.
             </p>
           </>
         ))}
