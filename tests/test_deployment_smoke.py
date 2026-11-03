@@ -1,10 +1,14 @@
 from datetime import datetime
 
+import pytest
+
 from scripts import deployment_smoke
 
 
 class _RecordingCursor:
-    def __init__(self, fetchone_results: list[tuple[object, ...]] | None = None) -> None:
+    def __init__(
+        self, fetchone_results: list[tuple[object, ...]] | None = None
+    ) -> None:
         self.executed: list[tuple[str, tuple[object, ...] | None]] = []
         self.fetchone_results = list(fetchone_results or [])
 
@@ -89,7 +93,7 @@ def test_cleanup_smoke_source_rows_deletes_fixed_ids_in_dependency_order(
     ]
 
 
-def test_ensure_smoke_mart_relations_creates_schema_and_stand_ins(monkeypatch) -> None:
+def test_ensure_smoke_mart_relations_creates_schema_and_stand_in(monkeypatch) -> None:
     cursor = _RecordingCursor()
     monkeypatch.setattr(
         deployment_smoke,
@@ -101,14 +105,14 @@ def test_ensure_smoke_mart_relations_creates_schema_and_stand_ins(monkeypatch) -
 
     executed_queries = [query for query, _params in cursor.executed]
     assert executed_queries[0] == "CREATE SCHEMA IF NOT EXISTS analytics;"
-    assert "CREATE TABLE IF NOT EXISTS analytics.fact_player_map_stats" in (
-        executed_queries[1]
+    assert (
+        "CREATE TABLE IF NOT EXISTS analytics.agg_player_ratings"
+        in (executed_queries[1])
     )
-    assert "CREATE TABLE IF NOT EXISTS analytics.dim_players" in executed_queries[2]
-    assert all("IF NOT EXISTS" in query for query in executed_queries)
+    assert len(executed_queries) == 2
 
 
-def test_seed_smoke_mart_rows_inserts_fixed_ids(monkeypatch) -> None:
+def test_seed_smoke_mart_rows_inserts_fixed_id(monkeypatch) -> None:
     cursor = _RecordingCursor()
     monkeypatch.setattr(
         deployment_smoke,
@@ -118,23 +122,20 @@ def test_seed_smoke_mart_rows_inserts_fixed_ids(monkeypatch) -> None:
 
     deployment_smoke.seed_smoke_mart_rows()
 
-    fact_query, fact_params = cursor.executed[0]
-    dim_query, dim_params = cursor.executed[1]
-    assert "analytics.fact_player_map_stats" in fact_query
-    assert fact_params == (
-        deployment_smoke.SMOKE_MAP_ID,
-        deployment_smoke.SMOKE_PLAYER_ID,
-        9.99,
-    )
-    assert "analytics.dim_players" in dim_query
-    assert dim_params == (
+    assert len(cursor.executed) == 1
+    query, params = cursor.executed[0]
+    assert "analytics.agg_player_ratings" in query
+    assert params == (
         deployment_smoke.SMOKE_PLAYER_ID,
         deployment_smoke.SMOKE_PLAYER_NAME,
+        1,
+        1,
+        9.99,
     )
 
 
-def test_cleanup_smoke_mart_rows_skips_missing_relations(monkeypatch) -> None:
-    cursor = _RecordingCursor(fetchone_results=[(None,), (None,)])
+def test_cleanup_smoke_mart_rows_skips_missing_relation(monkeypatch) -> None:
+    cursor = _RecordingCursor(fetchone_results=[(None,)])
     monkeypatch.setattr(
         deployment_smoke,
         "Database",
@@ -144,17 +145,11 @@ def test_cleanup_smoke_mart_rows_skips_missing_relations(monkeypatch) -> None:
     deployment_smoke.cleanup_smoke_mart_rows()
 
     executed_queries = [query for query, _params in cursor.executed]
-    assert all("to_regclass" in query for query in executed_queries)
-    assert not any("DELETE" in query for query in executed_queries)
+    assert executed_queries == ["SELECT to_regclass('analytics.agg_player_ratings');"]
 
 
-def test_cleanup_smoke_mart_rows_deletes_when_relations_exist(monkeypatch) -> None:
-    cursor = _RecordingCursor(
-        fetchone_results=[
-            ("analytics.fact_player_map_stats",),
-            ("analytics.dim_players",),
-        ]
-    )
+def test_cleanup_smoke_mart_rows_deletes_when_relation_exists(monkeypatch) -> None:
+    cursor = _RecordingCursor(fetchone_results=[("analytics.agg_player_ratings",)])
     monkeypatch.setattr(
         deployment_smoke,
         "Database",
@@ -168,12 +163,7 @@ def test_cleanup_smoke_mart_rows_deletes_when_relations_exist(monkeypatch) -> No
     ]
     assert delete_queries == [
         (
-            "DELETE FROM analytics.fact_player_map_stats"
-            " WHERE map_id = %s AND player_id = %s;",
-            (deployment_smoke.SMOKE_MAP_ID, deployment_smoke.SMOKE_PLAYER_ID),
-        ),
-        (
-            "DELETE FROM analytics.dim_players WHERE player_id = %s;",
+            "DELETE FROM analytics.agg_player_ratings WHERE player_id = %s;",
             (deployment_smoke.SMOKE_PLAYER_ID,),
         ),
     ]
@@ -210,6 +200,7 @@ def test_verify_top_players_read_requires_seeded_smoke_player(monkeypatch) -> No
     def fake_request_json(_url: str, _timeout_seconds: int) -> list[dict[str, object]]:
         return [
             {
+                "player_id": deployment_smoke.SMOKE_PLAYER_ID,
                 "player_name": deployment_smoke.SMOKE_PLAYER_NAME,
                 "maps_played": 1,
                 "avg_rating": 9.99,
@@ -223,3 +214,26 @@ def test_verify_top_players_read_requires_seeded_smoke_player(monkeypatch) -> No
     )
 
     deployment_smoke.verify_top_players_read("http://app:8000", 10)
+
+
+def test_verify_top_players_read_rejects_payload_without_smoke_player(
+    monkeypatch,
+) -> None:
+    def fake_request_json(_url: str, _timeout_seconds: int) -> list[dict[str, object]]:
+        return [
+            {
+                "player_id": deployment_smoke.SMOKE_PLAYER_ID + 1,
+                "player_name": deployment_smoke.SMOKE_PLAYER_NAME,
+                "maps_played": 1,
+                "avg_rating": 9.99,
+            }
+        ]
+
+    monkeypatch.setattr(
+        deployment_smoke,
+        "request_json",
+        fake_request_json,
+    )
+
+    with pytest.raises(RuntimeError, match="Seeded smoke player was not returned"):
+        deployment_smoke.verify_top_players_read("http://app:8000", 10)

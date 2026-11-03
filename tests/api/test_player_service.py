@@ -8,7 +8,12 @@ class _FakeCursor:
     def __init__(self, rows: list[tuple[object, ...]]) -> None:
         self.rows = rows
         self.executed: list[tuple[str, tuple[int, ...]]] = []
-        self.description = [("player_name",), ("maps_played",), ("avg_rating",)]
+        self.description = [
+            ("player_id",),
+            ("player_name",),
+            ("maps_played",),
+            ("avg_rating",),
+        ]
 
     def __enter__(self) -> "_FakeCursor":
         return self
@@ -31,23 +36,39 @@ class _FakeDatabase:
         return self.cursor
 
 
-def test_fetch_top_players_reads_marts_grouped_by_player_id(monkeypatch) -> None:
-    cursor = _FakeCursor([("Smoke Test Player", 3, 1.25)])
+def test_fetch_top_players_reads_the_aggregate_mart(monkeypatch) -> None:
+    cursor = _FakeCursor([(930_000_201, "Smoke Test Player", 3, 1.25)])
     monkeypatch.setattr(player_service, "Database", lambda: _FakeDatabase(cursor))
 
     result = PlayerService().fetch_top_players(min_maps=2, limit=10)
 
     query, params = cursor.executed[0]
-    assert "analytics.fact_player_map_stats" in query
-    assert "analytics.dim_players" in query
-    assert "players" not in query.replace("dim_players", "").replace(
-        "fact_player_map_stats", ""
-    )
-    assert "GROUP BY fact_player_map_stats.player_id" in query
+    assert "FROM analytics.agg_player_ratings" in query
+    assert "fact_player_map_stats" not in query
+    assert "GROUP BY" not in query
+    assert "WHERE rated_maps >= %s" in query
     assert params == (2, 10)
+    assert result[0].player_id == 930_000_201
     assert result[0].player_name == "Smoke Test Player"
     assert result[0].maps_played == 3
     assert result[0].avg_rating == 1.25
+
+
+def test_fetch_top_players_orders_on_unrounded_average_with_tie_breaks(
+    monkeypatch,
+) -> None:
+    cursor = _FakeCursor([])
+    monkeypatch.setattr(player_service, "Database", lambda: _FakeDatabase(cursor))
+
+    PlayerService().fetch_top_players(min_maps=50, limit=10)
+
+    query, _params = cursor.executed[0]
+    order_by = " ".join(query.split("ORDER BY", 1)[1].split("LIMIT", 1)[0].split())
+    assert order_by == (
+        "agg_player_ratings.avg_rating DESC, maps_played DESC, player_id"
+    )
+    assert "ROUND(avg_rating::numeric, 2) AS avg_rating" in query
+    assert "avg_rating IS NOT NULL" in query
 
 
 def test_fetch_top_players_wraps_database_errors(monkeypatch) -> None:

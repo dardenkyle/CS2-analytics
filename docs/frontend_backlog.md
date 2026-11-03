@@ -80,6 +80,11 @@ A2 implementation notes:
   moved to a paid instance and the CS2-era backfill completed; the
   five-second hint now says only that the response is taking longer than
   usual.
+- The top players view originally requested `min_maps=1`, so the list was
+  the best single-map ratings. #245 raised `MIN_MAPS` to 50 (chosen from
+  the production distribution: 2,073 of 6,434 players qualify) and keyed
+  rows by `player_id`; the API now reads the `agg_player_ratings` mart with
+  deterministic ordering.
 
 ### Planned work
 

@@ -18,15 +18,22 @@ class PlayerService:
 
     def fetch_top_players(self, min_maps: int, limit: int) -> list[PlayerStats]:
         """
-        Fetches top players based on average rating, filtered by minimum maps played.
+        Fetches top players by average rating, filtered by minimum rated maps.
 
-        Reads the dbt-built marts (analytics schema), not the raw ingestion
-        tables: fact_player_map_stats carries the per-map performance grain
-        and dim_players carries player identity, so aggregation is keyed on
-        player_id rather than on raw player_name values.
+        Reads the dbt-built `analytics.agg_player_ratings` mart, which holds
+        one row per player with the exact, unrounded average, so each request
+        is an ordered read rather than an aggregation over every player-map
+        row. The floor applies to `rated_maps`, the maps the average is
+        computed from, so maps without a rating cannot carry a player over it.
+        Ordering uses the unrounded average, then maps played, then
+        player_id, so ties resolve the same way on every build; the average
+        is rounded to two decimals only for the response. The ORDER BY
+        qualifies `agg_player_ratings.avg_rating` because a bare name binds
+        to the rounded output column. Players whose ratings are all null
+        are excluded.
 
         Args:
-            min_maps (int): Minimum number of maps a player must have played.
+            min_maps (int): Minimum number of rated maps a player must have.
             limit (int): Number of players to return.
 
         Returns:
@@ -34,15 +41,14 @@ class PlayerService:
         """
         sql: str = """
             SELECT
-                dim_players.player_name,
-                COUNT(*) AS maps_played,
-                ROUND(AVG(fact_player_map_stats.rating)::numeric, 2) AS avg_rating
-            FROM analytics.fact_player_map_stats
-            JOIN analytics.dim_players
-                ON dim_players.player_id = fact_player_map_stats.player_id
-            GROUP BY fact_player_map_stats.player_id, dim_players.player_name
-            HAVING COUNT(*) >= %s
-            ORDER BY avg_rating DESC
+                player_id,
+                player_name,
+                maps_played,
+                ROUND(avg_rating::numeric, 2) AS avg_rating
+            FROM analytics.agg_player_ratings
+            WHERE rated_maps >= %s
+                AND avg_rating IS NOT NULL
+            ORDER BY agg_player_ratings.avg_rating DESC, maps_played DESC, player_id
             LIMIT %s;
         """
         try:

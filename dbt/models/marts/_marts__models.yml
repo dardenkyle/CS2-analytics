@@ -235,6 +235,60 @@ models:
         description: >
           Whether the source match row satisfies its required-field contract.
 
+  - name: agg_player_ratings
+    description: >
+      Career rating summary per player. Grain: one row per player with at
+      least one row in fact_player_map_stats, keyed by player_id. Holds the
+      exact, unrounded average so consumers apply their own minimum-maps
+      floor and rounding. Intended consumers: the API's top-players
+      leaderboard.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "rated_maps <= maps_played"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "(avg_rating is null) = (rated_maps = 0)"
+    columns:
+      - name: player_id
+        description: Player identifier. Primary key; grain of this model.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_players')
+                field: player_id
+      - name: player_name
+        description: Player name from dim_players.
+        data_tests:
+          - not_null
+      - name: maps_played
+        description: Number of the player's rows in fact_player_map_stats.
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+      - name: rated_maps
+        description: >
+          Number of the player's fact rows with a non-null rating; the rows
+          avg_rating is computed from and the column a minimum-maps floor
+          should use.
+        data_tests:
+          - not_null
+      - name: avg_rating
+        description: >
+          Exact (numeric), unrounded mean of the player's non-null per-map
+          ratings; null exactly when rated_maps is 0.
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 4
+              config:
+                severity: warn
+
   - name: dim_players
     description: >
       Stable player identity dimension. Grain: one row per player, keyed by
