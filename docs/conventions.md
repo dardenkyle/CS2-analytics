@@ -18,11 +18,16 @@ Current implementation note:
   (map stats), and `div.results` (results listing, the container that
   is present even when a date range has no results); a page that never
   renders it, including the source's challenge interstitial, raises
-  `SessionScrapeError` (retryable) with a diagnostic warning that carries the
-  challenge-marker flags, so `cs2a failures` groups such rows under "appears
-  blocked or challenged" or "missing required content" rather than under a
-  parser message; parser errors are reserved for pages that rendered the
-  selector (#57, #224, #230)
+  `SessionScrapeError` (retryable), so `cs2a failures` groups such rows
+  under "appears blocked or challenged" or "missing required content"
+  rather than under a parser message; parser errors are reserved for pages
+  that rendered the selector (#57, #224, #230)
+- the diagnostic warning for a missing selector carries the
+  challenge-marker flags; a marker counts when it is in the page title, or
+  in the visible text (without script, style, noscript, or template
+  content) of an interstitial-sized page (`INTERSTITIAL_MAX_LENGTH`), so a
+  rendered page whose scripts, hidden elements, or user comments mention
+  the marker words is not taken for a challenge (#260)
 - `ResultsScraper` holds no HTML parsing: `parsers/results_parser.py` turns a
   rendered listing into a `ResultsPage` (in-window matches with section
   dates, the page's result count, and whether the window floor was reached),
